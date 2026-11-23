@@ -1,0 +1,10 @@
+{
+  "description": "Rastreia brincos bovinos do recebimento à venda ao produtor, com controle de estoque, transferências e estornos para a SEAPPA, lojas, fábricas e produtores do RS.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
