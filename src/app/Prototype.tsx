@@ -5191,33 +5191,23 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               </label>
               <label>
                 <span>Tipo de brinco</span>
-                {form.origem === "PNIB" ? (
-                  <>
-                    <div className="radio-pills">
-                      <button type="button" className="active">
-                        Internacional
-                      </button>
-                    </div>
-                    <p className="form-hint">
-                      Faixas PNIB são sempre do tipo Internacional (076).
-                    </p>
-                  </>
-                ) : (
-                  <div className="radio-pills">
-                    {([
-                      ["INTERNACIONAL", "Internacional"],
-                      ["SISBOV", "Nacional · SISBOV"],
-                    ] as const).map(([v, l]) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={form.tipo === v ? "active" : ""}
-                        onClick={() => setForm({ ...form, tipo: v })}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
+                <div className="radio-pills">
+                  <button type="button" className={form.origem === "PNIB" || form.tipo === "INTERNACIONAL" ? "active" : ""}>
+                    Internacional
+                  </button>
+                  <button
+                    type="button"
+                    className={form.origem !== "PNIB" && form.tipo === "SISBOV" ? "active" : ""}
+                    disabled={form.origem === "PNIB"}
+                    onClick={() => setForm({ ...form, tipo: "SISBOV" })}
+                  >
+                    Nacional · SISBOV
+                  </button>
+                </div>
+                {form.origem === "PNIB" && (
+                  <p className="form-hint">
+                    Faixas PNIB são sempre do tipo Internacional (076).
+                  </p>
                 )}
               </label>
             </div>
@@ -5244,7 +5234,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                   </button>
                 </div>
                 {form.gatilho === "pedido" ? (
-                  <p className="form-hint" style={{ margin: 0 }}>
+                  <p className="form-hint">
                     Gatilho "pedido recebido" gera sempre conforme a quantidade
                     solicitada pelo ator.
                   </p>
