@@ -3706,6 +3706,12 @@ const numberingDemo = {
     { label: "31–60 dias", value: 3000, color: "#d99a3b" },
     { label: "60+ dias", value: 2000, color: "#d64545" },
   ],
+  criadores: [
+    { nome: "PNIB — integração automática", value: 20000, color: "#1565c0" },
+    { nome: "Ana R. Farias — SEAPI", value: 3000, color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", value: 2000, color: "#6fbc5e" },
+    { nome: "Juliana P. Rocha — SEAPI", value: 1000, color: "#96d18a" },
+  ],
 };
 
 function SaldoLineChart({ data, months }: { data: number[]; months: string[] }) {
@@ -3966,6 +3972,12 @@ function NumberingDashboard({ role }: { role: Role }) {
     status === "ok" ? "Ritmo saudável" : status === "warn" ? "Atenção" : "Risco de ruptura";
   const pctBar = Math.min(100, Math.round((coberturaLiquida / 180) * 100));
   const maxDest = Math.max(...numberingDemo.destinatarios.map((d) => d.value));
+  const totalCriado = numberingDemo.criadores.reduce((a, c) => a + c.value, 0);
+  const criadoPnib = numberingDemo.criadores
+    .filter((c) => c.nome.startsWith("PNIB"))
+    .reduce((a, c) => a + c.value, 0);
+  const criadoInterna = totalCriado - criadoPnib;
+  const maxCriador = Math.max(...numberingDemo.criadores.map((c) => c.value));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
     { label: "Distribuída", value: 15000, color: "#d99a3b" },
@@ -4096,6 +4108,50 @@ function NumberingDashboard({ role }: { role: Role }) {
           </div>
         </section>
       </div>
+
+      <section className="panel dash-mt">
+        <div className="panel-head">
+          <div>
+            <h2>Numerações criadas — por criador</h2>
+            <p>Autorizações PNIB e faixas geradas internamente, por responsável</p>
+          </div>
+          <span className="head-badge">{fmtBR(totalCriado)} no período</span>
+        </div>
+        <div className="hbar-list">
+          <div className="comp-bar">
+            <span
+              className="comp-seg"
+              style={{ width: `${(criadoPnib / totalCriado) * 100}%`, background: "#1565c0" }}
+              title={`PNIB: ${fmtBR(criadoPnib)} numerações`}
+            />
+            <span
+              className="comp-seg"
+              style={{ width: `${(criadoInterna / totalCriado) * 100}%`, background: "#4BA044" }}
+              title={`Interna SDA: ${fmtBR(criadoInterna)} numerações`}
+            />
+          </div>
+          <div className="comp-legend">
+            <span><span className="dot" style={{ background: "#1565c0" }} />PNIB {Math.round((criadoPnib / totalCriado) * 100)}%</span>
+            <span><span className="dot" style={{ background: "#4BA044" }} />Interna SDA {Math.round((criadoInterna / totalCriado) * 100)}%</span>
+          </div>
+          {numberingDemo.criadores.map((c) => (
+            <div className="hbar-row creator" key={c.nome}>
+              <span className="hbar-name" title={c.nome}>{c.nome}</span>
+              <div className="hbar-track">
+                <span className="hbar-fill" style={{ width: `${Math.round((c.value / maxCriador) * 100)}%`, background: c.color }} />
+              </div>
+              <span className="hbar-value">
+                {fmtBR(c.value)} · {Math.round((c.value / totalCriado) * 100)}%
+              </span>
+            </div>
+          ))}
+          <p className="aging-note">
+            {fmtBR(totalCriado)} numerações criadas entre jan e jun/2025 —{" "}
+            {fmtBR(criadoPnib)} via PNIB (integração automática) e {fmtBR(criadoInterna)}{" "}
+            geradas internamente por analistas da SEAPI.
+          </p>
+        </div>
+      </section>
 
       <div className="dash-grid dash-mt">
         <section className="panel">
