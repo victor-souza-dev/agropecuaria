@@ -3710,6 +3710,12 @@ const numberingDemo = {
         entradasPnib: [3000, 0, 0, 3000, 0, 0],
         entradasInterna: [0, 0, 0, 0, 0, 0],
         aging: [1200, 500, 300],
+        porCriador: {
+          "Geração automática — PNIB": {
+            saidas: [800, 800, 600, 600, 600, 600],
+            aging: [1200, 500, 300],
+          },
+        },
       },
       interna: {
         saidas: [0, 0, 600, 600, 900, 900],
@@ -3717,6 +3723,16 @@ const numberingDemo = {
         entradasPnib: [0, 0, 0, 0, 0, 0],
         entradasInterna: [1000, 0, 1000, 0, 1000, 2000],
         aging: [1500, 500, 0],
+        porCriador: {
+          "Geração automática — interna": {
+            saidas: [0, 0, 200, 200, 300, 300],
+            aging: [750, 250, 0],
+          },
+          "Juliana P. Rocha — SEAPI": {
+            saidas: [0, 0, 400, 400, 600, 600],
+            aging: [750, 250, 0],
+          },
+        },
       },
     },
     SISBOV: {
@@ -3726,6 +3742,7 @@ const numberingDemo = {
         entradasPnib: [0, 0, 0, 0, 0, 0],
         entradasInterna: [0, 0, 0, 0, 0, 0],
         aging: [0, 0, 0],
+        porCriador: {},
       },
       interna: {
         saidas: [400, 1000, 1200, 1800, 2100, 1500],
@@ -3733,6 +3750,24 @@ const numberingDemo = {
         entradasPnib: [0, 0, 0, 0, 0, 0],
         entradasInterna: [3000, 2000, 2000, 3000, 3000, 2000],
         aging: [4000, 2000, 1000],
+        porCriador: {
+          "Geração automática — interna": {
+            saidas: [150, 400, 600, 650, 950, 250],
+            aging: [1800, 800, 400],
+          },
+          "Ana R. Farias — SEAPI": {
+            saidas: [100, 300, 200, 450, 450, 500],
+            aging: [1100, 600, 300],
+          },
+          "Carlos M. Duarte — SEAPI": {
+            saidas: [75, 125, 200, 300, 400, 400],
+            aging: [900, 400, 200],
+          },
+          "Juliana P. Rocha — SEAPI": {
+            saidas: [75, 175, 200, 400, 300, 350],
+            aging: [200, 200, 100],
+          },
+        },
       },
     },
   },
@@ -3760,17 +3795,27 @@ const AGING_LABELS = ["0–30 dias", "31–60 dias", "60+ dias"];
 const AGING_COLORS = ["#4BA044", "#d99a3b", "#d64545"];
 
 const somarSeries = (
-  lista: { saidas: number[]; saldo: number[]; entradasPnib: number[]; entradasInterna: number[] }[]
+  lista: {
+    saidas: number[];
+    saldo?: number[];
+    entradasPnib: number[];
+    entradasInterna: number[];
+  }[]
 ) =>
   lista.reduce(
     (acc, c) => ({
       saidas: acc.saidas.map((v, i) => v + c.saidas[i]),
-      saldo: acc.saldo.map((v, i) => v + c.saldo[i]),
+      saldo: c.saldo ? acc.saldo.map((v, i) => v + c.saldo[i]) : acc.saldo,
       entradasPnib: acc.entradasPnib.map((v, i) => v + c.entradasPnib[i]),
       entradasInterna: acc.entradasInterna.map((v, i) => v + c.entradasInterna[i]),
     }),
     { saidas: zero6(), saldo: zero6(), entradasPnib: zero6(), entradasInterna: zero6() }
   );
+
+const DESTINO_CELULA: Record<string, Record<string, string>> = {
+  INTERNACIONAL: { PNIB: "Identifica Brasil S.A.", interna: "Pecúnia Etiquetas Ltda." },
+  SISBOV: { PNIB: "", interna: "Brinco Sul Indústria" },
+};
 
 function SaldoLineChart({ data, months }: { data: number[]; months: string[] }) {
   const W = 720, H = 260;
@@ -4044,6 +4089,43 @@ function NumberingDashboard({ role }: { role: Role }) {
   }, []);
 
   const nMeses = range.to - range.from + 1;
+
+  const todosMarcados =
+    criadoresSel.length === 0 || criadoresSel.length === numberingDemo.criadores.length;
+  const criadorSel = todosMarcados
+    ? null
+    : numberingDemo.criadores.filter((c) => criadoresSel.includes(c.nome));
+  const criadorVisiveis = criadorSel
+    ? criadorSel.filter((c) => origem === "TODAS" || c.origem === origem)
+    : [];
+  const criadorCompativel = !criadorSel || criadorVisiveis.length > 0;
+
+  const saldoDe = (entradas: number[], saidas: number[]) => {
+    const out: number[] = [];
+    let e = 0;
+    let s = 0;
+    entradas.forEach((v, i) => {
+      e += v;
+      s += saidas[i];
+      out.push(e - s);
+    });
+    return out;
+  };
+  const pecasDe = (t: "INTERNACIONAL" | "SISBOV") =>
+    criadorVisiveis
+      .map((c) => {
+        const pc = numberingDemo.celulas[t][c.origem].porCriador[c.nome];
+        if (!pc) return null;
+        const entr = c.seriePorTipo[t];
+        return {
+          entradasPnib: c.origem === "PNIB" ? entr : zero6(),
+          entradasInterna: c.origem === "interna" ? entr : zero6(),
+          saidas: pc.saidas,
+          aging: pc.aging,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+
   const celulasSelecionadas = (["INTERNACIONAL", "SISBOV"] as const)
     .filter((t) => tipo === "TODOS" || tipo === t)
     .flatMap((t) =>
@@ -4051,7 +4133,30 @@ function NumberingDashboard({ role }: { role: Role }) {
         .filter((o) => origem === "TODAS" || origem === o)
         .map((o) => numberingDemo.celulas[t][o])
     );
-  const serie = somarSeries(celulasSelecionadas);
+
+  const pecasPorTipo: Record<string, ReturnType<typeof pecasDe>> = criadorSel
+    ? tipo === "TODOS"
+      ? { INTERNACIONAL: pecasDe("INTERNACIONAL"), SISBOV: pecasDe("SISBOV") }
+      : { [tipo]: pecasDe(tipo as "INTERNACIONAL" | "SISBOV") }
+    : {};
+  const pecasTodas = Object.values(pecasPorTipo).flat();
+
+  const serie = criadorSel
+    ? (() => {
+        const soma = somarSeries(pecasTodas);
+        const entrTot = soma.entradasPnib.map((v, i) => v + soma.entradasInterna[i]);
+        return { ...soma, saldo: saldoDe(entrTot, soma.saidas) };
+      })()
+    : somarSeries(celulasSelecionadas);
+
+  const agingBuckets = AGING_LABELS.map((label, i) => ({
+    label,
+    value: criadorSel
+      ? pecasTodas.reduce((a, p) => a + p.aging[i], 0)
+      : celulasSelecionadas.reduce((a, c) => a + c.aging[i], 0),
+    color: AGING_COLORS[i],
+  }));
+
   const cut = (arr: number[]) => arr.slice(range.from, range.to + 1);
   const monthsV = numberingDemo.months.slice(range.from, range.to + 1);
   const saidasV = cut(serie.saidas);
@@ -4071,7 +4176,10 @@ function NumberingDashboard({ role }: { role: Role }) {
     numberingDemo.leadTimePnib.reduce((a, it) => a + it.autorizacao + it.entrega, 0) /
       numberingDemo.leadTimePnib.length
   );
-  const mostraLead = origem !== "interna" && tipo !== "SISBOV";
+  const mostraLead =
+    origem !== "interna" &&
+    tipo !== "SISBOV" &&
+    (!criadorSel || criadorVisiveis.every((c) => c.origem === "PNIB"));
   const leadEfetivo = mostraLead ? leadMedio : 0;
   const coberturaLiquida = dias - leadEfetivo;
   const status = coberturaLiquida > 90 ? "ok" : coberturaLiquida >= 45 ? "warn" : "danger";
@@ -4082,16 +4190,6 @@ function NumberingDashboard({ role }: { role: Role }) {
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
     { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
   ];
-
-  const todosMarcados =
-    criadoresSel.length === 0 || criadoresSel.length === numberingDemo.criadores.length;
-  const criadorSel = todosMarcados
-    ? null
-    : numberingDemo.criadores.filter((c) => criadoresSel.includes(c.nome));
-  const criadorVisiveis = criadorSel
-    ? criadorSel.filter((c) => origem === "TODAS" || c.origem === origem)
-    : [];
-  const criadorCompativel = !criadorSel || criadorVisiveis.length > 0;
 
   const criadoresFiltrados = numberingDemo.criadores
     .filter((c) => (origem === "TODAS" || c.origem === origem) && (!criadorSel || criadorSel.some((s) => s.nome === c.nome)))
@@ -4132,16 +4230,29 @@ function NumberingDashboard({ role }: { role: Role }) {
     notaPartes.push(`${fmtBR(manualTotal)} manualmente por analistas da SEAPI`);
   }
 
-  const destFiltrados = numberingDemo.destinatarios.filter(
-    (d) => (tipo === "TODOS" || d.tipo === tipo) && (origem === "TODAS" || d.origem === origem)
-  );
+  const destFiltrados = criadorSel
+    ? (() => {
+        const mapa = new Map<string, number>();
+        for (const c of criadorVisiveis) {
+          for (const t of (tipo === "TODOS"
+            ? ["INTERNACIONAL", "SISBOV"]
+            : [tipo]) as ("INTERNACIONAL" | "SISBOV")[]) {
+            const pc = numberingDemo.celulas[t][c.origem].porCriador[c.nome];
+            if (!pc) continue;
+            const nome = DESTINO_CELULA[t]?.[c.origem];
+            if (!nome) continue;
+            mapa.set(nome, (mapa.get(nome) ?? 0) + pc.saidas.reduce((a, b) => a + b, 0));
+          }
+        }
+        return [...mapa.entries()]
+          .map(([nome, value]) => ({ nome, value }))
+          .filter((d) => d.value > 0)
+          .sort((a, b) => b.value - a.value);
+      })()
+    : numberingDemo.destinatarios.filter(
+        (d) => (tipo === "TODOS" || d.tipo === tipo) && (origem === "TODAS" || d.origem === origem)
+      );
   const maxDest = destFiltrados.length ? Math.max(...destFiltrados.map((d) => d.value)) : 0;
-
-  const agingBuckets = AGING_LABELS.map((label, i) => ({
-    label,
-    value: celulasSelecionadas.reduce((a, c) => a + c.aging[i], 0),
-    color: AGING_COLORS[i],
-  }));
 
   const zeroV = monthsV.map(() => 0);
   const somaSeriesCriadores = (lista: typeof numberingDemo.criadores) =>
@@ -4163,14 +4274,29 @@ function NumberingDashboard({ role }: { role: Role }) {
   const tipoCards = (["INTERNACIONAL", "SISBOV"] as const)
     .filter((t) => tipo === "TODOS" || tipo === t)
     .map((t) => {
-      const sel = (["PNIB", "interna"] as const)
-        .filter((o) => origem === "TODAS" || origem === o)
-        .map((o) => numberingDemo.celulas[t][o]);
-      const saidasTipo = sel.reduce((acc, c) => acc.map((v, i) => v + c.saidas[i]), zero6());
-      const saldoFinal = sel.reduce((a, c) => a + c.saldo[range.to], 0);
-      const media = Math.round(
-        saidasTipo.slice(range.from, range.to + 1).reduce((a, b) => a + b, 0) / nMeses
-      );
+      let saldoFinal: number;
+      let media: number;
+      if (criadorSel) {
+        const pecasT = pecasDe(t);
+        const saidasT = pecasT.reduce((acc, p) => acc.map((v, i) => v + p.saidas[i]), zero6());
+        const entrT = pecasT.reduce(
+          (acc, p) => acc.map((v, i) => v + p.entradasPnib[i] + p.entradasInterna[i]),
+          zero6()
+        );
+        saldoFinal = saldoDe(entrT, saidasT)[range.to];
+        media = Math.round(
+          saidasT.slice(range.from, range.to + 1).reduce((a, b) => a + b, 0) / nMeses
+        );
+      } else {
+        const sel = (["PNIB", "interna"] as const)
+          .filter((o) => origem === "TODAS" || origem === o)
+          .map((o) => numberingDemo.celulas[t][o]);
+        const saidasTipo = sel.reduce((acc, c) => acc.map((v, i) => v + c.saidas[i]), zero6());
+        saldoFinal = sel.reduce((a, c) => a + c.saldo[range.to], 0);
+        media = Math.round(
+          saidasTipo.slice(range.from, range.to + 1).reduce((a, b) => a + b, 0) / nMeses
+        );
+      }
       return { tipo: numberingDemo.tipoLabels[t], saldo: saldoFinal, media };
     });
 
