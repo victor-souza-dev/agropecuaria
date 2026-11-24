@@ -3679,7 +3679,197 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
   );
 }
 
+// ==== Dashboard de numeração — dados demonstrativos (não produção) ====
+const fmtBR = (n: number) => n.toLocaleString("pt-BR");
+
+const numberingDemo = {
+  months: ["jan", "fev", "mar", "abr", "mai", "jun"],
+  entradasPnib: [10000, 0, 0, 10000, 0, 0],
+  entradasInterna: [0, 0, 6000, 0, 0, 0],
+  saidas: [1200, 1800, 2400, 3000, 3600, 3000],
+  saldo: [8800, 7000, 10600, 17600, 14000, 11000],
+  destinatarios: [
+    { nome: "Identifica Brasil S.A.", value: 10000 },
+    { nome: "Brinco Sul Indústria", value: 5000 },
+  ],
+};
+
+function SaldoLineChart({ data, months }: { data: number[]; months: string[] }) {
+  const W = 720, H = 260;
+  const P = { t: 18, r: 16, b: 34, l: 48 };
+  const yMax = 20000, step = 5000;
+  const iw = W - P.l - P.r, ih = H - P.t - P.b;
+  const x = (i: number) => P.l + (iw * i) / (data.length - 1);
+  const y = (v: number) => P.t + ih - (ih * v) / yMax;
+  const pts = data.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+  const area = `${P.l},${y(0)} ${pts} ${x(data.length - 1)},${y(0)}`;
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Evolução do saldo disponível">
+        {[0, step, step * 2, step * 3, step * 4].map((v) => (
+          <Fragment key={v}>
+            <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="#eef2ee" strokeWidth={1} />
+            <text x={P.l - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#9ca3af">
+              {v === 0 ? "0" : `${v / 1000} mil`}
+            </text>
+          </Fragment>
+        ))}
+        <polygon points={area} fill="rgba(75, 160, 68, 0.12)" />
+        <polyline points={pts} fill="none" stroke="#4BA044" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((v, i) => (
+          <Fragment key={i}>
+            <circle cx={x(i)} cy={y(v)} r={4} fill="#4BA044" stroke="#fff" strokeWidth={1.5} />
+            <text x={x(i)} y={y(v) - 10} textAnchor="middle" fontSize={11} fontWeight={600} fill="#4b5563">
+              {fmtBR(v)}
+            </text>
+            <text x={x(i)} y={H - 12} textAnchor="middle" fontSize={11} fill="#9ca3af">
+              {months[i]}
+            </text>
+          </Fragment>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function ConsumoBarChart({ data, months }: { data: number[]; months: string[] }) {
+  const W = 460, H = 230;
+  const P = { t: 20, r: 12, b: 30, l: 44 };
+  const yMax = 4000, step = 1000;
+  const iw = W - P.l - P.r, ih = H - P.t - P.b;
+  const y = (v: number) => P.t + ih - (ih * v) / yMax;
+  const slot = iw / data.length;
+  const barW = slot * 0.52;
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Numerações distribuídas por mês">
+        {[0, step, step * 2, step * 3, step * 4].map((v) => (
+          <Fragment key={v}>
+            <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="#eef2ee" strokeWidth={1} />
+            <text x={P.l - 8} y={y(v) + 4} textAnchor="end" fontSize={10.5} fill="#9ca3af">
+              {v === 0 ? "0" : `${v / 1000} mil`}
+            </text>
+          </Fragment>
+        ))}
+        {data.map((v, i) => {
+          const bx = P.l + slot * i + (slot - barW) / 2;
+          return (
+            <Fragment key={i}>
+              <rect x={bx} y={y(v)} width={barW} height={y(0) - y(v)} rx={4} fill="#d99a3b" />
+              <text x={bx + barW / 2} y={y(v) - 6} textAnchor="middle" fontSize={10.5} fontWeight={600} fill="#4b5563">
+                {fmtBR(v)}
+              </text>
+              <text x={P.l + slot * i + slot / 2} y={H - 10} textAnchor="middle" fontSize={10.5} fill="#9ca3af">
+                {months[i]}
+              </text>
+            </Fragment>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function OrigemStackedChart({ pnib, interna, months }: { pnib: number[]; interna: number[]; months: string[] }) {
+  const W = 460, H = 230;
+  const P = { t: 20, r: 12, b: 30, l: 44 };
+  const yMax = 12000;
+  const iw = W - P.l - P.r, ih = H - P.t - P.b;
+  const y0 = P.t + ih;
+  const h = (v: number) => (ih * v) / yMax;
+  const slot = iw / months.length;
+  const barW = slot * 0.52;
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Novas faixas por origem e mês">
+        <line x1={P.l} x2={W - P.r} y1={y0} y2={y0} stroke="#e2e8e3" strokeWidth={1} />
+        {months.map((m, i) => {
+          const ph = h(pnib[i]), nh = h(interna[i]);
+          const bx = P.l + slot * i + (slot - barW) / 2;
+          const total = pnib[i] + interna[i];
+          return (
+            <Fragment key={i}>
+              {pnib[i] > 0 && <rect x={bx} y={y0 - ph} width={barW} height={ph} rx={2} fill="#1565c0" />}
+              {interna[i] > 0 && <rect x={bx} y={y0 - ph - nh} width={barW} height={nh} rx={2} fill="#e65100" />}
+              {total === 0 && <rect x={bx} y={y0 - 2} width={barW} height={2} rx={1} fill="#e5e7eb" />}
+              {total > 0 && (
+                <text x={bx + barW / 2} y={y0 - ph - nh - 6} textAnchor="middle" fontSize={10.5} fontWeight={600} fill="#4b5563">
+                  {fmtBR(total)}
+                </text>
+              )}
+              <text x={P.l + slot * i + slot / 2} y={H - 10} textAnchor="middle" fontSize={10.5} fill="#9ca3af">
+                {m}
+              </text>
+            </Fragment>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function SituacaoDonut({ items }: { items: { label: string; value: number; color: string }[] }) {
+  const total = items.reduce((a, b) => a + b.value, 0);
+  const R = 80, C = 2 * Math.PI * R;
+  let acc = 0;
+  return (
+    <div className="donut-flex">
+      <svg viewBox="0 0 200 200" role="img" aria-label="Distribuição por situação">
+        <circle cx={100} cy={100} r={R} fill="none" stroke="#eef2ee" strokeWidth={26} />
+        {items.map((it) => {
+          const len = (C * it.value) / total;
+          const seg = (
+            <circle
+              key={it.label}
+              cx={100} cy={100} r={R} fill="none"
+              stroke={it.color} strokeWidth={26}
+              strokeDasharray={`${len} ${C - len}`}
+              strokeDashoffset={-acc}
+              transform="rotate(-90 100 100)"
+            />
+          );
+          acc += len;
+          return seg;
+        })}
+        <text x={100} y={97} textAnchor="middle" fontSize={24} fontWeight={700} fill="#314138">
+          {fmtBR(total)}
+        </text>
+        <text x={100} y={116} textAnchor="middle" fontSize={11} fill="#9ca3af">
+          numerações
+        </text>
+      </svg>
+      <div className="donut-legend">
+        {items.map((it) => (
+          <div className="donut-legend-item" key={it.label}>
+            <span className="dot" style={{ background: it.color }} />
+            <span className="donut-label">{it.label}</span>
+            <b>{fmtBR(it.value)}</b>
+            <small>{Math.round((it.value / total) * 100)}%</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NumberingDashboard({ role }: { role: Role }) {
+  const saldoAtual = numberingDemo.saldo[numberingDemo.saldo.length - 1];
+  const media3 = Math.round(
+    numberingDemo.saidas.slice(-3).reduce((a, b) => a + b, 0) / 3
+  );
+  const dias = Math.round((saldoAtual / media3) * 30);
+  const esgotamento = new Date(2025, 5, 30);
+  esgotamento.setDate(esgotamento.getDate() + dias);
+  const status = dias > 90 ? "ok" : dias >= 45 ? "warn" : "danger";
+  const statusLabel =
+    status === "ok" ? "Ritmo saudável" : status === "warn" ? "Atenção" : "Risco de ruptura";
+  const pctBar = Math.min(100, Math.round((dias / 180) * 100));
+  const maxDest = Math.max(...numberingDemo.destinatarios.map((d) => d.value));
+  const situacao = [
+    { label: "Disponível", value: saldoAtual, color: "#4BA044" },
+    { label: "Distribuída", value: 15000, color: "#d99a3b" },
+  ];
+
   return (
     <div className="page-container">
       <section className="header">
@@ -3690,6 +3880,11 @@ function NumberingDashboard({ role }: { role: Role }) {
           </Link>
         </div>
       </section>
+
+      <div className="dash-note">
+        Dados demonstrativos para validação de layout — não refletem números de
+        produção. A projeção usa a média de distribuição dos últimos 3 meses.
+      </div>
 
       <div className="stats-grid numbering-stats">
         <article className="stat">
@@ -3724,53 +3919,123 @@ function NumberingDashboard({ role }: { role: Role }) {
         </article>
       </div>
 
-      <section className="panel">
+      <div className="dash-grid">
+        <article className={`proj-card ${status === "ok" ? "" : status}`}>
+          <div className="proj-head">
+            <h2>Projeção de esgotamento</h2>
+            <span className="proj-pill">{statusLabel}</span>
+          </div>
+          <div className="proj-value">
+            ≈ {dias} <small>dias</small>
+          </div>
+          <div className="proj-sub">
+            até esgotar as {fmtBR(saldoAtual)} numerações disponíveis
+            (estimativa {esgotamento.toLocaleDateString("pt-BR")}).
+          </div>
+          <div className="proj-track">
+            <span className="proj-fill" style={{ width: `${pctBar}%` }} />
+          </div>
+          <div className="proj-meta">
+            Média dos últimos 3 meses: {fmtBR(media3)} numerações/mês · horizonte de 180 dias
+          </div>
+        </article>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Distribuição por situação</h2>
+              <p>Disponível vs distribuída no estoque atual</p>
+            </div>
+          </div>
+          <SituacaoDonut items={situacao} />
+        </section>
+      </div>
+
+      <section className="panel dash-mt">
         <div className="panel-head">
           <div>
-            <h2>Distribuição por tipo</h2>
-            <p>Visão geral dos brincos por categoria</p>
+            <h2>Evolução do saldo disponível</h2>
+            <p>Saldo de numerações não distribuídas por mês</p>
           </div>
         </div>
-        <div style={{ padding: "20px", display: "flex", gap: "16px", flexWrap: "wrap" }}>
-          {[
-            { label: "Nacional · SISBOV", value: "18.000", pct: 69, color: "#2e7d32", bg: "#e8f5e9" },
-            { label: "Internacional", value: "8.000", pct: 31, color: "#7b1fa2", bg: "#f3e5f5" },
-          ].map((item) => (
-            <div key={item.label} style={{
-              flex: "1 1 200px", background: item.bg, borderRadius: 12, padding: "20px",
-              border: `1px solid ${item.color}20`,
-            }}>
-              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: item.color }}>{item.value}</div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>{item.pct}% do total</div>
-            </div>
-          ))}
-        </div>
+        <SaldoLineChart data={numberingDemo.saldo} months={numberingDemo.months} />
       </section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Distribuição por origem</h2>
-            <p>Autorização PNIB vs faixas internas</p>
-          </div>
-        </div>
-        <div style={{ padding: "20px", display: "flex", gap: "16px", flexWrap: "wrap" }}>
-          {[
-            { label: "PNIB", value: "20.000", pct: 77, color: "#1565c0", bg: "#e3f2fd" },
-            { label: "Interna SDA", value: "6.000", pct: 23, color: "#e65100", bg: "#fff3e0" },
-          ].map((item) => (
-            <div key={item.label} style={{
-              flex: "1 1 200px", background: item.bg, borderRadius: 12, padding: "20px",
-              border: `1px solid ${item.color}20`,
-            }}>
-              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: item.color }}>{item.value}</div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>{item.pct}% do total</div>
+      <div className="dash-grid dash-mt">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Consumo por período</h2>
+              <p>Numerações distribuídas por mês</p>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+          <ConsumoBarChart data={numberingDemo.saidas} months={numberingDemo.months} />
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Origem por mês</h2>
+              <p>Novas faixas: PNIB vs interna</p>
+            </div>
+          </div>
+          <OrigemStackedChart
+            pnib={numberingDemo.entradasPnib}
+            interna={numberingDemo.entradasInterna}
+            months={numberingDemo.months}
+          />
+          <div className="chart-legend">
+            <span><span className="dot" style={{ background: "#1565c0" }} />PNIB</span>
+            <span><span className="dot" style={{ background: "#e65100" }} />Interna SDA</span>
+          </div>
+        </section>
+      </div>
+
+      <div className="dash-grid dash-mt">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Top destinatários</h2>
+              <p>Fábricas com maior volume de faixas recebidas</p>
+            </div>
+          </div>
+          <div className="hbar-list">
+            {numberingDemo.destinatarios.map((d) => (
+              <div className="hbar-row" key={d.nome}>
+                <span className="hbar-name" title={d.nome}>{d.nome}</span>
+                <div className="hbar-track">
+                  <span className="hbar-fill" style={{ width: `${Math.round((d.value / maxDest) * 100)}%` }} />
+                </div>
+                <span className="hbar-value">{fmtBR(d.value)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Distribuição por tipo</h2>
+              <p>Visão geral dos brincos por categoria</p>
+            </div>
+          </div>
+          <div style={{ padding: "20px", display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            {[
+              { label: "Nacional · SISBOV", value: "18.000", pct: 69, color: "#2e7d32", bg: "#e8f5e9" },
+              { label: "Internacional", value: "8.000", pct: 31, color: "#7b1fa2", bg: "#f3e5f5" },
+            ].map((item) => (
+              <div key={item.label} style={{
+                flex: "1 1 200px", background: item.bg, borderRadius: 12, padding: "20px",
+                border: `1px solid ${item.color}20`,
+              }}>
+                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: item.color }}>{item.value}</div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>{item.pct}% do total</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
