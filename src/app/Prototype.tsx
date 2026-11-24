@@ -3684,34 +3684,72 @@ const fmtBR = (n: number) => n.toLocaleString("pt-BR");
 
 const numberingDemo = {
   months: ["jan", "fev", "mar", "abr", "mai", "jun"],
-  entradasPnib: [10000, 0, 0, 10000, 0, 0],
-  entradasInterna: [0, 0, 6000, 0, 0, 0],
+  periodos: [
+    { id: 6, label: "Todo período" },
+    { id: 3, label: "Últimos 3 meses" },
+    { id: 2, label: "Últimos 2 meses" },
+  ],
+  tipos: [
+    { id: "TODOS", label: "Todos" },
+    { id: "INTERNACIONAL", label: "Internacional" },
+    { id: "SISBOV", label: "Nacional · SISBOV" },
+  ],
+  origens: [
+    { id: "TODAS", label: "Todas" },
+    { id: "PNIB", label: "PNIB" },
+    { id: "interna", label: "Interna SDA" },
+  ],
+  tipoLabels: { INTERNACIONAL: "Internacional", SISBOV: "Nacional · SISBOV" },
   saidas: [1200, 1800, 2400, 3000, 3600, 3000],
   saldo: [8800, 7000, 10600, 17600, 14000, 11000],
+  entradasPnib: [10000, 0, 0, 10000, 0, 0],
+  entradasInterna: [0, 0, 6000, 0, 0, 0],
+  porTipo: {
+    INTERNACIONAL: {
+      saidas: [1200, 1800, 2000, 2500, 3200, 2800],
+      saldo: [8800, 7000, 6000, 13500, 10300, 7500],
+      entradasPnib: [10000, 0, 0, 10000, 0, 0],
+      entradasInterna: [0, 0, 1000, 0, 0, 0],
+    },
+    SISBOV: {
+      saidas: [0, 0, 400, 500, 400, 200],
+      saldo: [0, 0, 4600, 4100, 3700, 3500],
+      entradasPnib: [0, 0, 0, 0, 0, 0],
+      entradasInterna: [0, 0, 5000, 0, 0, 0],
+    },
+  },
+  agingTodos: [
+    { label: "0–30 dias", value: 6000, color: "#4BA044" },
+    { label: "31–60 dias", value: 3000, color: "#d99a3b" },
+    { label: "60+ dias", value: 2000, color: "#d64545" },
+  ],
+  agingPorTipo: {
+    INTERNACIONAL: [
+      { label: "0–30 dias", value: 4500, color: "#4BA044" },
+      { label: "31–60 dias", value: 2000, color: "#d99a3b" },
+      { label: "60+ dias", value: 1000, color: "#d64545" },
+    ],
+    SISBOV: [
+      { label: "0–30 dias", value: 1500, color: "#4BA044" },
+      { label: "31–60 dias", value: 1000, color: "#d99a3b" },
+      { label: "60+ dias", value: 1000, color: "#d64545" },
+    ],
+  },
   destinatarios: [
-    { nome: "Identifica Brasil S.A.", value: 10000 },
-    { nome: "Brinco Sul Indústria", value: 5000 },
+    { nome: "Identifica Brasil S.A.", value: 10000, tipo: "INTERNACIONAL", origem: "PNIB" },
+    { nome: "Brinco Sul Indústria", value: 5000, tipo: "SISBOV", origem: "interna" },
   ],
   leadTimePnib: [
     { id: "SOL-2025-01", autorizacao: 16, entrega: 23 },
     { id: "SOL-2025-02", autorizacao: 18, entrega: 23 },
     { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
   ],
-  tipoSaldo: [
-    { tipo: "Internacional", saldo: 7500, media: 2600 },
-    { tipo: "Nacional · SISBOV", saldo: 3500, media: 600 },
-  ],
-  agingBuckets: [
-    { label: "0–30 dias", value: 6000, color: "#4BA044" },
-    { label: "31–60 dias", value: 3000, color: "#d99a3b" },
-    { label: "60+ dias", value: 2000, color: "#d64545" },
-  ],
   criadores: [
-    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", value: 20000, color: "#1565c0" },
-    { nome: "Geração automática — interna", modo: "auto", origem: "interna", value: 3000, color: "#0e8a6d" },
-    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", value: 1500, color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", value: 1000, color: "#6fbc5e" },
-    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", value: 500, color: "#96d18a" },
+    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 20000, SISBOV: 0 }, color: "#1565c0" },
+    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 1000, SISBOV: 2000 }, color: "#0e8a6d" },
+    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 1500 }, color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 1000 }, color: "#6fbc5e" },
+    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 500 }, color: "#96d18a" },
   ],
 };
 
@@ -3956,39 +3994,110 @@ function AgingChart({ buckets }: { buckets: { label: string; value: number; colo
 }
 
 function NumberingDashboard({ role }: { role: Role }) {
-  const saldoAtual = numberingDemo.saldo[numberingDemo.saldo.length - 1];
-  const media3 = Math.round(
-    numberingDemo.saidas.slice(-3).reduce((a, b) => a + b, 0) / 3
-  );
-  const dias = Math.round((saldoAtual / media3) * 30);
+  const [periodo, setPeriodo] = useState(6);
+  const [tipo, setTipo] = useState<"TODOS" | "INTERNACIONAL" | "SISBOV">("TODOS");
+  const [origem, setOrigem] = useState<"TODAS" | "PNIB" | "interna">("TODAS");
+
+  const serie =
+    tipo === "TODOS"
+      ? {
+          saidas: numberingDemo.saidas,
+          saldo: numberingDemo.saldo,
+          entradasPnib: numberingDemo.entradasPnib,
+          entradasInterna: numberingDemo.entradasInterna,
+        }
+      : numberingDemo.porTipo[tipo];
+  const cut = (arr: number[]) => arr.slice(-periodo);
+  const monthsV = numberingDemo.months.slice(-periodo);
+  const saidasV = cut(serie.saidas);
+  const saldoV = cut(serie.saldo);
+  const saldoAtual = saldoV[saldoV.length - 1];
+  const mediaPeriodo = Math.round(saidasV.reduce((a, b) => a + b, 0) / saidasV.length);
+  const totalAutorizado =
+    serie.entradasPnib.reduce((a, b) => a + b, 0) +
+    serie.entradasInterna.reduce((a, b) => a + b, 0);
+  const totalDistribuido = serie.saidas.reduce((a, b) => a + b, 0);
+
+  const dias = Math.round((saldoAtual / mediaPeriodo) * 30);
   const esgotamento = new Date(2025, 5, 30);
   esgotamento.setDate(esgotamento.getDate() + dias);
   const leadMedio = Math.round(
     numberingDemo.leadTimePnib.reduce((a, it) => a + it.autorizacao + it.entrega, 0) /
       numberingDemo.leadTimePnib.length
   );
-  const coberturaLiquida = dias - leadMedio;
+  const mostraLead = origem !== "interna" && tipo !== "SISBOV";
+  const leadEfetivo = mostraLead ? leadMedio : 0;
+  const coberturaLiquida = dias - leadEfetivo;
   const status = coberturaLiquida > 90 ? "ok" : coberturaLiquida >= 45 ? "warn" : "danger";
   const statusLabel =
     status === "ok" ? "Ritmo saudável" : status === "warn" ? "Atenção" : "Risco de ruptura";
   const pctBar = Math.min(100, Math.round((coberturaLiquida / 180) * 100));
-  const maxDest = Math.max(...numberingDemo.destinatarios.map((d) => d.value));
-  const totalCriado = numberingDemo.criadores.reduce((a, c) => a + c.value, 0);
-  const criadoPnib = numberingDemo.criadores
+  const situacao = [
+    { label: "Disponível", value: saldoAtual, color: "#4BA044" },
+    { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
+  ];
+
+  const criadoresFiltrados = numberingDemo.criadores
+    .filter((c) => origem === "TODAS" || c.origem === origem)
+    .map((c) => ({
+      ...c,
+      value: tipo === "TODOS" ? c.porTipo.INTERNACIONAL + c.porTipo.SISBOV : c.porTipo[tipo],
+    }))
+    .filter((c) => c.value > 0);
+  const totalCriado = criadoresFiltrados.reduce((a, c) => a + c.value, 0);
+  const criadoPnib = criadoresFiltrados
     .filter((c) => c.origem === "PNIB")
     .reduce((a, c) => a + c.value, 0);
   const criadoInterna = totalCriado - criadoPnib;
-  const autoInterna = numberingDemo.criadores
-    .filter((c) => c.origem === "interna" && c.modo === "auto")
+  const autoPnib = criadoresFiltrados
+    .filter((c) => c.modo === "auto" && c.origem === "PNIB")
     .reduce((a, c) => a + c.value, 0);
-  const autoPnib = criadoPnib;
+  const autoInterna = criadoresFiltrados
+    .filter((c) => c.modo === "auto" && c.origem === "interna")
+    .reduce((a, c) => a + c.value, 0);
   const autoTotal = autoPnib + autoInterna;
   const manualTotal = totalCriado - autoTotal;
-  const maxCriador = Math.max(...numberingDemo.criadores.map((c) => c.value));
-  const situacao = [
-    { label: "Disponível", value: saldoAtual, color: "#4BA044" },
-    { label: "Distribuída", value: 15000, color: "#d99a3b" },
-  ];
+  const maxCriador = criadoresFiltrados.length
+    ? Math.max(...criadoresFiltrados.map((c) => c.value))
+    : 0;
+  const notaPartes: string[] = [];
+  if (autoTotal > 0) {
+    const detalheAuto =
+      autoPnib > 0 && autoInterna > 0
+        ? `PNIB ${fmtBR(autoPnib)} · interna ${fmtBR(autoInterna)}`
+        : autoPnib > 0
+          ? "faixas PNIB"
+          : "faixas internas";
+    notaPartes.push(
+      `${fmtBR(autoTotal)} por geração automática (${detalheAuto}, conforme config SEAPI)`
+    );
+  }
+  if (manualTotal > 0) {
+    notaPartes.push(`${fmtBR(manualTotal)} manualmente por analistas da SEAPI`);
+  }
+
+  const destFiltrados = numberingDemo.destinatarios.filter(
+    (d) => (tipo === "TODOS" || d.tipo === tipo) && (origem === "TODAS" || d.origem === origem)
+  );
+  const maxDest = destFiltrados.length ? Math.max(...destFiltrados.map((d) => d.value)) : 0;
+
+  const agingBuckets =
+    tipo === "TODOS" ? numberingDemo.agingTodos : numberingDemo.agingPorTipo[tipo];
+
+  const pnibV = origem === "interna" ? monthsV.map(() => 0) : cut(serie.entradasPnib);
+  const internaV = origem === "PNIB" ? monthsV.map(() => 0) : cut(serie.entradasInterna);
+
+  const tipoCards = (["INTERNACIONAL", "SISBOV"] as const)
+    .filter((t) => tipo === "TODOS" || tipo === t)
+    .map((t) => {
+      const s = numberingDemo.porTipo[t];
+      const media = Math.round(
+        s.saidas.slice(-periodo).reduce((a, b) => a + b, 0) / periodo
+      );
+      return { tipo: numberingDemo.tipoLabels[t], saldo: s.saldo[s.saldo.length - 1], media };
+    });
+
+  const tipoSuffix = tipo === "TODOS" ? "" : ` · ${numberingDemo.tipoLabels[tipo]}`;
 
   return (
     <div className="page-container">
@@ -4003,7 +4112,53 @@ function NumberingDashboard({ role }: { role: Role }) {
 
       <div className="dash-note">
         Dados demonstrativos para validação de layout — não refletem números de
-        produção. A projeção usa a média de distribuição dos últimos 3 meses.
+        produção. A projeção usa a média de distribuição do período filtrado
+        ({periodo} meses).
+      </div>
+
+      <div className="dash-filters">
+        <div className="filter-group">
+          <span className="filter-label">Período</span>
+          <div className="chip-set">
+            {numberingDemo.periodos.map((p) => (
+              <button
+                key={p.id}
+                className={`chip ${periodo === p.id ? "active" : ""}`}
+                onClick={() => setPeriodo(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Tipo</span>
+          <div className="chip-set">
+            {numberingDemo.tipos.map((t) => (
+              <button
+                key={t.id}
+                className={`chip ${tipo === t.id ? "active" : ""}`}
+                onClick={() => setTipo(t.id as typeof tipo)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Origem</span>
+          <div className="chip-set">
+            {numberingDemo.origens.map((o) => (
+              <button
+                key={o.id}
+                className={`chip ${origem === o.id ? "active" : ""}`}
+                onClick={() => setOrigem(o.id as typeof origem)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="stats-grid numbering-stats">
@@ -4013,7 +4168,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           </div>
           <div>
             <span>Total autorizado</span>
-            <strong>26.000</strong>
+            <strong>{fmtBR(totalAutorizado)}</strong>
             <small>numerações</small>
           </div>
         </article>
@@ -4023,7 +4178,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           </div>
           <div>
             <span>Disponíveis</span>
-            <strong>11.000</strong>
+            <strong>{fmtBR(saldoAtual)}</strong>
             <small>numerações</small>
           </div>
         </article>
@@ -4033,7 +4188,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           </div>
           <div>
             <span>Distribuídas</span>
-            <strong>15.000</strong>
+            <strong>{fmtBR(totalDistribuido)}</strong>
             <small>numerações</small>
           </div>
         </article>
@@ -4053,15 +4208,20 @@ function NumberingDashboard({ role }: { role: Role }) {
             (estimativa {esgotamento.toLocaleDateString("pt-BR")}).
           </div>
           <div className="proj-sub">
-            Cobertura líquida: <b>{coberturaLiquida} dias</b>, já descontado o
-            lead time médio de reposição ({leadMedio} dias) — critério do status.
+            Cobertura líquida: <b>{coberturaLiquida} dias</b>
+            {mostraLead
+              ? `, já descontado o lead time médio de reposição (${leadMedio} dias) — critério do status.`
+              : " (sem lead time de reposição PNIB aplicável ao filtro) — critério do status."}
           </div>
           <div className="proj-track">
             <span className="proj-fill" style={{ width: `${pctBar}%` }} />
           </div>
           <div className="proj-meta">
-            Média dos últimos 3 meses: {fmtBR(media3)} numerações/mês · lead time
-            médio PNIB: {leadMedio} dias · horizonte de 180 dias
+            Média do período filtrado: {fmtBR(mediaPeriodo)} numerações/mês ·{" "}
+            {mostraLead
+              ? `lead time médio PNIB: ${leadMedio} dias`
+              : "faixas internas — sem lead time PNIB"}{" "}
+            · horizonte de 180 dias
           </div>
         </article>
 
@@ -4080,10 +4240,10 @@ function NumberingDashboard({ role }: { role: Role }) {
         <div className="panel-head">
           <div>
             <h2>Evolução do saldo disponível</h2>
-            <p>Saldo de numerações não distribuídas por mês</p>
+            <p>Saldo de numerações não distribuídas por mês{tipoSuffix}</p>
           </div>
         </div>
-        <SaldoLineChart data={numberingDemo.saldo} months={numberingDemo.months} />
+        <SaldoLineChart data={saldoV} months={monthsV} />
       </section>
 
       <div className="dash-grid dash-mt">
@@ -4091,27 +4251,27 @@ function NumberingDashboard({ role }: { role: Role }) {
           <div className="panel-head">
             <div>
               <h2>Consumo por período</h2>
-              <p>Numerações distribuídas por mês</p>
+              <p>Numerações distribuídas por mês{tipoSuffix}</p>
             </div>
           </div>
-          <ConsumoBarChart data={numberingDemo.saidas} months={numberingDemo.months} />
+          <ConsumoBarChart data={saidasV} months={monthsV} />
         </section>
 
         <section className="panel">
           <div className="panel-head">
             <div>
               <h2>Origem por mês</h2>
-              <p>Novas faixas: PNIB vs interna</p>
+              <p>Novas faixas: PNIB vs interna{tipoSuffix}</p>
             </div>
           </div>
-          <OrigemStackedChart
-            pnib={numberingDemo.entradasPnib}
-            interna={numberingDemo.entradasInterna}
-            months={numberingDemo.months}
-          />
+          <OrigemStackedChart pnib={pnibV} interna={internaV} months={monthsV} />
           <div className="chart-legend">
-            <span><span className="dot" style={{ background: "#1565c0" }} />PNIB</span>
-            <span><span className="dot" style={{ background: "#e65100" }} />Interna SDA</span>
+            {origem !== "interna" && (
+              <span><span className="dot" style={{ background: "#1565c0" }} />PNIB</span>
+            )}
+            {origem !== "PNIB" && (
+              <span><span className="dot" style={{ background: "#e65100" }} />Interna SDA</span>
+            )}
           </div>
         </section>
       </div>
@@ -4122,64 +4282,77 @@ function NumberingDashboard({ role }: { role: Role }) {
             <h2>Numerações criadas — por criador</h2>
             <p>Faixas criadas por geração automática (PNIB ou interna, conforme config SEAPI) ou manualmente por analistas</p>
           </div>
-          <span className="head-badge">{fmtBR(totalCriado)} no período</span>
+          <span className="head-badge">{fmtBR(totalCriado)} numerações</span>
         </div>
         <div className="hbar-list">
-          <div className="comp-bar">
-            <span
-              className="comp-seg"
-              style={{ width: `${(criadoPnib / totalCriado) * 100}%`, background: "#1565c0" }}
-              title={`PNIB: ${fmtBR(criadoPnib)} numerações`}
-            />
-            <span
-              className="comp-seg"
-              style={{ width: `${(criadoInterna / totalCriado) * 100}%`, background: "#4BA044" }}
-              title={`Interna SDA: ${fmtBR(criadoInterna)} numerações`}
-            />
-          </div>
-          <div className="comp-legend">
-            <span><span className="dot" style={{ background: "#1565c0" }} />PNIB {Math.round((criadoPnib / totalCriado) * 100)}%</span>
-            <span><span className="dot" style={{ background: "#4BA044" }} />Interna SDA {Math.round((criadoInterna / totalCriado) * 100)}%</span>
-          </div>
-          {numberingDemo.criadores.map((c) => (
-            <div className="hbar-row creator" key={c.nome}>
-              <span className="hbar-name" title={c.nome}>{c.nome}</span>
-              <div className="hbar-track">
-                <span className="hbar-fill" style={{ width: `${Math.round((c.value / maxCriador) * 100)}%`, background: c.color }} />
+          {totalCriado > 0 ? (
+            <>
+              <div className="comp-bar">
+                {criadoPnib > 0 && (
+                  <span
+                    className="comp-seg"
+                    style={{ width: `${(criadoPnib / totalCriado) * 100}%`, background: "#1565c0" }}
+                    title={`PNIB: ${fmtBR(criadoPnib)} numerações`}
+                  />
+                )}
+                {criadoInterna > 0 && (
+                  <span
+                    className="comp-seg"
+                    style={{ width: `${(criadoInterna / totalCriado) * 100}%`, background: "#4BA044" }}
+                    title={`Interna SDA: ${fmtBR(criadoInterna)} numerações`}
+                  />
+                )}
               </div>
-              <span className="hbar-value">
-                {fmtBR(c.value)} · {Math.round((c.value / totalCriado) * 100)}%
-              </span>
-            </div>
-          ))}
-          <p className="aging-note">
-            {fmtBR(totalCriado)} numerações criadas entre jan e jun/2025 —{" "}
-            {fmtBR(autoTotal)} por geração automática (PNIB {fmtBR(autoPnib)} ·
-            interna {fmtBR(autoInterna)}, conforme config SEAPI) e{" "}
-            {fmtBR(manualTotal)} manualmente por analistas da SEAPI.
-          </p>
+              <div className="comp-legend">
+                {criadoPnib > 0 && (
+                  <span><span className="dot" style={{ background: "#1565c0" }} />PNIB {Math.round((criadoPnib / totalCriado) * 100)}%</span>
+                )}
+                {criadoInterna > 0 && (
+                  <span><span className="dot" style={{ background: "#4BA044" }} />Interna SDA {Math.round((criadoInterna / totalCriado) * 100)}%</span>
+                )}
+              </div>
+              {criadoresFiltrados.map((c) => (
+                <div className="hbar-row creator" key={c.nome}>
+                  <span className="hbar-name" title={c.nome}>{c.nome}</span>
+                  <div className="hbar-track">
+                    <span className="hbar-fill" style={{ width: `${Math.round((c.value / maxCriador) * 100)}%`, background: c.color }} />
+                  </div>
+                  <span className="hbar-value">
+                    {fmtBR(c.value)} · {Math.round((c.value / totalCriado) * 100)}%
+                  </span>
+                </div>
+              ))}
+              <p className="aging-note">
+                {fmtBR(totalCriado)} numerações criadas — {notaPartes.join(" e ")}.
+              </p>
+            </>
+          ) : (
+            <p className="aging-note">Nenhuma criação para o filtro selecionado.</p>
+          )}
         </div>
       </section>
 
       <div className="dash-grid dash-mt">
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Lead time de reposição — PNIB</h2>
-              <p>Solicitação → autorização → fabricação/entrega</p>
+        {mostraLead && (
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <h2>Lead time de reposição — PNIB</h2>
+                <p>Solicitação → autorização → fabricação/entrega</p>
+              </div>
             </div>
-          </div>
-          <LeadTimeChart items={numberingDemo.leadTimePnib} />
-        </section>
+            <LeadTimeChart items={numberingDemo.leadTimePnib} />
+          </section>
+        )}
 
-        <section className="panel">
+        <section className={`panel ${mostraLead ? "" : "span-2"}`}>
           <div className="panel-head">
             <div>
               <h2>Projeção por tipo</h2>
-              <p>Dias restantes por categoria de numeração</p>
+              <p>Dias restantes por categoria · média do período filtrado</p>
             </div>
           </div>
-          <TipoProjection items={numberingDemo.tipoSaldo} />
+          <TipoProjection items={tipoCards} />
         </section>
       </div>
 
@@ -4192,15 +4365,19 @@ function NumberingDashboard({ role }: { role: Role }) {
             </div>
           </div>
           <div className="hbar-list">
-            {numberingDemo.destinatarios.map((d) => (
-              <div className="hbar-row" key={d.nome}>
-                <span className="hbar-name" title={d.nome}>{d.nome}</span>
-                <div className="hbar-track">
-                  <span className="hbar-fill" style={{ width: `${Math.round((d.value / maxDest) * 100)}%` }} />
+            {destFiltrados.length > 0 ? (
+              destFiltrados.map((d) => (
+                <div className="hbar-row" key={d.nome}>
+                  <span className="hbar-name" title={d.nome}>{d.nome}</span>
+                  <div className="hbar-track">
+                    <span className="hbar-fill" style={{ width: `${Math.round((d.value / maxDest) * 100)}%` }} />
+                  </div>
+                  <span className="hbar-value">{fmtBR(d.value)}</span>
                 </div>
-                <span className="hbar-value">{fmtBR(d.value)}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="aging-note">Nenhum destinatário para o filtro selecionado.</p>
+            )}
           </div>
         </section>
 
@@ -4208,10 +4385,10 @@ function NumberingDashboard({ role }: { role: Role }) {
           <div className="panel-head">
             <div>
               <h2>Aging do estoque disponível</h2>
-              <p>Tempo de cadastro das faixas ainda não distribuídas</p>
+              <p>Tempo de cadastro das faixas ainda não distribuídas{tipoSuffix}</p>
             </div>
           </div>
-          <AgingChart buckets={numberingDemo.agingBuckets} />
+          <AgingChart buckets={agingBuckets} />
         </section>
       </div>
     </div>
