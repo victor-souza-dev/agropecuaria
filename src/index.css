@@ -5712,6 +5712,8 @@ td {
   color: #9ca3af;
   line-height: 1.5;
 }
+.tipo-card.neutral { border-top-color: #9ca3af; }
+.tipo-card.neutral .tipo-pill { background: #f3f4f6; color: #6b7280; }
 @media (max-width: 720px) {
   .tipo-grid { grid-template-columns: 1fr; }
 }

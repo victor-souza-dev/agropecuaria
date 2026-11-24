@@ -3700,40 +3700,39 @@ const numberingDemo = {
     { id: "interna", label: "Interna SDA" },
   ],
   tipoLabels: { INTERNACIONAL: "Internacional", SISBOV: "Nacional · SISBOV" },
-  saidas: [1200, 1800, 2400, 3000, 3600, 3000],
-  saldo: [8800, 7000, 10600, 17600, 14000, 11000],
-  entradasPnib: [10000, 0, 0, 10000, 0, 0],
-  entradasInterna: [0, 0, 6000, 0, 0, 0],
-  porTipo: {
+  celulas: {
     INTERNACIONAL: {
-      saidas: [1200, 1800, 2000, 2500, 3200, 2800],
-      saldo: [8800, 7000, 6000, 13500, 10300, 7500],
-      entradasPnib: [10000, 0, 0, 10000, 0, 0],
-      entradasInterna: [0, 0, 1000, 0, 0, 0],
+      PNIB: {
+        saidas: [1200, 1800, 2000, 2000, 2000, 1000],
+        saldo: [8800, 7000, 5000, 13000, 11000, 10000],
+        entradasPnib: [10000, 0, 0, 10000, 0, 0],
+        entradasInterna: [0, 0, 0, 0, 0, 0],
+        aging: [5000, 4000, 1000],
+      },
+      interna: {
+        saidas: [0, 0, 0, 0, 0, 0],
+        saldo: [0, 0, 1000, 1000, 1000, 1000],
+        entradasPnib: [0, 0, 0, 0, 0, 0],
+        entradasInterna: [0, 0, 1000, 0, 0, 0],
+        aging: [1000, 0, 0],
+      },
     },
     SISBOV: {
-      saidas: [0, 0, 400, 500, 400, 200],
-      saldo: [0, 0, 4600, 4100, 3700, 3500],
-      entradasPnib: [0, 0, 0, 0, 0, 0],
-      entradasInterna: [0, 0, 5000, 0, 0, 0],
+      PNIB: {
+        saidas: [0, 0, 0, 0, 0, 0],
+        saldo: [0, 0, 0, 0, 0, 0],
+        entradasPnib: [0, 0, 0, 0, 0, 0],
+        entradasInterna: [0, 0, 0, 0, 0, 0],
+        aging: [0, 0, 0],
+      },
+      interna: {
+        saidas: [0, 0, 400, 1000, 1600, 2000],
+        saldo: [0, 0, 4600, 3600, 2000, 0],
+        entradasPnib: [0, 0, 0, 0, 0, 0],
+        entradasInterna: [0, 0, 5000, 0, 0, 0],
+        aging: [0, 0, 0],
+      },
     },
-  },
-  agingTodos: [
-    { label: "0–30 dias", value: 6000, color: "#4BA044" },
-    { label: "31–60 dias", value: 3000, color: "#d99a3b" },
-    { label: "60+ dias", value: 2000, color: "#d64545" },
-  ],
-  agingPorTipo: {
-    INTERNACIONAL: [
-      { label: "0–30 dias", value: 4500, color: "#4BA044" },
-      { label: "31–60 dias", value: 2000, color: "#d99a3b" },
-      { label: "60+ dias", value: 1000, color: "#d64545" },
-    ],
-    SISBOV: [
-      { label: "0–30 dias", value: 1500, color: "#4BA044" },
-      { label: "31–60 dias", value: 1000, color: "#d99a3b" },
-      { label: "60+ dias", value: 1000, color: "#d64545" },
-    ],
   },
   destinatarios: [
     { nome: "Identifica Brasil S.A.", value: 10000, tipo: "INTERNACIONAL", origem: "PNIB" },
@@ -3752,6 +3751,23 @@ const numberingDemo = {
     { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 500 }, color: "#96d18a" },
   ],
 };
+
+const zero6 = () => [0, 0, 0, 0, 0, 0];
+const AGING_LABELS = ["0–30 dias", "31–60 dias", "60+ dias"];
+const AGING_COLORS = ["#4BA044", "#d99a3b", "#d64545"];
+
+const somarSeries = (
+  lista: { saidas: number[]; saldo: number[]; entradasPnib: number[]; entradasInterna: number[] }[]
+) =>
+  lista.reduce(
+    (acc, c) => ({
+      saidas: acc.saidas.map((v, i) => v + c.saidas[i]),
+      saldo: acc.saldo.map((v, i) => v + c.saldo[i]),
+      entradasPnib: acc.entradasPnib.map((v, i) => v + c.entradasPnib[i]),
+      entradasInterna: acc.entradasInterna.map((v, i) => v + c.entradasInterna[i]),
+    }),
+    { saidas: zero6(), saldo: zero6(), entradasPnib: zero6(), entradasInterna: zero6() }
+  );
 
 function SaldoLineChart({ data, months }: { data: number[]; months: string[] }) {
   const W = 720, H = 260;
@@ -3875,21 +3891,22 @@ function SituacaoDonut({ items }: { items: { label: string; value: number; color
     <div className="donut-flex">
       <svg viewBox="0 0 200 200" role="img" aria-label="Distribuição por situação">
         <circle cx={100} cy={100} r={R} fill="none" stroke="#eef2ee" strokeWidth={26} />
-        {items.map((it) => {
-          const len = (C * it.value) / total;
-          const seg = (
-            <circle
-              key={it.label}
-              cx={100} cy={100} r={R} fill="none"
-              stroke={it.color} strokeWidth={26}
-              strokeDasharray={`${len} ${C - len}`}
-              strokeDashoffset={-acc}
-              transform="rotate(-90 100 100)"
-            />
-          );
-          acc += len;
-          return seg;
-        })}
+        {total > 0 &&
+          items.map((it) => {
+            const len = (C * it.value) / total;
+            const seg = (
+              <circle
+                key={it.label}
+                cx={100} cy={100} r={R} fill="none"
+                stroke={it.color} strokeWidth={26}
+                strokeDasharray={`${len} ${C - len}`}
+                strokeDashoffset={-acc}
+                transform="rotate(-90 100 100)"
+              />
+            );
+            acc += len;
+            return seg;
+          })}
         <text x={100} y={97} textAnchor="middle" fontSize={24} fontWeight={700} fill="#314138">
           {fmtBR(total)}
         </text>
@@ -3903,7 +3920,7 @@ function SituacaoDonut({ items }: { items: { label: string; value: number; color
             <span className="dot" style={{ background: it.color }} />
             <span className="donut-label">{it.label}</span>
             <b>{fmtBR(it.value)}</b>
-            <small>{Math.round((it.value / total) * 100)}%</small>
+            <small>{total > 0 ? Math.round((it.value / total) * 100) : 0}%</small>
           </div>
         ))}
       </div>
@@ -3945,15 +3962,23 @@ function TipoProjection({ items }: { items: { tipo: string; saldo: number; media
   return (
     <div className="tipo-grid">
       {items.map((it) => {
-        const dias = Math.round((it.saldo / it.media) * 30);
-        const status = dias > 90 ? "ok" : dias >= 45 ? "warn" : "danger";
-        const label = status === "ok" ? "Saudável" : status === "warn" ? "Atenção" : "Crítico";
-        const pct = Math.min(100, Math.round((dias / 180) * 100));
+        const dias = it.media > 0 ? Math.round((it.saldo / it.media) * 30) : null;
+        const status =
+          dias === null ? "neutral" : dias > 90 ? "ok" : dias >= 45 ? "warn" : "danger";
+        const label =
+          dias === null
+            ? "Sem consumo no período"
+            : status === "ok"
+              ? "Saudável"
+              : status === "warn"
+                ? "Atenção"
+                : "Crítico";
+        const pct = dias === null ? 0 : Math.min(100, Math.round((dias / 180) * 100));
         return (
           <div className={`tipo-card ${status}`} key={it.tipo}>
             <div className="tipo-name">{it.tipo}</div>
             <div className="tipo-days">
-              {dias} <small>dias</small>
+              {dias === null ? "—" : dias} <small>{dias === null ? "" : "dias"}</small>
             </div>
             <div className="tipo-meta">
               saldo {fmtBR(it.saldo)} · consumo {fmtBR(it.media)}/mês
@@ -3978,10 +4003,13 @@ function AgingChart({ buckets }: { buckets: { label: string; value: number; colo
         <div className="hbar-row wide-val" key={b.label}>
           <span className="hbar-name">{b.label}</span>
           <div className="hbar-track">
-            <span className="hbar-fill" style={{ width: `${Math.round((b.value / max) * 100)}%`, background: b.color }} />
+            <span
+              className="hbar-fill"
+              style={{ width: `${max > 0 ? Math.round((b.value / max) * 100) : 0}%`, background: b.color }}
+            />
           </div>
           <span className="hbar-value">
-            {fmtBR(b.value)} · {Math.round((b.value / total) * 100)}%
+            {fmtBR(b.value)} · {total > 0 ? Math.round((b.value / total) * 100) : 0}%
           </span>
         </div>
       ))}
@@ -3994,31 +4022,31 @@ function AgingChart({ buckets }: { buckets: { label: string; value: number; colo
 }
 
 function NumberingDashboard({ role }: { role: Role }) {
-  const [periodo, setPeriodo] = useState(6);
+  const [periodo, setPeriodo] = useState(3);
   const [tipo, setTipo] = useState<"TODOS" | "INTERNACIONAL" | "SISBOV">("TODOS");
   const [origem, setOrigem] = useState<"TODAS" | "PNIB" | "interna">("TODAS");
 
-  const serie =
-    tipo === "TODOS"
-      ? {
-          saidas: numberingDemo.saidas,
-          saldo: numberingDemo.saldo,
-          entradasPnib: numberingDemo.entradasPnib,
-          entradasInterna: numberingDemo.entradasInterna,
-        }
-      : numberingDemo.porTipo[tipo];
+  const celulasSelecionadas = (["INTERNACIONAL", "SISBOV"] as const)
+    .filter((t) => tipo === "TODOS" || tipo === t)
+    .flatMap((t) =>
+      (["PNIB", "interna"] as const)
+        .filter((o) => origem === "TODAS" || origem === o)
+        .map((o) => numberingDemo.celulas[t][o])
+    );
+  const serie = somarSeries(celulasSelecionadas);
   const cut = (arr: number[]) => arr.slice(-periodo);
   const monthsV = numberingDemo.months.slice(-periodo);
   const saidasV = cut(serie.saidas);
   const saldoV = cut(serie.saldo);
   const saldoAtual = saldoV[saldoV.length - 1];
   const mediaPeriodo = Math.round(saidasV.reduce((a, b) => a + b, 0) / saidasV.length);
+  const semConsumo = mediaPeriodo === 0;
   const totalAutorizado =
     serie.entradasPnib.reduce((a, b) => a + b, 0) +
     serie.entradasInterna.reduce((a, b) => a + b, 0);
   const totalDistribuido = serie.saidas.reduce((a, b) => a + b, 0);
 
-  const dias = Math.round((saldoAtual / mediaPeriodo) * 30);
+  const dias = semConsumo ? 0 : Math.round((saldoAtual / mediaPeriodo) * 30);
   const esgotamento = new Date(2025, 5, 30);
   esgotamento.setDate(esgotamento.getDate() + dias);
   const leadMedio = Math.round(
@@ -4081,8 +4109,11 @@ function NumberingDashboard({ role }: { role: Role }) {
   );
   const maxDest = destFiltrados.length ? Math.max(...destFiltrados.map((d) => d.value)) : 0;
 
-  const agingBuckets =
-    tipo === "TODOS" ? numberingDemo.agingTodos : numberingDemo.agingPorTipo[tipo];
+  const agingBuckets = AGING_LABELS.map((label, i) => ({
+    label,
+    value: celulasSelecionadas.reduce((a, c) => a + c.aging[i], 0),
+    color: AGING_COLORS[i],
+  }));
 
   const pnibV = origem === "interna" ? monthsV.map(() => 0) : cut(serie.entradasPnib);
   const internaV = origem === "PNIB" ? monthsV.map(() => 0) : cut(serie.entradasInterna);
@@ -4090,11 +4121,15 @@ function NumberingDashboard({ role }: { role: Role }) {
   const tipoCards = (["INTERNACIONAL", "SISBOV"] as const)
     .filter((t) => tipo === "TODOS" || tipo === t)
     .map((t) => {
-      const s = numberingDemo.porTipo[t];
+      const sel = (["PNIB", "interna"] as const)
+        .filter((o) => origem === "TODAS" || origem === o)
+        .map((o) => numberingDemo.celulas[t][o]);
+      const saidasTipo = sel.reduce((acc, c) => acc.map((v, i) => v + c.saidas[i]), zero6());
+      const saldoFinal = sel.reduce((a, c) => a + c.saldo[c.saldo.length - 1], 0);
       const media = Math.round(
-        s.saidas.slice(-periodo).reduce((a, b) => a + b, 0) / periodo
+        saidasTipo.slice(-periodo).reduce((a, b) => a + b, 0) / periodo
       );
-      return { tipo: numberingDemo.tipoLabels[t], saldo: s.saldo[s.saldo.length - 1], media };
+      return { tipo: numberingDemo.tipoLabels[t], saldo: saldoFinal, media };
     });
 
   const tipoSuffix = tipo === "TODOS" ? "" : ` · ${numberingDemo.tipoLabels[tipo]}`;
@@ -4198,31 +4233,49 @@ function NumberingDashboard({ role }: { role: Role }) {
         <article className={`proj-card ${status === "ok" ? "" : status}`}>
           <div className="proj-head">
             <h2>Projeção de esgotamento</h2>
-            <span className="proj-pill">{statusLabel}</span>
+            <span className="proj-pill">{semConsumo ? "Sem distribuições" : statusLabel}</span>
           </div>
-          <div className="proj-value">
-            ≈ {dias} <small>dias</small>
-          </div>
-          <div className="proj-sub">
-            até esgotar as {fmtBR(saldoAtual)} numerações disponíveis
-            (estimativa {esgotamento.toLocaleDateString("pt-BR")}).
-          </div>
-          <div className="proj-sub">
-            Cobertura líquida: <b>{coberturaLiquida} dias</b>
-            {mostraLead
-              ? `, já descontado o lead time médio de reposição (${leadMedio} dias) — critério do status.`
-              : " (sem lead time de reposição PNIB aplicável ao filtro) — critério do status."}
-          </div>
-          <div className="proj-track">
-            <span className="proj-fill" style={{ width: `${pctBar}%` }} />
-          </div>
-          <div className="proj-meta">
-            Média do período filtrado: {fmtBR(mediaPeriodo)} numerações/mês ·{" "}
-            {mostraLead
-              ? `lead time médio PNIB: ${leadMedio} dias`
-              : "faixas internas — sem lead time PNIB"}{" "}
-            · horizonte de 180 dias
-          </div>
+          {semConsumo ? (
+            <>
+              <div className="proj-value">—</div>
+              <div className="proj-sub">
+                Sem distribuições no período filtrado — projeção indisponível
+                para a seleção atual.
+              </div>
+              <div className="proj-track">
+                <span className="proj-fill" style={{ width: "0%" }} />
+              </div>
+              <div className="proj-meta">
+                Ajuste os filtros para recalcular a projeção.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="proj-value">
+                ≈ {dias} <small>dias</small>
+              </div>
+              <div className="proj-sub">
+                até esgotar as {fmtBR(saldoAtual)} numerações disponíveis
+                (estimativa {esgotamento.toLocaleDateString("pt-BR")}).
+              </div>
+              <div className="proj-sub">
+                Cobertura líquida: <b>{coberturaLiquida} dias</b>
+                {mostraLead
+                  ? `, já descontado o lead time médio de reposição (${leadMedio} dias) — critério do status.`
+                  : " (sem lead time de reposição PNIB aplicável ao filtro) — critério do status."}
+              </div>
+              <div className="proj-track">
+                <span className="proj-fill" style={{ width: `${pctBar}%` }} />
+              </div>
+              <div className="proj-meta">
+                Média do período filtrado: {fmtBR(mediaPeriodo)} numerações/mês ·{" "}
+                {mostraLead
+                  ? `lead time médio PNIB: ${leadMedio} dias`
+                  : "faixas internas — sem lead time PNIB"}{" "}
+                · horizonte de 180 dias
+              </div>
+            </>
+          )}
         </article>
 
         <section className="panel">
