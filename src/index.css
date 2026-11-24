@@ -6061,6 +6061,20 @@ button.filter-select .chev {
   flex-wrap: wrap;
 }
 .af-row .radio-pills { flex-wrap: nowrap; }
+.af-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.af-col .radio-pills { flex-wrap: nowrap; }
+.af-stack { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.af-stack span { font-size: 12px; color: #4b5563; }
+.af-stack input { max-width: 280px; }
+.radio-pills button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .af-inline { margin: 0; flex: 0 1 200px; }
 .af-inline input,
 .af-inline select { margin: 0; }

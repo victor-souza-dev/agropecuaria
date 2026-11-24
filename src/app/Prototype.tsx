@@ -4979,6 +4979,7 @@ const formNova: FormAutomacao = {
 function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
   const [automacoes, setAutomacoes] = useState(automacoesIniciais);
   const [form, setForm] = useState<FormAutomacao | null>(null);
+  const [buscaAtor, setBuscaAtor] = useState("");
 
   const toggleAtiva = (id: number) => {
     setAutomacoes((prev) =>
@@ -5158,7 +5159,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                     setForm({
                       ...form,
                       gatilho,
-                      quantidadeModo: gatilho === "pedido" ? "pedido" : form.quantidadeModo,
+                      quantidadeModo: gatilho === "pedido" ? "pedido" : "lote",
                     });
                   }}
                 >
@@ -5223,51 +5224,41 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
 
             <div className="af-section">
               <span className="af-section-title">Quantidade gerada</span>
-              {form.gatilho === "pedido" || form.quantidadeModo === "pedido" ? (
-                <>
-                  <div className="af-row">
-                    <div className="radio-pills">
-                      <button type="button" className="active">
-                        Conforme pedido do ator
-                      </button>
-                    </div>
-                    {form.gatilho === "pedido" && (
-                      <p className="form-hint" style={{ margin: 0 }}>
-                        Gatilho "pedido recebido" gera sempre conforme a quantidade
-                        solicitada pelo ator.
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="af-row">
-                    <div className="radio-pills">
-                      {([
-                        ["lote", "Lote fixo"],
-                        ["pedido", "Conforme pedido do ator"],
-                      ] as const).map(([v, l]) => (
-                        <button
-                          key={v}
-                          type="button"
-                          className={form.quantidadeModo === v ? "active" : ""}
-                          onClick={() => setForm({ ...form, quantidadeModo: v })}
-                        >
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-                    <label className="af-inline">
-                      <input
-                        type="number"
-                        value={form.lote}
-                        title="Lote de geração (numerações)"
-                        onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
-                      />
-                    </label>
-                  </div>
-                </>
-              )}
+              <div className="af-col">
+                <div className="radio-pills">
+                  <button
+                    type="button"
+                    className={form.quantidadeModo === "lote" ? "active" : ""}
+                    disabled={form.gatilho === "pedido"}
+                    onClick={() => setForm({ ...form, quantidadeModo: "lote" })}
+                  >
+                    Lote fixo
+                  </button>
+                  <button
+                    type="button"
+                    className={form.quantidadeModo === "pedido" ? "active" : ""}
+                    disabled={form.gatilho !== "pedido"}
+                    onClick={() => setForm({ ...form, quantidadeModo: "pedido" })}
+                  >
+                    Conforme pedido do ator
+                  </button>
+                </div>
+                {form.gatilho === "pedido" ? (
+                  <p className="form-hint" style={{ margin: 0 }}>
+                    Gatilho "pedido recebido" gera sempre conforme a quantidade
+                    solicitada pelo ator.
+                  </p>
+                ) : (
+                  <label className="af-stack">
+                    <span>Lote de geração (numerações)</span>
+                    <input
+                      type="number"
+                      value={form.lote}
+                      onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="af-section">
@@ -5374,25 +5365,42 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               </div>
               {form.alvoModo === "especifico" ? (
                 <>
+                  <input
+                    className="af-busca-ator"
+                    placeholder="Pesquisar ator por nome..."
+                    value={buscaAtor}
+                    onChange={(e) => setBuscaAtor(e.target.value)}
+                  />
                   <div className="atores-check">
-                    {atoresPendentes.map((a) => (
-                      <label key={a.nome}>
-                        <input
-                          type="checkbox"
-                          checked={form.atores.includes(a.nome)}
-                          onChange={() =>
-                            setForm({
-                              ...form,
-                              atores: form.atores.includes(a.nome)
-                                ? form.atores.filter((n) => n !== a.nome)
-                                : [...form.atores, a.nome],
-                            })
-                          }
-                        />
-                        {a.nome}
-                      </label>
-                    ))}
+                    {atoresPendentes
+                      .filter((a) =>
+                        a.nome.toLowerCase().includes(buscaAtor.trim().toLowerCase())
+                      )
+                      .map((a) => (
+                        <label key={a.nome}>
+                          <input
+                            type="checkbox"
+                            checked={form.atores.includes(a.nome)}
+                            onChange={() =>
+                              setForm({
+                                ...form,
+                                atores: form.atores.includes(a.nome)
+                                  ? form.atores.filter((n) => n !== a.nome)
+                                  : [...form.atores, a.nome],
+                              })
+                            }
+                          />
+                          {a.nome}
+                        </label>
+                      ))}
                   </div>
+                  {atoresPendentes.filter((a) =>
+                    a.nome.toLowerCase().includes(buscaAtor.trim().toLowerCase())
+                  ).length === 0 && (
+                    <p className="form-hint">
+                      Nenhum ator encontrado{buscaAtor.trim() ? ` para "${buscaAtor.trim()}"` : ""}.
+                    </p>
+                  )}
                   <p className="form-hint">
                     Somente os atores selecionados serão atendidos.
                   </p>
