@@ -5766,6 +5766,32 @@ td {
   color: #fff;
   font-weight: 600;
 }
+.custom-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.custom-range label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4b5563;
+}
+.custom-range select {
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+  font-size: 12px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.custom-range select:focus {
+  outline: none;
+  border-color: #4BA044;
+}
 .span-2 { grid-column: 1 / -1; }
 .head-badge {
   font-size: 11px;

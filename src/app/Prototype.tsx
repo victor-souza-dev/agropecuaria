@@ -3685,9 +3685,10 @@ const fmtBR = (n: number) => n.toLocaleString("pt-BR");
 const numberingDemo = {
   months: ["jan", "fev", "mar", "abr", "mai", "jun"],
   periodos: [
-    { id: 6, label: "Todo período" },
-    { id: 3, label: "Últimos 3 meses" },
-    { id: 2, label: "Últimos 2 meses" },
+    { id: "tudo", label: "Todo período", from: 0, to: 5 },
+    { id: "3m", label: "Últimos 3 meses", from: 3, to: 5 },
+    { id: "2m", label: "Últimos 2 meses", from: 4, to: 5 },
+    { id: "custom", label: "Personalizado", from: -1, to: -1 },
   ],
   tipos: [
     { id: "TODOS", label: "Todos" },
@@ -3745,11 +3746,11 @@ const numberingDemo = {
     { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
   ],
   criadores: [
-    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, color: "#0e8a6d" },
-    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, color: "#1565c0" },
-    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, color: "#96d18a" },
-    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, color: "#6fbc5e" },
+    { nome: "Geração automática — interna", curto: "Auto interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, serie: [2000, 1000, 1500, 1000, 1500, 1000], color: "#0e8a6d" },
+    { nome: "Geração automática — PNIB", curto: "Auto PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, serie: [3000, 0, 0, 3000, 0, 0], color: "#1565c0" },
+    { nome: "Juliana P. Rocha — SEAPI", curto: "Juliana", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, serie: [500, 500, 500, 1000, 500, 2000], color: "#96d18a" },
+    { nome: "Ana R. Farias — SEAPI", curto: "Ana", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, serie: [1000, 500, 500, 500, 1000, 500], color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", curto: "Carlos", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, serie: [500, 0, 500, 500, 1000, 500], color: "#6fbc5e" },
   ],
 };
 
@@ -4023,10 +4024,13 @@ function AgingChart({ buckets }: { buckets: { label: string; value: number; colo
 }
 
 function NumberingDashboard({ role }: { role: Role }) {
-  const [periodo, setPeriodo] = useState(3);
+  const [range, setRange] = useState({ from: 3, to: 5 });
+  const [customAberto, setCustomAberto] = useState(false);
   const [tipo, setTipo] = useState<"TODOS" | "INTERNACIONAL" | "SISBOV">("TODOS");
   const [origem, setOrigem] = useState<"TODAS" | "PNIB" | "interna">("TODAS");
+  const [criador, setCriador] = useState("TODOS");
 
+  const nMeses = range.to - range.from + 1;
   const celulasSelecionadas = (["INTERNACIONAL", "SISBOV"] as const)
     .filter((t) => tipo === "TODOS" || tipo === t)
     .flatMap((t) =>
@@ -4035,8 +4039,8 @@ function NumberingDashboard({ role }: { role: Role }) {
         .map((o) => numberingDemo.celulas[t][o])
     );
   const serie = somarSeries(celulasSelecionadas);
-  const cut = (arr: number[]) => arr.slice(-periodo);
-  const monthsV = numberingDemo.months.slice(-periodo);
+  const cut = (arr: number[]) => arr.slice(range.from, range.to + 1);
+  const monthsV = numberingDemo.months.slice(range.from, range.to + 1);
   const saidasV = cut(serie.saidas);
   const saldoV = cut(serie.saldo);
   const saldoAtual = saldoV[saldoV.length - 1];
@@ -4066,8 +4070,11 @@ function NumberingDashboard({ role }: { role: Role }) {
     { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
   ];
 
+  const criadorSel = criador === "TODOS" ? null : numberingDemo.criadores.find((c) => c.nome === criador) ?? null;
+  const criadorCompativel = !criadorSel || origem === "TODAS" || origem === criadorSel.origem;
+
   const criadoresFiltrados = numberingDemo.criadores
-    .filter((c) => origem === "TODAS" || c.origem === origem)
+    .filter((c) => (origem === "TODAS" || c.origem === origem) && (!criadorSel || c.nome === criadorSel.nome))
     .map((c) => ({
       ...c,
       value: tipo === "TODOS" ? c.porTipo.INTERNACIONAL + c.porTipo.SISBOV : c.porTipo[tipo],
@@ -4116,8 +4123,21 @@ function NumberingDashboard({ role }: { role: Role }) {
     color: AGING_COLORS[i],
   }));
 
-  const pnibV = origem === "interna" ? monthsV.map(() => 0) : cut(serie.entradasPnib);
-  const internaV = origem === "PNIB" ? monthsV.map(() => 0) : cut(serie.entradasInterna);
+  const zeroV = monthsV.map(() => 0);
+  const pnibV = criadorSel
+    ? criadorSel.origem === "PNIB" && criadorCompativel
+      ? cut(criadorSel.serie)
+      : zeroV
+    : origem === "interna"
+      ? zeroV
+      : cut(serie.entradasPnib);
+  const internaV = criadorSel
+    ? criadorSel.origem === "interna" && criadorCompativel
+      ? cut(criadorSel.serie)
+      : zeroV
+    : origem === "PNIB"
+      ? zeroV
+      : cut(serie.entradasInterna);
 
   const tipoCards = (["INTERNACIONAL", "SISBOV"] as const)
     .filter((t) => tipo === "TODOS" || tipo === t)
@@ -4128,7 +4148,7 @@ function NumberingDashboard({ role }: { role: Role }) {
       const saidasTipo = sel.reduce((acc, c) => acc.map((v, i) => v + c.saidas[i]), zero6());
       const saldoFinal = sel.reduce((a, c) => a + c.saldo[c.saldo.length - 1], 0);
       const media = Math.round(
-        saidasTipo.slice(-periodo).reduce((a, b) => a + b, 0) / periodo
+        saidasTipo.slice(range.from, range.to + 1).reduce((a, b) => a + b, 0) / nMeses
       );
       return { tipo: numberingDemo.tipoLabels[t], saldo: saldoFinal, media };
     });
@@ -4149,22 +4169,72 @@ function NumberingDashboard({ role }: { role: Role }) {
       <div className="dash-note">
         Dados demonstrativos para validação de layout — não refletem números de
         produção. A projeção usa a média de distribuição do período filtrado
-        ({periodo} meses).
+        ({nMeses} {nMeses === 1 ? "mês" : "meses"}).
       </div>
 
       <div className="dash-filters">
         <div className="filter-group">
           <span className="filter-label">Período</span>
           <div className="chip-set">
-            {numberingDemo.periodos.map((p) => (
-              <button
-                key={p.id}
-                className={`chip ${periodo === p.id ? "active" : ""}`}
-                onClick={() => setPeriodo(p.id)}
-              >
-                {p.label}
-              </button>
-            ))}
+            {numberingDemo.periodos.map((p) => {
+              const isCustom = p.id === "custom";
+              const presetAtivo =
+                !isCustom && range.from === p.from && range.to === p.to && !customAberto;
+              const active = isCustom
+                ? customAberto ||
+                  !numberingDemo.periodos.some(
+                    (q) => q.id !== "custom" && range.from === q.from && range.to === q.to
+                  )
+                : presetAtivo;
+              return (
+                <button
+                  key={p.id}
+                  className={`chip ${active ? "active" : ""}`}
+                  onClick={() => {
+                    if (isCustom) {
+                      setCustomAberto(true);
+                    } else {
+                      setRange({ from: p.from, to: p.to });
+                      setCustomAberto(false);
+                    }
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+            {customAberto && (
+              <div className="custom-range">
+                <label>
+                  De
+                  <select
+                    value={range.from}
+                    onChange={(e) => {
+                      const f = Number(e.target.value);
+                      setRange({ from: f, to: Math.max(f, range.to) });
+                    }}
+                  >
+                    {numberingDemo.months.map((m, i) => (
+                      <option key={m} value={i}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Até
+                  <select
+                    value={range.to}
+                    onChange={(e) => {
+                      const t = Number(e.target.value);
+                      setRange({ from: Math.min(range.from, t), to: t });
+                    }}
+                  >
+                    {numberingDemo.months.map((m, i) => (
+                      <option key={m} value={i}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
           </div>
         </div>
         <div className="filter-group">
@@ -4189,6 +4259,23 @@ function NumberingDashboard({ role }: { role: Role }) {
                 key={o.id}
                 className={`chip ${origem === o.id ? "active" : ""}`}
                 onClick={() => setOrigem(o.id as typeof origem)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Criador</span>
+          <div className="chip-set">
+            {[
+              { id: "TODOS", label: "Todos" },
+              ...numberingDemo.criadores.map((c) => ({ id: c.nome, label: c.curto })),
+            ].map((o) => (
+              <button
+                key={o.id}
+                className={`chip ${criador === o.id ? "active" : ""}`}
+                onClick={() => setCriador(o.id)}
               >
                 {o.label}
               </button>
@@ -4314,17 +4401,21 @@ function NumberingDashboard({ role }: { role: Role }) {
         <section className="panel">
           <div className="panel-head">
             <div>
-              <h2>Origem por mês</h2>
-              <p>Novas faixas: PNIB vs interna{tipoSuffix}</p>
+              <h2>{criadorSel ? "Criações por mês" : "Origem por mês"}</h2>
+              <p>
+                {criadorSel
+                  ? `Criações de ${criadorSel.nome}${criadorCompativel ? "" : " — sem criações na origem filtrada"}`
+                  : `Novas faixas: PNIB vs interna${tipoSuffix}`}
+              </p>
             </div>
           </div>
           <OrigemStackedChart pnib={pnibV} interna={internaV} months={monthsV} />
           <div className="chart-legend">
-            {origem !== "interna" && (
-              <span><span className="dot" style={{ background: "#1565c0" }} />PNIB</span>
+            {pnibV.some((v) => v > 0) && (
+              <span><span className="dot" style={{ background: "#1565c0" }} />{criadorSel ? "Criações" : "PNIB"}</span>
             )}
-            {origem !== "PNIB" && (
-              <span><span className="dot" style={{ background: "#e65100" }} />Interna SDA</span>
+            {internaV.some((v) => v > 0) && (
+              <span><span className="dot" style={{ background: "#e65100" }} />{criadorSel ? "Criações" : "Interna SDA"}</span>
             )}
           </div>
         </section>
@@ -4341,30 +4432,34 @@ function NumberingDashboard({ role }: { role: Role }) {
         <div className="hbar-list">
           {totalCriado > 0 ? (
             <>
-              <div className="comp-bar">
-                {criadoPnib > 0 && (
-                  <span
-                    className="comp-seg"
-                    style={{ width: `${(criadoPnib / totalCriado) * 100}%`, background: "#1565c0" }}
-                    title={`PNIB: ${fmtBR(criadoPnib)} numerações`}
-                  />
-                )}
-                {criadoInterna > 0 && (
-                  <span
-                    className="comp-seg"
-                    style={{ width: `${(criadoInterna / totalCriado) * 100}%`, background: "#4BA044" }}
-                    title={`Interna SDA: ${fmtBR(criadoInterna)} numerações`}
-                  />
-                )}
-              </div>
-              <div className="comp-legend">
-                {criadoPnib > 0 && (
-                  <span><span className="dot" style={{ background: "#1565c0" }} />PNIB {Math.round((criadoPnib / totalCriado) * 100)}%</span>
-                )}
-                {criadoInterna > 0 && (
-                  <span><span className="dot" style={{ background: "#4BA044" }} />Interna SDA {Math.round((criadoInterna / totalCriado) * 100)}%</span>
-                )}
-              </div>
+              {!criadorSel && (
+                <>
+                  <div className="comp-bar">
+                    {criadoPnib > 0 && (
+                      <span
+                        className="comp-seg"
+                        style={{ width: `${(criadoPnib / totalCriado) * 100}%`, background: "#1565c0" }}
+                        title={`PNIB: ${fmtBR(criadoPnib)} numerações`}
+                      />
+                    )}
+                    {criadoInterna > 0 && (
+                      <span
+                        className="comp-seg"
+                        style={{ width: `${(criadoInterna / totalCriado) * 100}%`, background: "#4BA044" }}
+                        title={`Interna SDA: ${fmtBR(criadoInterna)} numerações`}
+                      />
+                    )}
+                  </div>
+                  <div className="comp-legend">
+                    {criadoPnib > 0 && (
+                      <span><span className="dot" style={{ background: "#1565c0" }} />PNIB {Math.round((criadoPnib / totalCriado) * 100)}%</span>
+                    )}
+                    {criadoInterna > 0 && (
+                      <span><span className="dot" style={{ background: "#4BA044" }} />Interna SDA {Math.round((criadoInterna / totalCriado) * 100)}%</span>
+                    )}
+                  </div>
+                </>
+              )}
               {criadoresFiltrados.map((c) => (
                 <div className="hbar-row creator" key={c.nome}>
                   <span className="hbar-name" title={c.nome}>{c.nome}</span>
@@ -4377,11 +4472,19 @@ function NumberingDashboard({ role }: { role: Role }) {
                 </div>
               ))}
               <p className="aging-note">
-                {fmtBR(totalCriado)} numerações criadas — {notaPartes.join(" e ")}.
+                {criadorSel
+                  ? `${fmtBR(totalCriado)} numerações criadas por ${criadorSel.nome} — geração ${
+                      criadorSel.modo === "auto" ? "automática" : "manual"
+                    } (${criadorSel.origem === "interna" ? "faixas internas" : "faixas PNIB"}).`
+                  : `${fmtBR(totalCriado)} numerações criadas — ${notaPartes.join(" e ")}.`}
               </p>
             </>
           ) : (
-            <p className="aging-note">Nenhuma criação para o filtro selecionado.</p>
+            <p className="aging-note">
+              {criadorSel && !criadorCompativel
+                ? "O criador selecionado não possui criações na origem filtrada."
+                : "Nenhuma criação para o filtro selecionado."}
+            </p>
           )}
         </div>
       </section>
