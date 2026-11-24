@@ -1492,12 +1492,12 @@ function StockPage({
   const isLegado = role === "seapi" && holder.startsWith("Prefeitura Municipal de Bagé");
   const [view, setView] = useState<"titulares" | "detalhe">("titulares");
   const showDetail = !(role === "seapi" && view === "titulares");
-  const holderStocks = [
+  const [holderStocks, setHolderStocks] = useState([
     {
       select: "Agropecuária Pampa Sul Ltda.",
       titular: "Agropecuária Pampa Sul Ltda.",
       perfil: "PJ · LOJA_AGROPECUARIA",
-      regime: "NOVO",
+      canal: "NOVO",
       ranges: 2,
       brincos: 360,
     },
@@ -1505,7 +1505,7 @@ function StockPage({
       select: "Antônio Carlos Silveira — PF",
       titular: "Antônio Carlos Silveira",
       perfil: "PF · CREDENCIADO",
-      regime: "NOVO",
+      canal: "NOVO",
       ranges: 1,
       brincos: 120,
     },
@@ -1513,15 +1513,15 @@ function StockPage({
       select: "João Pedro Fagundes — Produtor",
       titular: "João Pedro Fagundes",
       perfil: "PRODUTOR",
-      regime: "NOVO",
+      canal: "NOVO",
       ranges: 1,
       brincos: 12,
     },
     {
-      select: "Prefeitura Municipal de Bagé — Regime LEGADO",
+      select: "Prefeitura Municipal de Bagé — Portal legado",
       titular: "Prefeitura Municipal de Bagé",
       perfil: "PREFEITURA",
-      regime: "LEGADO",
+      canal: "PORTAL",
       ranges: 4,
       brincos: 960,
     },
@@ -1529,14 +1529,18 @@ function StockPage({
       select: "Depósito central SEAPI",
       titular: "Depósito central SEAPI",
       perfil: "ESTOQUE_SDA",
-      regime: "NOVO",
+      canal: "NOVO",
       ranges: 3,
       brincos: 1200,
     },
-  ];
+  ]);
+  const ligarAtor = (sel) =>
+    setHolderStocks((list) =>
+      list.map((h) => (h.select === sel ? { ...h, canal: "NOVO" } : h)),
+    );
   const custodiaTotal = holderStocks.reduce((n, h) => n + h.brincos, 0);
   const legadoBrincos = holderStocks
-    .filter((h) => h.regime === "LEGADO")
+    .filter((h) => h.canal === "PORTAL")
     .reduce((n, h) => n + h.brincos, 0);
   const subFaixasTotal = holderStocks.reduce((n, h) => n + h.ranges, 0);
   const stocks = role === "produtor" ? producerStock : stockBase;
@@ -1560,7 +1564,7 @@ function StockPage({
               <option>Agropecuária Pampa Sul Ltda.</option>
               <option>Antônio Carlos Silveira — PF</option>
               <option>João Pedro Fagundes — Produtor</option>
-              <option>Prefeitura Municipal de Bagé — Regime LEGADO</option>
+              <option>Prefeitura Municipal de Bagé — Portal legado</option>
               <option>Depósito central SEAPI</option>
             </select>
           </label>
@@ -1573,10 +1577,11 @@ function StockPage({
         <div className="danger-banner amber legacy-banner">
           <Icon name="history" />
           <div>
-            <strong>Titular em regime LEGADO · somente leitura</strong>
+            <strong>Titular ainda operando pelo portal legado · somente consulta aqui</strong>
             <span>
-              Este estoque é consultado do legado (visão unificada). As movimentações do titular
-              seguem no legado até a migração dele para o regime NOVO.
+              O estoque dele é o mesmo registro do novo (estado único). As movimentações de
+              brincos do titular continuam no portal até a ligação — quando a SEAPI ativa o
+              acesso dele aqui.
             </span>
           </div>
         </div>
@@ -1609,9 +1614,9 @@ function StockPage({
                 <Icon name="history" />
               </div>
               <div>
-                <span>Em regime LEGADO (consulta)</span>
+                <span>Aguardando ligação (portal legado)</span>
                 <strong>{legadoBrincos.toLocaleString("pt-BR")}</strong>
-                <small>brincos lidos do legado · somente leitura</small>
+                <small>mesmo estado · o titular opera no portal</small>
               </div>
             </article>
             <article className="stat">
@@ -1701,7 +1706,7 @@ function StockPage({
                 <tr>
                   <th>Titular</th>
                   <th>Perfil / natureza</th>
-                  <th>Regime</th>
+                  <th>Canal de operação</th>
                   <th>Sub-faixas</th>
                   <th>Brincos</th>
                   <th></th>
@@ -1715,8 +1720,8 @@ function StockPage({
                     </td>
                     <td>{h.perfil}</td>
                     <td>
-                      <Badge tone={h.regime === "NOVO" ? "blue" : "neutral"}>
-                        {h.regime === "NOVO" ? "NOVO" : "Legado · só leitura"}
+                      <Badge tone={h.canal === "NOVO" ? "blue" : "neutral"}>
+                        {h.canal === "NOVO" ? "Ligado no novo" : "Portal legado"}
                       </Badge>
                     </td>
                     <td>{h.ranges}</td>
@@ -1724,15 +1729,22 @@ function StockPage({
                       <strong>{h.brincos.toLocaleString("pt-BR")}</strong>
                     </td>
                     <td>
-                      <button
-                        className="btn secondary"
-                        onClick={() => {
-                          setHolder(h.select);
-                          setView("detalhe");
-                        }}
-                      >
-                        <Icon name="eye" size={15} /> Abrir estoque
-                      </button>
+                      <div className="action-cell">
+                        <button
+                          className="btn secondary"
+                          onClick={() => {
+                            setHolder(h.select);
+                            setView("detalhe");
+                          }}
+                        >
+                          <Icon name="eye" size={15} /> Abrir estoque
+                        </button>
+                        {h.canal === "PORTAL" && (
+                          <button className="btn secondary" onClick={() => ligarAtor(h.select)}>
+                            <Icon name="zap" size={15} /> Ligar no novo
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
