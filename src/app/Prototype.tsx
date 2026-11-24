@@ -4275,7 +4275,10 @@ function NumberingDashboard({ role }: { role: Role }) {
           >
             <option value="TODOS">Todos os criadores</option>
             {[...numberingDemo.criadores]
-              .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+              .sort((a, b) => {
+                if (a.modo !== b.modo) return a.modo === "auto" ? -1 : 1;
+                return a.nome.localeCompare(b.nome, "pt-BR");
+              })
               .map((c) => (
                 <option key={c.nome} value={c.nome}>{c.nome}</option>
               ))}
