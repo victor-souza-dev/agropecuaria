@@ -3684,6 +3684,7 @@ const fmtBR = (n: number) => n.toLocaleString("pt-BR");
 
 const numberingDemo = {
   months: ["jan", "fev", "mar", "abr", "mai", "jun"],
+  monthsFull: ["01/2025", "02/2025", "03/2025", "04/2025", "05/2025", "06/2025"],
   periodos: [
     { id: "tudo", label: "Todo período", from: 0, to: 5 },
     { id: "3m", label: "Últimos 3 meses", from: 3, to: 5 },
@@ -4214,7 +4215,7 @@ function NumberingDashboard({ role }: { role: Role }) {
                       setRange({ from: f, to: Math.max(f, range.to) });
                     }}
                   >
-                    {numberingDemo.months.map((m, i) => (
+                    {numberingDemo.monthsFull.map((m, i) => (
                       <option key={m} value={i}>{m}</option>
                     ))}
                   </select>
@@ -4228,7 +4229,7 @@ function NumberingDashboard({ role }: { role: Role }) {
                       setRange({ from: Math.min(range.from, t), to: t });
                     }}
                   >
-                    {numberingDemo.months.map((m, i) => (
+                    {numberingDemo.monthsFull.map((m, i) => (
                       <option key={m} value={i}>{m}</option>
                     ))}
                   </select>
