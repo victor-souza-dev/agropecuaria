@@ -6036,6 +6036,32 @@ button.filter-select .chev {
   cursor: pointer;
 }
 .atores-check input { accent-color: #4BA044; margin: 0; }
+.form-section-divider {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px dashed #d1d5db;
+  padding-top: 14px;
+}
+.form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2e7d32;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.form-hint {
+  font-size: 11.5px;
+  color: #9ca3af;
+  margin: 0;
+  line-height: 1.5;
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.form-pair label { display: flex; flex-direction: column; gap: 6px; }
 @media (max-width: 720px) {
   .atores-check { grid-template-columns: 1fr; }
 }

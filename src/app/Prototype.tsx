@@ -4732,16 +4732,59 @@ type Automacao = {
   tipo: "INTERNACIONAL" | "SISBOV";
   atores: string[];
   gatilho: "estoque" | "pedido" | "agendamento";
+  quantidadeModo: "lote" | "pedido";
   lote: number;
+  frequencia: "mensal" | "semanal";
+  diaMes: number;
+  diaSemana: number;
+  qtdMin: number | null;
+  qtdMax: number | null;
   ultimaGeracao: string;
   ultimaQtd: number | null;
 };
 
-const gatilhoTexto: Record<Automacao["gatilho"], string> = {
-  estoque: "Dispara quando o estoque do ator fica baixo",
-  pedido: "Dispara ao receber pedido do ator",
-  agendamento: "Dispara todo dia 1º do mês",
+const diasSemanaNomes = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+];
+
+const limitesTexto = (a: Pick<Automacao, "qtdMin" | "qtdMax">) => {
+  const partes: string[] = [];
+  if (a.qtdMin != null) partes.push(`mín. ${fmtBR(a.qtdMin)}`);
+  if (a.qtdMax != null) partes.push(`máx. ${fmtBR(a.qtdMax)}`);
+  return partes.length ? ` (${partes.join(" · ")})` : "";
 };
+
+const qtdTexto = (a: Automacao) =>
+  a.quantidadeModo === "pedido"
+    ? `conforme o pedido do ator${limitesTexto(a)}`
+    : `lote fixo de ${fmtBR(a.lote)}${limitesTexto(a)}`;
+
+const agendamentoTexto = (a: Automacao) =>
+  a.frequencia === "mensal"
+    ? `todo dia ${a.diaMes} do mês`
+    : `${a.diaSemana === 0 || a.diaSemana === 6 ? "todo" : "toda"} ${diasSemanaNomes[a.diaSemana]}`;
+
+const gatilhoBadge = (a: Automacao) =>
+  a.gatilho === "estoque"
+    ? "Estoque mínimo"
+    : a.gatilho === "pedido"
+      ? "Pedido recebido"
+      : a.frequencia === "mensal"
+        ? "Agendamento mensal"
+        : "Agendamento semanal";
+
+const regraTexto = (a: Automacao) =>
+  a.gatilho === "estoque"
+    ? `Dispara quando o estoque do ator fica baixo · ${qtdTexto(a)}`
+    : a.gatilho === "pedido"
+      ? `Dispara ao receber pedido do ator · ${qtdTexto(a)}`
+      : `Agendamento: ${agendamentoTexto(a)} · ${qtdTexto(a)}`;
 
 const automacoesIniciais: Automacao[] = [
   {
@@ -4752,7 +4795,13 @@ const automacoesIniciais: Automacao[] = [
     tipo: "SISBOV",
     atores: ["Brinco Sul Indústria"],
     gatilho: "estoque",
+    quantidadeModo: "lote",
     lote: 3000,
+    frequencia: "mensal",
+    diaMes: 1,
+    diaSemana: 1,
+    qtdMin: 500,
+    qtdMax: 5000,
     ultimaGeracao: "05/06/2025",
     ultimaQtd: 3000,
   },
@@ -4764,7 +4813,13 @@ const automacoesIniciais: Automacao[] = [
     tipo: "INTERNACIONAL",
     atores: ["Identifica Brasil S.A."],
     gatilho: "agendamento",
+    quantidadeModo: "lote",
     lote: 6000,
+    frequencia: "mensal",
+    diaMes: 1,
+    diaSemana: 1,
+    qtdMin: null,
+    qtdMax: null,
     ultimaGeracao: "01/06/2025",
     ultimaQtd: 6000,
   },
@@ -4776,9 +4831,33 @@ const automacoesIniciais: Automacao[] = [
     tipo: "INTERNACIONAL",
     atores: ["Pecúnia Etiquetas Ltda."],
     gatilho: "pedido",
+    quantidadeModo: "pedido",
     lote: 2000,
+    frequencia: "mensal",
+    diaMes: 1,
+    diaSemana: 1,
+    qtdMin: 500,
+    qtdMax: 3000,
     ultimaGeracao: "—",
     ultimaQtd: null,
+  },
+  {
+    id: 4,
+    nome: "Reposição semanal — Prefeitura de Bagé",
+    ativa: true,
+    origem: "Interna",
+    tipo: "SISBOV",
+    atores: ["Prefeitura Municipal de Bagé"],
+    gatilho: "agendamento",
+    quantidadeModo: "lote",
+    lote: 2000,
+    frequencia: "semanal",
+    diaMes: 5,
+    diaSemana: 1,
+    qtdMin: 200,
+    qtdMax: 4000,
+    ultimaGeracao: "16/06/2025",
+    ultimaQtd: 2000,
   },
 ];
 
@@ -4796,9 +4875,31 @@ type FormAutomacao = {
   origem: "PNIB" | "Interna";
   tipo: "INTERNACIONAL" | "SISBOV";
   gatilho: Automacao["gatilho"];
+  quantidadeModo: Automacao["quantidadeModo"];
   lote: number;
+  frequencia: Automacao["frequencia"];
+  diaMes: number;
+  diaSemana: number;
+  qtdMin: number | null;
+  qtdMax: number | null;
   atores: string[];
   ativa: boolean;
+};
+
+const formNova: FormAutomacao = {
+  nome: "",
+  origem: "Interna",
+  tipo: "SISBOV",
+  gatilho: "estoque",
+  quantidadeModo: "lote",
+  lote: 3000,
+  frequencia: "mensal",
+  diaMes: 1,
+  diaSemana: 1,
+  qtdMin: null,
+  qtdMax: null,
+  atores: [],
+  ativa: true,
 };
 
 function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
@@ -4815,9 +4916,17 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
 
   const gerarAgora = (id: number) => {
     setAutomacoes((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, ultimaGeracao: "18/06/2025", ultimaQtd: a.lote } : a
-      )
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        const qtd =
+          a.quantidadeModo === "pedido"
+            ? Math.min(
+                a.qtdMax ?? 1500,
+                Math.max(a.qtdMin ?? 0, 1500)
+              )
+            : a.lote;
+        return { ...a, ultimaGeracao: "18/06/2025", ultimaQtd: qtd };
+      })
     );
     notify("Geração manual executada — faixas criadas conforme a automação.");
   };
@@ -4853,17 +4962,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
         <div className="header-actions">
           <button
             className="btn primary"
-            onClick={() =>
-              setForm({
-                nome: "",
-                origem: "Interna",
-                tipo: "SISBOV",
-                gatilho: "estoque",
-                lote: 3000,
-                atores: [],
-                ativa: true,
-              })
-            }
+            onClick={() => setForm({ ...formNova })}
           >
             <Icon name="hash" /> Nova automação
           </button>
@@ -4926,14 +5025,14 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                 <span className={`auto-badge ${a.tipo === "SISBOV" ? "sisbov" : "internacional"}`}>
                   {a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
                 </span>
-                <span className="auto-badge gatilho">{gatilhoTexto[a.gatilho]}</span>
+                <span className="auto-badge gatilho">{gatilhoBadge(a)}</span>
                 {!a.ativa && <span className="auto-badge off">Inativa</span>}
               </div>
               <div className="auto-meta">
                 <b>Atores:</b> {a.atores.join(", ") || "—"}
               </div>
               <div className="auto-meta">
-                <b>Regra:</b> {gatilhoTexto[a.gatilho]} · lote de {fmtBR(a.lote)} numerações
+                <b>Regra:</b> {regraTexto(a)}
               </div>
               <div className="auto-footer">
                 <span className="auto-ultima">
@@ -5026,17 +5125,126 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               >
                 <option value="estoque">Estoque mínimo do ator</option>
                 <option value="pedido">Pedido recebido do ator</option>
-                <option value="agendamento">Agendamento mensal</option>
+                <option value="agendamento">Agendamento</option>
               </select>
             </label>
-            <label>
-              <span>Lote de geração (numerações)</span>
-              <input
-                type="number"
-                value={form.lote}
-                onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
-              />
-            </label>
+
+            <div className="form-section-divider">
+              <span className="form-section-title">Quantidade gerada</span>
+              <div className="radio-pills">
+                {([
+                  ["lote", "Lote fixo"],
+                  ["pedido", "Conforme pedido do ator"],
+                ] as const).map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={form.quantidadeModo === v ? "active" : ""}
+                    onClick={() => setForm({ ...form, quantidadeModo: v })}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {form.quantidadeModo === "lote" ? (
+                <label>
+                  <span>Lote de geração (numerações)</span>
+                  <input
+                    type="number"
+                    value={form.lote}
+                    onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
+                  />
+                </label>
+              ) : (
+                <p className="form-hint">
+                  Cada geração usará a quantidade solicitada pelo ator no pedido,
+                  ajustada pelos bloqueios abaixo.
+                </p>
+              )}
+            </div>
+
+            <div className="form-section-divider">
+              <span className="form-section-title">Bloqueios de quantidade</span>
+              <div className="form-pair">
+                <label>
+                  <span>Mínimo por geração</span>
+                  <input
+                    type="number"
+                    value={form.qtdMin ?? ""}
+                    placeholder="sem mínimo"
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        qtdMin: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Máximo por geração</span>
+                  <input
+                    type="number"
+                    value={form.qtdMax ?? ""}
+                    placeholder="sem máximo"
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        qtdMax: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <p className="form-hint">
+                Gerações fora da faixa são ajustadas automaticamente para esses limites.
+              </p>
+            </div>
+
+            {form.gatilho === "agendamento" && (
+              <div className="form-section-divider">
+                <span className="form-section-title">Agendamento</span>
+                <div className="radio-pills">
+                  {([
+                    ["mensal", "Mensal"],
+                    ["semanal", "Semanal"],
+                  ] as const).map(([v, l]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={form.frequencia === v ? "active" : ""}
+                      onClick={() => setForm({ ...form, frequencia: v })}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {form.frequencia === "mensal" ? (
+                  <label>
+                    <span>Dia do mês</span>
+                    <select
+                      value={form.diaMes}
+                      onChange={(e) => setForm({ ...form, diaMes: Number(e.target.value) })}
+                    >
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>{d === 1 ? "1º do mês" : `Dia ${d}`}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label>
+                    <span>Dia da semana</span>
+                    <select
+                      value={form.diaSemana}
+                      onChange={(e) => setForm({ ...form, diaSemana: Number(e.target.value) })}
+                    >
+                      {diasSemanaNomes.map((d, i) => (
+                        <option key={d} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
             <div className="atores-check-wrap">
               <span className="atores-check-label">Atores atendidos</span>
               <div className="atores-check">
