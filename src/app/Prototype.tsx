@@ -3707,7 +3707,7 @@ const numberingDemo = {
     { label: "60+ dias", value: 2000, color: "#d64545" },
   ],
   criadores: [
-    { nome: "PNIB", modo: "auto", origem: "PNIB", value: 20000, color: "#1565c0" },
+    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", value: 20000, color: "#1565c0" },
     { nome: "Geração automática — interna", modo: "auto", origem: "interna", value: 3000, color: "#0e8a6d" },
     { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", value: 1500, color: "#4BA044" },
     { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", value: 1000, color: "#6fbc5e" },
@@ -3981,7 +3981,9 @@ function NumberingDashboard({ role }: { role: Role }) {
   const autoInterna = numberingDemo.criadores
     .filter((c) => c.origem === "interna" && c.modo === "auto")
     .reduce((a, c) => a + c.value, 0);
-  const manualInterna = criadoInterna - autoInterna;
+  const autoPnib = criadoPnib;
+  const autoTotal = autoPnib + autoInterna;
+  const manualTotal = totalCriado - autoTotal;
   const maxCriador = Math.max(...numberingDemo.criadores.map((c) => c.value));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
@@ -4118,7 +4120,7 @@ function NumberingDashboard({ role }: { role: Role }) {
         <div className="panel-head">
           <div>
             <h2>Numerações criadas — por criador</h2>
-            <p>Autorizações PNIB e faixas internas — geração automática (config SEAPI) ou manual, por responsável</p>
+            <p>Faixas criadas por geração automática (PNIB ou interna, conforme config SEAPI) ou manualmente por analistas</p>
           </div>
           <span className="head-badge">{fmtBR(totalCriado)} no período</span>
         </div>
@@ -4152,10 +4154,9 @@ function NumberingDashboard({ role }: { role: Role }) {
           ))}
           <p className="aging-note">
             {fmtBR(totalCriado)} numerações criadas entre jan e jun/2025 —{" "}
-            {fmtBR(criadoPnib)} autorizadas pelo PNIB e {fmtBR(criadoInterna)}{" "}
-            geradas internamente, destas {fmtBR(autoInterna)} por geração
-            automática (conforme config SEAPI) e {fmtBR(manualInterna)} por
-            analistas.
+            {fmtBR(autoTotal)} por geração automática (PNIB {fmtBR(autoPnib)} ·
+            interna {fmtBR(autoInterna)}, conforme config SEAPI) e{" "}
+            {fmtBR(manualTotal)} manualmente por analistas da SEAPI.
           </p>
         </div>
       </section>
