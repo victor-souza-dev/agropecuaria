@@ -3707,10 +3707,11 @@ const numberingDemo = {
     { label: "60+ dias", value: 2000, color: "#d64545" },
   ],
   criadores: [
-    { nome: "PNIB — geração automática", value: 20000, color: "#1565c0" },
-    { nome: "Ana R. Farias — SEAPI", value: 3000, color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", value: 2000, color: "#6fbc5e" },
-    { nome: "Juliana P. Rocha — SEAPI", value: 1000, color: "#96d18a" },
+    { nome: "PNIB", modo: "auto", origem: "PNIB", value: 20000, color: "#1565c0" },
+    { nome: "Geração automática — interna", modo: "auto", origem: "interna", value: 3000, color: "#0e8a6d" },
+    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", value: 1500, color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", value: 1000, color: "#6fbc5e" },
+    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", value: 500, color: "#96d18a" },
   ],
 };
 
@@ -3974,9 +3975,13 @@ function NumberingDashboard({ role }: { role: Role }) {
   const maxDest = Math.max(...numberingDemo.destinatarios.map((d) => d.value));
   const totalCriado = numberingDemo.criadores.reduce((a, c) => a + c.value, 0);
   const criadoPnib = numberingDemo.criadores
-    .filter((c) => c.nome.startsWith("PNIB"))
+    .filter((c) => c.origem === "PNIB")
     .reduce((a, c) => a + c.value, 0);
   const criadoInterna = totalCriado - criadoPnib;
+  const autoInterna = numberingDemo.criadores
+    .filter((c) => c.origem === "interna" && c.modo === "auto")
+    .reduce((a, c) => a + c.value, 0);
+  const manualInterna = criadoInterna - autoInterna;
   const maxCriador = Math.max(...numberingDemo.criadores.map((c) => c.value));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
@@ -4113,7 +4118,7 @@ function NumberingDashboard({ role }: { role: Role }) {
         <div className="panel-head">
           <div>
             <h2>Numerações criadas — por criador</h2>
-            <p>Autorizações PNIB e faixas geradas internamente, por responsável</p>
+            <p>Autorizações PNIB e faixas internas — geração automática (config SEAPI) ou manual, por responsável</p>
           </div>
           <span className="head-badge">{fmtBR(totalCriado)} no período</span>
         </div>
@@ -4147,8 +4152,10 @@ function NumberingDashboard({ role }: { role: Role }) {
           ))}
           <p className="aging-note">
             {fmtBR(totalCriado)} numerações criadas entre jan e jun/2025 —{" "}
-            {fmtBR(criadoPnib)} via PNIB (geração automática) e {fmtBR(criadoInterna)}{" "}
-            geradas internamente por analistas da SEAPI.
+            {fmtBR(criadoPnib)} autorizadas pelo PNIB e {fmtBR(criadoInterna)}{" "}
+            geradas internamente, destas {fmtBR(autoInterna)} por geração
+            automática (conforme config SEAPI) e {fmtBR(manualInterna)} por
+            analistas.
           </p>
         </div>
       </section>
