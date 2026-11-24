@@ -3541,38 +3541,6 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
           ))}
         </div>
       )}
-      <div className="stats-grid numbering-stats" style={{ marginTop: 24 }}>
-        <article className="stat">
-          <div className="stat-icon blue">
-            <Icon name="hash" />
-          </div>
-          <div>
-            <span>Total autorizado</span>
-            <strong>26.000</strong>
-            <small>numerações</small>
-          </div>
-        </article>
-        <article className="stat">
-          <div className="stat-icon green">
-            <Icon name="check" />
-          </div>
-          <div>
-            <span>Disponíveis</span>
-            <strong>11.000</strong>
-            <small>numerações</small>
-          </div>
-        </article>
-        <article className="stat">
-          <div className="stat-icon yellow">
-            <Icon name="factory" />
-          </div>
-          <div>
-            <span>Distribuídas</span>
-            <strong>15.000</strong>
-            <small>numerações</small>
-          </div>
-        </article>
-      </div>
       {dialog === "pnib" && (
         <ModalShell
           title="Solicitar faixas ao PNIB"
