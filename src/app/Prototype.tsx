@@ -634,7 +634,9 @@ export default function Prototype() {
         </div>
         <nav>
           <small>CADEIA DE CUSTÓDIA</small>
-          {nav[role].map((item) => (
+          {nav[role]
+            .filter((item) => !(role === "seapi" && item.id === "automacoes"))
+            .map((item) => (
             <Link
               key={item.id}
               to={`/${role}/${item.id}`}
@@ -3364,6 +3366,12 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
               <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
             </svg>
             Dashboard
+          </Link>
+          <Link className="text-btn muted-action chart-btn" to={`/${role}/automacoes`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            Automações
           </Link>
           <button className="btn primary" onClick={() => setDialog("pnib")}>
             <Icon name="request" /> Solicitar ao PNIB
