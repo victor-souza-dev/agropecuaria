@@ -3747,11 +3747,11 @@ const numberingDemo = {
     { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
   ],
   criadores: [
-    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, serie: [2000, 1000, 1500, 1000, 1500, 1000], color: "#0e8a6d" },
-    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, serie: [3000, 0, 0, 3000, 0, 0], color: "#1565c0" },
-    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, serie: [500, 500, 500, 1000, 500, 2000], color: "#96d18a" },
-    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, serie: [1000, 500, 500, 500, 1000, 500], color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, serie: [500, 0, 500, 500, 1000, 500], color: "#6fbc5e" },
+    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, serie: [2000, 1000, 1500, 1000, 1500, 1000], seriePorTipo: { INTERNACIONAL: [500, 300, 400, 300, 300, 200], SISBOV: [1500, 700, 1100, 700, 1200, 800] }, color: "#0e8a6d" },
+    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, serie: [3000, 0, 0, 3000, 0, 0], seriePorTipo: { INTERNACIONAL: [3000, 0, 0, 3000, 0, 0], SISBOV: [0, 0, 0, 0, 0, 0] }, color: "#1565c0" },
+    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, serie: [500, 500, 500, 1000, 500, 2000], seriePorTipo: { INTERNACIONAL: [300, 300, 300, 600, 300, 1200], SISBOV: [200, 200, 200, 400, 200, 800] }, color: "#96d18a" },
+    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, serie: [1000, 500, 500, 500, 1000, 500], seriePorTipo: { INTERNACIONAL: [0, 0, 0, 0, 0, 0], SISBOV: [1000, 500, 500, 500, 1000, 500] }, color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, serie: [500, 0, 500, 500, 1000, 500], seriePorTipo: { INTERNACIONAL: [0, 0, 0, 0, 0, 0], SISBOV: [500, 0, 500, 500, 1000, 500] }, color: "#6fbc5e" },
   ],
 };
 
@@ -4077,7 +4077,7 @@ function NumberingDashboard({ role }: { role: Role }) {
   const status = coberturaLiquida > 90 ? "ok" : coberturaLiquida >= 45 ? "warn" : "danger";
   const statusLabel =
     status === "ok" ? "Ritmo saudável" : status === "warn" ? "Atenção" : "Risco de ruptura";
-  const pctBar = Math.min(100, Math.round((coberturaLiquida / 180) * 100));
+  const pctBar = Math.max(0, Math.min(100, Math.round((coberturaLiquida / 180) * 100)));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
     { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
@@ -4145,7 +4145,10 @@ function NumberingDashboard({ role }: { role: Role }) {
 
   const zeroV = monthsV.map(() => 0);
   const somaSeriesCriadores = (lista: typeof numberingDemo.criadores) =>
-    lista.reduce((acc, c) => acc.map((v, i) => v + c.serie[i]), zero6());
+    lista.reduce((acc, c) => {
+      const s = tipo === "TODOS" ? c.serie : c.seriePorTipo[tipo];
+      return acc.map((v, i) => v + s[i]);
+    }, zero6());
   const pnibV = criadorSel
     ? cut(somaSeriesCriadores(criadorVisiveis.filter((c) => c.origem === "PNIB")))
     : origem === "interna"
@@ -4164,7 +4167,7 @@ function NumberingDashboard({ role }: { role: Role }) {
         .filter((o) => origem === "TODAS" || origem === o)
         .map((o) => numberingDemo.celulas[t][o]);
       const saidasTipo = sel.reduce((acc, c) => acc.map((v, i) => v + c.saidas[i]), zero6());
-      const saldoFinal = sel.reduce((a, c) => a + c.saldo[c.saldo.length - 1], 0);
+      const saldoFinal = sel.reduce((a, c) => a + c.saldo[range.to], 0);
       const media = Math.round(
         saidasTipo.slice(range.from, range.to + 1).reduce((a, b) => a + b, 0) / nMeses
       );
