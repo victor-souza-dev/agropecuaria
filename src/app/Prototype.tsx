@@ -688,11 +688,13 @@ export default function Prototype() {
               <h1>{headingTitle}</h1>
               <p>{headingDescription}</p>
             </div>
-            <div className="page-date">
-              Dados atualizados em
-              <br />
-              <strong>18/06/2025, 15:42</strong>
-            </div>
+            {page !== "numeracao" && (
+              <div className="page-date">
+                Dados atualizados em
+                <br />
+                <strong>18/06/2025, 15:42</strong>
+              </div>
+            )}
           </div>
         )}
         <Outlet
