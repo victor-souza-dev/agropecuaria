@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 
@@ -4029,7 +4029,19 @@ function NumberingDashboard({ role }: { role: Role }) {
   const [customAberto, setCustomAberto] = useState(false);
   const [tipo, setTipo] = useState<"TODOS" | "INTERNACIONAL" | "SISBOV">("TODOS");
   const [origem, setOrigem] = useState<"TODAS" | "PNIB" | "interna">("TODAS");
-  const [criador, setCriador] = useState("TODOS");
+  const [criadoresSel, setCriadoresSel] = useState<string[]>([]);
+  const [multiAberto, setMultiAberto] = useState(false);
+  const multiselectRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (multiselectRef.current && !multiselectRef.current.contains(e.target as Node)) {
+        setMultiAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
 
   const nMeses = range.to - range.from + 1;
   const celulasSelecionadas = (["INTERNACIONAL", "SISBOV"] as const)
@@ -4071,11 +4083,18 @@ function NumberingDashboard({ role }: { role: Role }) {
     { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
   ];
 
-  const criadorSel = criador === "TODOS" ? null : numberingDemo.criadores.find((c) => c.nome === criador) ?? null;
-  const criadorCompativel = !criadorSel || origem === "TODAS" || origem === criadorSel.origem;
+  const todosMarcados =
+    criadoresSel.length === 0 || criadoresSel.length === numberingDemo.criadores.length;
+  const criadorSel = todosMarcados
+    ? null
+    : numberingDemo.criadores.filter((c) => criadoresSel.includes(c.nome));
+  const criadorVisiveis = criadorSel
+    ? criadorSel.filter((c) => origem === "TODAS" || c.origem === origem)
+    : [];
+  const criadorCompativel = !criadorSel || criadorVisiveis.length > 0;
 
   const criadoresFiltrados = numberingDemo.criadores
-    .filter((c) => (origem === "TODAS" || c.origem === origem) && (!criadorSel || c.nome === criadorSel.nome))
+    .filter((c) => (origem === "TODAS" || c.origem === origem) && (!criadorSel || criadorSel.some((s) => s.nome === c.nome)))
     .map((c) => ({
       ...c,
       value: tipo === "TODOS" ? c.porTipo.INTERNACIONAL + c.porTipo.SISBOV : c.porTipo[tipo],
@@ -4125,17 +4144,15 @@ function NumberingDashboard({ role }: { role: Role }) {
   }));
 
   const zeroV = monthsV.map(() => 0);
+  const somaSeriesCriadores = (lista: typeof numberingDemo.criadores) =>
+    lista.reduce((acc, c) => acc.map((v, i) => v + c.serie[i]), zero6());
   const pnibV = criadorSel
-    ? criadorSel.origem === "PNIB" && criadorCompativel
-      ? cut(criadorSel.serie)
-      : zeroV
+    ? cut(somaSeriesCriadores(criadorVisiveis.filter((c) => c.origem === "PNIB")))
     : origem === "interna"
       ? zeroV
       : cut(serie.entradasPnib);
   const internaV = criadorSel
-    ? criadorSel.origem === "interna" && criadorCompativel
-      ? cut(criadorSel.serie)
-      : zeroV
+    ? cut(somaSeriesCriadores(criadorVisiveis.filter((c) => c.origem === "interna")))
     : origem === "PNIB"
       ? zeroV
       : cut(serie.entradasInterna);
@@ -4266,23 +4283,64 @@ function NumberingDashboard({ role }: { role: Role }) {
             ))}
           </div>
         </div>
-        <div className="filter-group">
+        <div className="filter-group multiselect" ref={multiselectRef}>
           <span className="filter-label">Criador</span>
-          <select
-            className={`filter-select ${criador !== "TODOS" ? "ativo" : ""}`}
-            value={criador}
-            onChange={(e) => setCriador(e.target.value)}
+          <button
+            type="button"
+            className={`filter-select ${criadorSel ? "ativo" : ""}`}
+            onClick={() => setMultiAberto(!multiAberto)}
           >
-            <option value="TODOS">Todos os criadores</option>
-            {[...numberingDemo.criadores]
-              .sort((a, b) => {
-                if (a.modo !== b.modo) return a.modo === "auto" ? -1 : 1;
-                return a.nome.localeCompare(b.nome, "pt-BR");
-              })
-              .map((c) => (
-                <option key={c.nome} value={c.nome}>{c.nome}</option>
-              ))}
-          </select>
+            {criadorSel === null
+              ? "Todos os criadores"
+              : criadorSel.length === 1
+                ? criadorSel[0].nome
+                : `${criadorSel.length} criadores selecionados`}
+            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+          {multiAberto && (
+            <div className="multiselect-dropdown">
+              <div className="ms-actions">
+                <button
+                  type="button"
+                  className="ms-action"
+                  onClick={() =>
+                    setCriadoresSel(
+                      numberingDemo.criadores
+                        .slice()
+                        .sort((a, b) => (a.modo === b.modo ? a.nome.localeCompare(b.nome, "pt-BR") : a.modo === "auto" ? -1 : 1))
+                        .map((c) => c.nome)
+                    )
+                  }
+                >
+                  Marcar todos
+                </button>
+                <button type="button" className="ms-action" onClick={() => setCriadoresSel([])}>
+                  Limpar
+                </button>
+              </div>
+              {[...numberingDemo.criadores]
+                .sort((a, b) => {
+                  if (a.modo !== b.modo) return a.modo === "auto" ? -1 : 1;
+                  return a.nome.localeCompare(b.nome, "pt-BR");
+                })
+                .map((c) => (
+                  <label className="ms-option" key={c.nome}>
+                    <input
+                      type="checkbox"
+                      checked={criadoresSel.includes(c.nome)}
+                      onChange={() =>
+                        setCriadoresSel(
+                          criadoresSel.includes(c.nome)
+                            ? criadoresSel.filter((n) => n !== c.nome)
+                            : [...criadoresSel, c.nome]
+                        )
+                      }
+                    />
+                    {c.nome}
+                  </label>
+                ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -4406,7 +4464,11 @@ function NumberingDashboard({ role }: { role: Role }) {
               <h2>{criadorSel ? "Criações por mês" : "Origem por mês"}</h2>
               <p>
                 {criadorSel
-                  ? `Criações de ${criadorSel.nome}${criadorCompativel ? "" : " — sem criações na origem filtrada"}`
+                  ? criadorCompativel
+                    ? criadorVisiveis.length === 1
+                      ? `Criações de ${criadorVisiveis[0].nome}`
+                      : `Criações de ${criadorVisiveis.length} criadores selecionados`
+                    : "Sem criações na origem filtrada"
                   : `Novas faixas: PNIB vs interna${tipoSuffix}`}
               </p>
             </div>
@@ -4475,16 +4537,14 @@ function NumberingDashboard({ role }: { role: Role }) {
               ))}
               <p className="aging-note">
                 {criadorSel
-                  ? `${fmtBR(totalCriado)} numerações criadas por ${criadorSel.nome} — geração ${
-                      criadorSel.modo === "auto" ? "automática" : "manual"
-                    } (${criadorSel.origem === "interna" ? "faixas internas" : "faixas PNIB"}).`
+                  ? `${fmtBR(totalCriado)} numerações criadas pelos criadores filtrados — ${notaPartes.join(" e ")}.`
                   : `${fmtBR(totalCriado)} numerações criadas — ${notaPartes.join(" e ")}.`}
               </p>
             </>
           ) : (
             <p className="aging-note">
               {criadorSel && !criadorCompativel
-                ? "O criador selecionado não possui criações na origem filtrada."
+                ? "Os criadores selecionados não possuem criações na origem filtrada."
                 : "Nenhuma criação para o filtro selecionado."}
             </p>
           )}
