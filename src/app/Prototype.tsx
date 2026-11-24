@@ -5054,89 +5054,94 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
           subtitle="A configuração vale para as próximas gerações automáticas."
           onClose={() => setForm(null)}
         >
-          <div className="modal-body form-grid">
-            <label>
-              <span>Nome da automação</span>
-              <input
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Ex.: Reposição Brinco Sul — SISBOV"
-              />
-            </label>
-            <label>
-              <span>Origem da numeração</span>
-              <div className="radio-pills">
-                {(["PNIB", "Interna"] as const).map((o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    className={form.origem === o ? "active" : ""}
-                    onClick={() => setForm({ ...form, origem: o })}
-                  >
-                    {o === "PNIB" ? "Brinco PNIB" : "Brinco Interno"}
-                  </button>
-                ))}
-              </div>
-            </label>
-            <label>
-              <span>Tipo de brinco</span>
-              <div className="radio-pills">
-                {([
-                  ["INTERNACIONAL", "Internacional"],
-                  ["SISBOV", "Nacional · SISBOV"],
-                ] as const).map(([v, l]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    className={form.tipo === v ? "active" : ""}
-                    onClick={() => setForm({ ...form, tipo: v })}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </label>
-            <label>
-              <span>Gatilho da geração</span>
-              <select
-                value={form.gatilho}
-                onChange={(e) =>
-                  setForm({ ...form, gatilho: e.target.value as Automacao["gatilho"] })
-                }
-              >
-                <option value="estoque">Estoque mínimo do ator</option>
-                <option value="pedido">Pedido recebido do ator</option>
-                <option value="agendamento">Agendamento</option>
-              </select>
-            </label>
+          <div className="modal-body form-grid af-form">
+            <div className="af-grid2">
+              <label>
+                <span>Nome da automação</span>
+                <input
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  placeholder="Ex.: Reposição Brinco Sul — SISBOV"
+                />
+              </label>
+              <label>
+                <span>Gatilho da geração</span>
+                <select
+                  value={form.gatilho}
+                  onChange={(e) =>
+                    setForm({ ...form, gatilho: e.target.value as Automacao["gatilho"] })
+                  }
+                >
+                  <option value="estoque">Estoque mínimo do ator</option>
+                  <option value="pedido">Pedido recebido do ator</option>
+                  <option value="agendamento">Agendamento</option>
+                </select>
+              </label>
+              <label>
+                <span>Origem da numeração</span>
+                <div className="radio-pills">
+                  {(["PNIB", "Interna"] as const).map((o) => (
+                    <button
+                      key={o}
+                      type="button"
+                      className={form.origem === o ? "active" : ""}
+                      onClick={() => setForm({ ...form, origem: o })}
+                    >
+                      {o === "PNIB" ? "Brinco PNIB" : "Brinco Interno"}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label>
+                <span>Tipo de brinco</span>
+                <div className="radio-pills">
+                  {([
+                    ["INTERNACIONAL", "Internacional"],
+                    ["SISBOV", "Nacional · SISBOV"],
+                  ] as const).map(([v, l]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={form.tipo === v ? "active" : ""}
+                      onClick={() => setForm({ ...form, tipo: v })}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </label>
+            </div>
 
-            <div className="form-section-divider">
-              <span className="form-section-title">Quantidade gerada</span>
-              <div className="radio-pills">
-                {([
-                  ["lote", "Lote fixo"],
-                  ["pedido", "Conforme pedido do ator"],
-                ] as const).map(([v, l]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    className={form.quantidadeModo === v ? "active" : ""}
-                    onClick={() => setForm({ ...form, quantidadeModo: v })}
-                  >
-                    {l}
-                  </button>
-                ))}
+            <div className="af-section">
+              <span className="af-section-title">Quantidade gerada</span>
+              <div className="af-row">
+                <div className="radio-pills">
+                  {([
+                    ["lote", "Lote fixo"],
+                    ["pedido", "Conforme pedido do ator"],
+                  ] as const).map(([v, l]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={form.quantidadeModo === v ? "active" : ""}
+                      onClick={() => setForm({ ...form, quantidadeModo: v })}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {form.quantidadeModo === "lote" && (
+                  <label className="af-inline">
+                    <input
+                      type="number"
+                      value={form.lote}
+                      title="Lote de geração (numerações)"
+                      onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
+                    />
+                  </label>
+                )}
               </div>
-              {form.quantidadeModo === "lote" ? (
-                <label>
-                  <span>Lote de geração (numerações)</span>
-                  <input
-                    type="number"
-                    value={form.lote}
-                    onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
-                  />
-                </label>
-              ) : (
+              {form.quantidadeModo === "pedido" && (
                 <p className="form-hint">
                   Cada geração usará a quantidade solicitada pelo ator no pedido,
                   ajustada pelos bloqueios abaixo.
@@ -5144,9 +5149,9 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               )}
             </div>
 
-            <div className="form-section-divider">
-              <span className="form-section-title">Bloqueios de quantidade</span>
-              <div className="form-pair">
+            <div className="af-section">
+              <span className="af-section-title">Bloqueios de quantidade</span>
+              <div className="af-grid2">
                 <label>
                   <span>Mínimo por geração</span>
                   <input
@@ -5182,52 +5187,55 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
             </div>
 
             {form.gatilho === "agendamento" && (
-              <div className="form-section-divider">
-                <span className="form-section-title">Agendamento</span>
-                <div className="radio-pills">
-                  {([
-                    ["mensal", "Mensal"],
-                    ["semanal", "Semanal"],
-                  ] as const).map(([v, l]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={form.frequencia === v ? "active" : ""}
-                      onClick={() => setForm({ ...form, frequencia: v })}
-                    >
-                      {l}
-                    </button>
-                  ))}
+              <div className="af-section">
+                <span className="af-section-title">Agendamento</span>
+                <div className="af-row">
+                  <div className="radio-pills">
+                    {([
+                      ["mensal", "Mensal"],
+                      ["semanal", "Semanal"],
+                    ] as const).map(([v, l]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={form.frequencia === v ? "active" : ""}
+                        onClick={() => setForm({ ...form, frequencia: v })}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  {form.frequencia === "mensal" ? (
+                    <label className="af-inline">
+                      <select
+                        value={form.diaMes}
+                        aria-label="Dia do mês"
+                        onChange={(e) => setForm({ ...form, diaMes: Number(e.target.value) })}
+                      >
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                          <option key={d} value={d}>{d === 1 ? "1º do mês" : `Dia ${d}`}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label className="af-inline">
+                      <select
+                        value={form.diaSemana}
+                        aria-label="Dia da semana"
+                        onChange={(e) => setForm({ ...form, diaSemana: Number(e.target.value) })}
+                      >
+                        {diasSemanaNomes.map((d, i) => (
+                          <option key={d} value={i}>{d}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
-                {form.frequencia === "mensal" ? (
-                  <label>
-                    <span>Dia do mês</span>
-                    <select
-                      value={form.diaMes}
-                      onChange={(e) => setForm({ ...form, diaMes: Number(e.target.value) })}
-                    >
-                      {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d === 1 ? "1º do mês" : `Dia ${d}`}</option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <label>
-                    <span>Dia da semana</span>
-                    <select
-                      value={form.diaSemana}
-                      onChange={(e) => setForm({ ...form, diaSemana: Number(e.target.value) })}
-                    >
-                      {diasSemanaNomes.map((d, i) => (
-                        <option key={d} value={i}>{d}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
               </div>
             )}
-            <div className="atores-check-wrap">
-              <span className="atores-check-label">Atores atendidos</span>
+
+            <div className="af-section">
+              <span className="af-section-title">Atores atendidos</span>
               <div className="atores-check">
                 {atoresPendentes.map((a) => (
                   <label key={a.nome}>

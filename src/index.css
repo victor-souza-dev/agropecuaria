@@ -5994,12 +5994,10 @@ button.filter-select .chev {
   color: #fff;
   font-weight: 600;
 }
-.atores-check-wrap { display: flex; flex-direction: column; gap: 6px; }
-.atores-check-label { font-size: 12px; color: #4b5563; }
 .atores-check {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 .atores-check label {
   display: flex;
@@ -6012,20 +6010,58 @@ button.filter-select .chev {
   border-radius: 8px;
   cursor: pointer;
 }
-.atores-check input { accent-color: #4BA044; margin: 0; }
-.form-section-divider {
+.atores-check input {
+  accent-color: #4BA044;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.af-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.af-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+}
+.af-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
   border-top: 1px dashed #d1d5db;
   padding-top: 14px;
 }
-.form-section-title {
+.af-section-title {
   font-size: 12px;
   font-weight: 600;
   color: #2e7d32;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+}
+.af-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.af-row .radio-pills { flex-wrap: nowrap; }
+.af-inline { margin: 0; flex: 0 1 200px; }
+.af-inline input,
+.af-inline select { margin: 0; }
+.af-form .atores-check {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.af-form .atores-check label {
+  height: 40px;
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .form-hint {
   font-size: 11.5px;
@@ -6033,12 +6069,6 @@ button.filter-select .chev {
   margin: 0;
   line-height: 1.5;
 }
-.form-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.form-pair label { display: flex; flex-direction: column; gap: 6px; }
 @media (max-width: 720px) {
   .atores-check { grid-template-columns: 1fr; }
 }
