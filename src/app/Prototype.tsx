@@ -4164,10 +4164,11 @@ function NumberingDashboard({ role }: { role: Role }) {
   const saldoAtual = saldoV[saldoV.length - 1];
   const mediaPeriodo = Math.round(saidasV.reduce((a, b) => a + b, 0) / saidasV.length);
   const semConsumo = mediaPeriodo === 0;
-  const totalAutorizado =
-    serie.entradasPnib.reduce((a, b) => a + b, 0) +
-    serie.entradasInterna.reduce((a, b) => a + b, 0);
-  const totalDistribuido = serie.saidas.reduce((a, b) => a + b, 0);
+  const entrPnibV = cut(serie.entradasPnib);
+  const entrInternaV = cut(serie.entradasInterna);
+  const totalAutorizado = entrPnibV.reduce((a, b) => a + b, 0) + entrInternaV.reduce((a, b) => a + b, 0);
+  const totalDistribuido = saidasV.reduce((a, b) => a + b, 0);
+  const distribuidaCum = serie.saidas.slice(0, range.to + 1).reduce((a, b) => a + b, 0);
 
   const dias = semConsumo ? 0 : Math.round((saldoAtual / mediaPeriodo) * 30);
   const esgotamento = new Date(2025, 5, 30);
@@ -4188,7 +4189,7 @@ function NumberingDashboard({ role }: { role: Role }) {
   const pctBar = Math.max(0, Math.min(100, Math.round((coberturaLiquida / 180) * 100)));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
-    { label: "Distribuída", value: totalDistribuido, color: "#d99a3b" },
+    { label: "Distribuída", value: distribuidaCum, color: "#d99a3b" },
   ];
 
   const criadoresFiltrados = numberingDemo.criadores
@@ -4481,7 +4482,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           <div>
             <span>Total autorizado</span>
             <strong>{fmtBR(totalAutorizado)}</strong>
-            <small>numerações</small>
+            <small>no período</small>
           </div>
         </article>
         <article className="stat">
@@ -4501,7 +4502,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           <div>
             <span>Distribuídas</span>
             <strong>{fmtBR(totalDistribuido)}</strong>
-            <small>numerações</small>
+            <small>no período</small>
           </div>
         </article>
       </div>
@@ -4559,7 +4560,11 @@ function NumberingDashboard({ role }: { role: Role }) {
           <div className="panel-head">
             <div>
               <h2>Distribuição por situação</h2>
-              <p>Disponível vs distribuída no estoque atual</p>
+              <p>
+                {range.from > 0
+                  ? "Disponível vs distribuída ao fim do período filtrado"
+                  : "Disponível vs distribuída no estoque atual"}
+              </p>
             </div>
           </div>
           <SituacaoDonut items={situacao} />
