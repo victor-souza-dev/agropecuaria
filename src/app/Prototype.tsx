@@ -167,10 +167,10 @@ const producerStock = [
 ];
 
 const numberingRanges = [
-  { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true },
-  { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true },
-  { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false },
-  { start: "105430057010001", end: "105430057014000", qty: 4000, tipo: "INTERNACIONAL", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "12/06/2025", fonteInterna: true },
+  { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true, criadoPor: "Geração automática — reposição Brinco Sul", modoGeracao: "Automática" },
+  { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true, criadoPor: "Ana R. Farias — SEAPI", modoGeracao: "Manual" },
+  { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false, criadoPor: "Geração automática — PNIB", modoGeracao: "Automática" },
+  { start: "105430057010001", end: "105430057014000", qty: 4000, tipo: "INTERNACIONAL", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "12/06/2025", fonteInterna: true, criadoPor: "Carlos M. Duarte — SEAPI", modoGeracao: "Manual" },
 ];
 
 const initialMoves = [
@@ -1381,6 +1381,14 @@ export function RangeDetailPage() {
                 <dt>Data de cadastro</dt>
                 <dd>{range.dataCadastro}</dd>
               </div>
+              <div>
+                <dt>Gerado por</dt>
+                <dd>{range.criadoPor}</dd>
+              </div>
+              <div>
+                <dt>Modo de geração</dt>
+                <dd>{range.modoGeracao}</dd>
+              </div>
             </dl>
           </div>
         </section>
@@ -1438,9 +1446,10 @@ export function RangeDetailPage() {
                 <h4>
                   {range.origem === "PNIB"
                     ? "Numeração autorizada pelo PNIB"
-                    : "Faixa interna cadastrada pela SDA"}
+                    : "Faixa interna gerada pela SDA"}
                 </h4>
                 <p>
+                  Gerada por {range.criadoPor} ({range.modoGeracao.toLowerCase()}) ·{" "}
                   {range.qty.toLocaleString("pt-BR")} brincos &middot;{" "}
                   {range.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
                 </p>
