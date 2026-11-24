@@ -3747,11 +3747,11 @@ const numberingDemo = {
     { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
   ],
   criadores: [
-    { nome: "Geração automática — interna", curto: "Auto interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, serie: [2000, 1000, 1500, 1000, 1500, 1000], color: "#0e8a6d" },
-    { nome: "Geração automática — PNIB", curto: "Auto PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, serie: [3000, 0, 0, 3000, 0, 0], color: "#1565c0" },
-    { nome: "Juliana P. Rocha — SEAPI", curto: "Juliana", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, serie: [500, 500, 500, 1000, 500, 2000], color: "#96d18a" },
-    { nome: "Ana R. Farias — SEAPI", curto: "Ana", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, serie: [1000, 500, 500, 500, 1000, 500], color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", curto: "Carlos", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, serie: [500, 0, 500, 500, 1000, 500], color: "#6fbc5e" },
+    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, serie: [2000, 1000, 1500, 1000, 1500, 1000], color: "#0e8a6d" },
+    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, serie: [3000, 0, 0, 3000, 0, 0], color: "#1565c0" },
+    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, serie: [500, 500, 500, 1000, 500, 2000], color: "#96d18a" },
+    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, serie: [1000, 500, 500, 500, 1000, 500], color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, serie: [500, 0, 500, 500, 1000, 500], color: "#6fbc5e" },
   ],
 };
 
@@ -4268,20 +4268,18 @@ function NumberingDashboard({ role }: { role: Role }) {
         </div>
         <div className="filter-group">
           <span className="filter-label">Criador</span>
-          <div className="chip-set">
-            {[
-              { id: "TODOS", label: "Todos" },
-              ...numberingDemo.criadores.map((c) => ({ id: c.nome, label: c.curto })),
-            ].map((o) => (
-              <button
-                key={o.id}
-                className={`chip ${criador === o.id ? "active" : ""}`}
-                onClick={() => setCriador(o.id)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <select
+            className={`filter-select ${criador !== "TODOS" ? "ativo" : ""}`}
+            value={criador}
+            onChange={(e) => setCriador(e.target.value)}
+          >
+            <option value="TODOS">Todos os criadores</option>
+            {[...numberingDemo.criadores]
+              .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+              .map((c) => (
+                <option key={c.nome} value={c.nome}>{c.nome}</option>
+              ))}
+          </select>
         </div>
       </div>
 

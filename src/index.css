@@ -5792,6 +5792,26 @@ td {
   outline: none;
   border-color: #4BA044;
 }
+.filter-select {
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  padding: 0 12px;
+  cursor: pointer;
+  max-width: 280px;
+}
+.filter-select:focus {
+  outline: none;
+  border-color: #4BA044;
+}
+.filter-select.ativo {
+  border-color: #4BA044;
+  color: #2e7d32;
+  font-weight: 600;
+}
 .span-2 { grid-column: 1 / -1; }
 .head-badge {
   font-size: 11px;
