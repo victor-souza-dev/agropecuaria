@@ -4730,7 +4730,9 @@ type Automacao = {
   ativa: boolean;
   origem: "PNIB" | "Interna";
   tipo: "INTERNACIONAL" | "SISBOV";
+  alvoModo: "especifico" | "tipo";
   atores: string[];
+  tiposAtores: string[];
   gatilho: "estoque" | "pedido" | "agendamento";
   quantidadeModo: "lote" | "pedido";
   lote: number;
@@ -4793,7 +4795,9 @@ const automacoesIniciais: Automacao[] = [
     ativa: true,
     origem: "Interna",
     tipo: "SISBOV",
+    alvoModo: "especifico",
     atores: ["Brinco Sul Indústria"],
+    tiposAtores: [],
     gatilho: "estoque",
     quantidadeModo: "lote",
     lote: 3000,
@@ -4811,7 +4815,9 @@ const automacoesIniciais: Automacao[] = [
     ativa: true,
     origem: "PNIB",
     tipo: "INTERNACIONAL",
+    alvoModo: "especifico",
     atores: ["Identifica Brasil S.A."],
+    tiposAtores: [],
     gatilho: "agendamento",
     quantidadeModo: "lote",
     lote: 6000,
@@ -4825,11 +4831,13 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 3,
-    nome: "Pecúnia Etiquetas — Internacional",
+    nome: "Fabricantes — pedido recebido",
     ativa: false,
     origem: "Interna",
     tipo: "INTERNACIONAL",
-    atores: ["Pecúnia Etiquetas Ltda."],
+    alvoModo: "tipo",
+    atores: [],
+    tiposAtores: ["Fabricante associado"],
     gatilho: "pedido",
     quantidadeModo: "pedido",
     lote: 2000,
@@ -4847,7 +4855,9 @@ const automacoesIniciais: Automacao[] = [
     ativa: true,
     origem: "Interna",
     tipo: "SISBOV",
+    alvoModo: "especifico",
     atores: ["Prefeitura Municipal de Bagé"],
+    tiposAtores: [],
     gatilho: "agendamento",
     quantidadeModo: "lote",
     lote: 2000,
@@ -4869,11 +4879,18 @@ const atoresPendentes = [
   { nome: "Prefeitura Municipal de Bagé", pendente: 960, perfil: "Estoquista · Prefeitura" },
 ];
 
+const tiposAtoresDisponiveis = Array.from(
+  new Set(atoresPendentes.map((a) => a.perfil))
+);
+
 type FormAutomacao = {
   id?: number;
   nome: string;
   origem: "PNIB" | "Interna";
   tipo: "INTERNACIONAL" | "SISBOV";
+  alvoModo: "especifico" | "tipo";
+  tiposAtores: string[];
+  atores: string[];
   gatilho: Automacao["gatilho"];
   quantidadeModo: Automacao["quantidadeModo"];
   lote: number;
@@ -4882,7 +4899,6 @@ type FormAutomacao = {
   diaSemana: number;
   qtdMin: number | null;
   qtdMax: number | null;
-  atores: string[];
   ativa: boolean;
 };
 
@@ -4890,6 +4906,9 @@ const formNova: FormAutomacao = {
   nome: "",
   origem: "Interna",
   tipo: "SISBOV",
+  alvoModo: "especifico",
+  tiposAtores: [],
+  atores: [],
   gatilho: "estoque",
   quantidadeModo: "lote",
   lote: 3000,
@@ -4898,7 +4917,6 @@ const formNova: FormAutomacao = {
   diaSemana: 1,
   qtdMin: null,
   qtdMax: null,
-  atores: [],
   ativa: true,
 };
 
@@ -5010,7 +5028,10 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                 {!a.ativa && <span className="auto-badge off">Inativa</span>}
               </div>
               <div className="auto-meta">
-                <b>Atores:</b> {a.atores.join(", ") || "—"}
+                <b>Atores:</b>{" "}
+                {a.alvoModo === "tipo"
+                  ? `Todos do tipo: ${a.tiposAtores.join(", ") || "—"}`
+                  : a.atores.join(", ") || "—"}
               </div>
               <div className="auto-meta">
                 <b>Regra:</b> {regraTexto(a)}
@@ -5029,9 +5050,17 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                         nome: a.nome,
                         origem: a.origem,
                         tipo: a.tipo,
-                        gatilho: a.gatilho,
-                        lote: a.lote,
+                        alvoModo: a.alvoModo,
                         atores: a.atores,
+                        tiposAtores: a.tiposAtores,
+                        gatilho: a.gatilho,
+                        quantidadeModo: a.quantidadeModo,
+                        lote: a.lote,
+                        frequencia: a.frequencia,
+                        diaMes: a.diaMes,
+                        diaSemana: a.diaSemana,
+                        qtdMin: a.qtdMin,
+                        qtdMax: a.qtdMax,
                         ativa: a.ativa,
                       })
                     }
@@ -5236,25 +5265,73 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
 
             <div className="af-section">
               <span className="af-section-title">Atores atendidos</span>
-              <div className="atores-check">
-                {atoresPendentes.map((a) => (
-                  <label key={a.nome}>
-                    <input
-                      type="checkbox"
-                      checked={form.atores.includes(a.nome)}
-                      onChange={() =>
-                        setForm({
-                          ...form,
-                          atores: form.atores.includes(a.nome)
-                            ? form.atores.filter((n) => n !== a.nome)
-                            : [...form.atores, a.nome],
-                        })
-                      }
-                    />
-                    {a.nome}
-                  </label>
+              <div className="radio-pills">
+                {([
+                  ["especifico", "Atores específicos"],
+                  ["tipo", "Por tipo de ator"],
+                ] as const).map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={form.alvoModo === v ? "active" : ""}
+                    onClick={() => setForm({ ...form, alvoModo: v })}
+                  >
+                    {l}
+                  </button>
                 ))}
               </div>
+              {form.alvoModo === "especifico" ? (
+                <>
+                  <div className="atores-check">
+                    {atoresPendentes.map((a) => (
+                      <label key={a.nome}>
+                        <input
+                          type="checkbox"
+                          checked={form.atores.includes(a.nome)}
+                          onChange={() =>
+                            setForm({
+                              ...form,
+                              atores: form.atores.includes(a.nome)
+                                ? form.atores.filter((n) => n !== a.nome)
+                                : [...form.atores, a.nome],
+                            })
+                          }
+                        />
+                        {a.nome}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="form-hint">
+                    Somente os atores selecionados serão atendidos.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="atores-check">
+                    {tiposAtoresDisponiveis.map((t) => (
+                      <label key={t}>
+                        <input
+                          type="checkbox"
+                          checked={form.tiposAtores.includes(t)}
+                          onChange={() =>
+                            setForm({
+                              ...form,
+                              tiposAtores: form.tiposAtores.includes(t)
+                                ? form.tiposAtores.filter((n) => n !== t)
+                                : [...form.tiposAtores, t],
+                            })
+                          }
+                        />
+                        {t}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="form-hint">
+                    Todos os atores dos tipos selecionados serão atendidos —
+                    incluindo novos atores habilitados no futuro.
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <div className="modal-actions">
