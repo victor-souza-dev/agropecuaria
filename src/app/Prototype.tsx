@@ -3692,6 +3692,20 @@ const numberingDemo = {
     { nome: "Identifica Brasil S.A.", value: 10000 },
     { nome: "Brinco Sul Indústria", value: 5000 },
   ],
+  leadTimePnib: [
+    { id: "SOL-2025-01", autorizacao: 16, entrega: 23 },
+    { id: "SOL-2025-02", autorizacao: 18, entrega: 23 },
+    { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
+  ],
+  tipoSaldo: [
+    { tipo: "Internacional", saldo: 7500, media: 2600 },
+    { tipo: "Nacional · SISBOV", saldo: 3500, media: 600 },
+  ],
+  agingBuckets: [
+    { label: "0–30 dias", value: 6000, color: "#4BA044" },
+    { label: "31–60 dias", value: 3000, color: "#d99a3b" },
+    { label: "60+ dias", value: 2000, color: "#d64545" },
+  ],
 };
 
 function SaldoLineChart({ data, months }: { data: number[]; months: string[] }) {
@@ -3852,6 +3866,88 @@ function SituacaoDonut({ items }: { items: { label: string; value: number; color
   );
 }
 
+function LeadTimeChart({ items }: { items: { id: string; autorizacao: number; entrega: number }[] }) {
+  const maxTotal = Math.max(...items.map((it) => it.autorizacao + it.entrega));
+  return (
+    <div className="hbar-list">
+      {items.map((it) => {
+        const total = it.autorizacao + it.entrega;
+        return (
+          <div className="lt-row" key={it.id}>
+            <div className="lt-head">
+              <span className="lt-id">{it.id}</span>
+              <b className="lt-total">{total} dias</b>
+            </div>
+            <div className="lt-track">
+              <span className="lt-seg auth" style={{ width: `${(it.autorizacao / maxTotal) * 100}%` }} />
+              <span className="lt-seg deliv" style={{ width: `${(it.entrega / maxTotal) * 100}%` }} />
+            </div>
+            <div className="lt-meta">
+              autorização {it.autorizacao} d · fabricação + entrega {it.entrega} d
+            </div>
+          </div>
+        );
+      })}
+      <div className="chart-legend" style={{ padding: 0 }}>
+        <span><span className="dot" style={{ background: "#1565c0" }} />Autorização PNIB</span>
+        <span><span className="dot" style={{ background: "#4BA044" }} />Fabricação + entrega</span>
+      </div>
+    </div>
+  );
+}
+
+function TipoProjection({ items }: { items: { tipo: string; saldo: number; media: number }[] }) {
+  return (
+    <div className="tipo-grid">
+      {items.map((it) => {
+        const dias = Math.round((it.saldo / it.media) * 30);
+        const status = dias > 90 ? "ok" : dias >= 45 ? "warn" : "danger";
+        const label = status === "ok" ? "Saudável" : status === "warn" ? "Atenção" : "Crítico";
+        const pct = Math.min(100, Math.round((dias / 180) * 100));
+        return (
+          <div className={`tipo-card ${status}`} key={it.tipo}>
+            <div className="tipo-name">{it.tipo}</div>
+            <div className="tipo-days">
+              {dias} <small>dias</small>
+            </div>
+            <div className="tipo-meta">
+              saldo {fmtBR(it.saldo)} · consumo {fmtBR(it.media)}/mês
+            </div>
+            <div className="proj-track">
+              <span className="proj-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="tipo-pill">{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgingChart({ buckets }: { buckets: { label: string; value: number; color: string }[] }) {
+  const total = buckets.reduce((a, b) => a + b.value, 0);
+  const max = Math.max(...buckets.map((b) => b.value));
+  return (
+    <div className="hbar-list">
+      {buckets.map((b) => (
+        <div className="hbar-row wide-val" key={b.label}>
+          <span className="hbar-name">{b.label}</span>
+          <div className="hbar-track">
+            <span className="hbar-fill" style={{ width: `${Math.round((b.value / max) * 100)}%`, background: b.color }} />
+          </div>
+          <span className="hbar-value">
+            {fmtBR(b.value)} · {Math.round((b.value / total) * 100)}%
+          </span>
+        </div>
+      ))}
+      <p className="aging-note">
+        Faixas autorizadas e ainda disponíveis, por tempo desde o cadastro
+        (base 30/06/2025). Barra 60+ crescendo indica superautorização.
+      </p>
+    </div>
+  );
+}
+
 function NumberingDashboard({ role }: { role: Role }) {
   const saldoAtual = numberingDemo.saldo[numberingDemo.saldo.length - 1];
   const media3 = Math.round(
@@ -3860,10 +3956,15 @@ function NumberingDashboard({ role }: { role: Role }) {
   const dias = Math.round((saldoAtual / media3) * 30);
   const esgotamento = new Date(2025, 5, 30);
   esgotamento.setDate(esgotamento.getDate() + dias);
-  const status = dias > 90 ? "ok" : dias >= 45 ? "warn" : "danger";
+  const leadMedio = Math.round(
+    numberingDemo.leadTimePnib.reduce((a, it) => a + it.autorizacao + it.entrega, 0) /
+      numberingDemo.leadTimePnib.length
+  );
+  const coberturaLiquida = dias - leadMedio;
+  const status = coberturaLiquida > 90 ? "ok" : coberturaLiquida >= 45 ? "warn" : "danger";
   const statusLabel =
     status === "ok" ? "Ritmo saudável" : status === "warn" ? "Atenção" : "Risco de ruptura";
-  const pctBar = Math.min(100, Math.round((dias / 180) * 100));
+  const pctBar = Math.min(100, Math.round((coberturaLiquida / 180) * 100));
   const maxDest = Math.max(...numberingDemo.destinatarios.map((d) => d.value));
   const situacao = [
     { label: "Disponível", value: saldoAtual, color: "#4BA044" },
@@ -3932,11 +4033,16 @@ function NumberingDashboard({ role }: { role: Role }) {
             até esgotar as {fmtBR(saldoAtual)} numerações disponíveis
             (estimativa {esgotamento.toLocaleDateString("pt-BR")}).
           </div>
+          <div className="proj-sub">
+            Cobertura líquida: <b>{coberturaLiquida} dias</b>, já descontado o
+            lead time médio de reposição ({leadMedio} dias) — critério do status.
+          </div>
           <div className="proj-track">
             <span className="proj-fill" style={{ width: `${pctBar}%` }} />
           </div>
           <div className="proj-meta">
-            Média dos últimos 3 meses: {fmtBR(media3)} numerações/mês · horizonte de 180 dias
+            Média dos últimos 3 meses: {fmtBR(media3)} numerações/mês · lead time
+            médio PNIB: {leadMedio} dias · horizonte de 180 dias
           </div>
         </article>
 
@@ -3995,6 +4101,28 @@ function NumberingDashboard({ role }: { role: Role }) {
         <section className="panel">
           <div className="panel-head">
             <div>
+              <h2>Lead time de reposição — PNIB</h2>
+              <p>Solicitação → autorização → fabricação/entrega</p>
+            </div>
+          </div>
+          <LeadTimeChart items={numberingDemo.leadTimePnib} />
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Projeção por tipo</h2>
+              <p>Dias restantes por categoria de numeração</p>
+            </div>
+          </div>
+          <TipoProjection items={numberingDemo.tipoSaldo} />
+        </section>
+      </div>
+
+      <div className="dash-grid dash-mt">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
               <h2>Top destinatários</h2>
               <p>Fábricas com maior volume de faixas recebidas</p>
             </div>
@@ -4015,25 +4143,11 @@ function NumberingDashboard({ role }: { role: Role }) {
         <section className="panel">
           <div className="panel-head">
             <div>
-              <h2>Distribuição por tipo</h2>
-              <p>Visão geral dos brincos por categoria</p>
+              <h2>Aging do estoque disponível</h2>
+              <p>Tempo de cadastro das faixas ainda não distribuídas</p>
             </div>
           </div>
-          <div style={{ padding: "20px", display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            {[
-              { label: "Nacional · SISBOV", value: "18.000", pct: 69, color: "#2e7d32", bg: "#e8f5e9" },
-              { label: "Internacional", value: "8.000", pct: 31, color: "#7b1fa2", bg: "#f3e5f5" },
-            ].map((item) => (
-              <div key={item.label} style={{
-                flex: "1 1 200px", background: item.bg, borderRadius: 12, padding: "20px",
-                border: `1px solid ${item.color}20`,
-              }}>
-                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: item.color }}>{item.value}</div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>{item.pct}% do total</div>
-              </div>
-            ))}
-          </div>
+          <AgingChart buckets={numberingDemo.agingBuckets} />
         </section>
       </div>
     </div>
