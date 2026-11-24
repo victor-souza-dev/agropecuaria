@@ -5014,6 +5014,26 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
   const [automacoes, setAutomacoes] = useState(automacoesIniciais);
   const [form, setForm] = useState<FormAutomacao | null>(null);
   const [buscaAtor, setBuscaAtor] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "lista">("cards");
+
+  const abrirEdicao = (a: Automacao) =>
+    setForm({
+      id: a.id,
+      origem: a.origem,
+      tipo: a.tipo,
+      alvoModo: a.alvoModo,
+      atores: a.atores,
+      tiposAtores: a.tiposAtores,
+      gatilho: a.gatilho,
+      quantidadeModo: a.quantidadeModo,
+      lote: a.lote,
+      frequencia: a.frequencia,
+      diaMes: a.diaMes,
+      diaSemana: a.diaSemana,
+      qtdMin: a.qtdMin,
+      qtdMax: a.qtdMax,
+      ativa: a.ativa,
+    });
 
   const alvoVazio =
     !!form &&
@@ -5109,84 +5129,156 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
             <h2>Automações configuradas</h2>
             <p>{ativas} ativa{ativas === 1 ? "" : "s"} de {automacoes.length}</p>
           </div>
-        </div>
-        <div className="automacoes-list">
-          {automacoes.map((a) => (
-            <article
-              key={a.id}
-              className={`automacao-card ${a.ativa ? "" : "inativa"}`}
+          <div className="layout-toggle">
+            <button
+              className={`layout-btn ${viewMode === "lista" ? "active" : ""}`}
+              onClick={() => setViewMode("lista")}
+              title="Lista"
             >
-              <div className="auto-head">
-                <strong>{nomeAutomacao(a)}</strong>
-                <button
-                  type="button"
-                  className={`switch ${a.ativa ? "on" : ""}`}
-                  onClick={() => toggleAtiva(a.id)}
-                  aria-label={a.ativa ? "Desativar automação" : "Ativar automação"}
-                >
-                  <span className="knob" />
-                </button>
-              </div>
-              <div className="auto-badges">
-                {a.padrao && <span className="auto-badge padrao">Padrão do sistema</span>}
-                <span className={`auto-badge ${a.origem === "PNIB" ? "pnib" : "interna"}`}>
-                  {a.origem === "PNIB" ? "PNIB" : "Interna"}
-                </span>
-                <span className={`auto-badge ${a.tipo === "SISBOV" ? "sisbov" : "internacional"}`}>
-                  {a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
-                </span>
-                <span className="auto-badge gatilho">{gatilhoBadge(a)}</span>
-                {!a.ativa && <span className="auto-badge off">Inativa</span>}
-              </div>
-              <div className="auto-meta">
-                <b>Atores:</b>{" "}
-                {a.alvoModo === "tipo"
-                  ? `Todos do tipo: ${a.tiposAtores.join(", ") || "—"}`
-                  : a.atores.join(", ") || "—"}
-              </div>
-              <div className="auto-meta">
-                <b>Regra:</b> {regraTexto(a)}
-              </div>
-              <div className="auto-footer">
-                <span className="auto-ultima">
-                  Última geração: {a.ultimaGeracao}
-                  {a.ultimaQtd ? ` · ${fmtBR(a.ultimaQtd)} numerações` : ""}
-                </span>
-                <div className="auto-acoes">
-                  <button onClick={() => gerarAgora(a.id)}>Gerar agora</button>
-                  <button
-                    onClick={() =>
-                      setForm({
-                        id: a.id,
-                        origem: a.origem,
-                        tipo: a.tipo,
-                        alvoModo: a.alvoModo,
-                        atores: a.atores,
-                        tiposAtores: a.tiposAtores,
-                        gatilho: a.gatilho,
-                        quantidadeModo: a.quantidadeModo,
-                        lote: a.lote,
-                        frequencia: a.frequencia,
-                        diaMes: a.diaMes,
-                        diaSemana: a.diaSemana,
-                        qtdMin: a.qtdMin,
-                        qtdMax: a.qtdMax,
-                        ativa: a.ativa,
-                      })
-                    }
-                  >
-                    Editar
-                  </button>
-                  {!a.padrao && (
-                    <button className="danger" onClick={() => excluir(a.id)}>
-                      Excluir
-                    </button>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </button>
+            <button
+              className={`layout-btn ${viewMode === "cards" ? "active" : ""}`}
+              onClick={() => setViewMode("cards")}
+              title="Cards"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+          </div>
         </div>
+        {viewMode === "lista" ? (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Automação</th>
+                  <th>Origem</th>
+                  <th>Tipo</th>
+                  <th>Alvos</th>
+                  <th>Gatilho</th>
+                  <th>Quantidade</th>
+                  <th>Situação</th>
+                  <th className="th-actions">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {automacoes.map((a) => (
+                  <tr key={a.id} className={a.ativa ? "" : "row-inativa"}>
+                    <td className="range-cell">
+                      <strong>{nomeAutomacao(a)}</strong>
+                      {a.padrao && (
+                        <div>
+                          <Badge tone="purple">Padrão do sistema</Badge>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <Badge tone={a.origem === "PNIB" ? "blue" : "green"}>
+                        {a.origem === "PNIB" ? "PNIB" : "Interna"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Badge tone={a.tipo === "SISBOV" ? "green" : "purple"}>
+                        {a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                      </Badge>
+                    </td>
+                    <td className="alvos-cell">
+                      {a.alvoModo === "tipo"
+                        ? `Tipo: ${a.tiposAtores.join(", ")}`
+                        : a.atores.join(", ")}
+                    </td>
+                    <td>{gatilhoBadge(a)}</td>
+                    <td>
+                      {a.quantidadeModo === "pedido"
+                        ? "Conforme pedido"
+                        : `Lote de ${fmtBR(a.lote)}`}
+                    </td>
+                    <td>
+                      <Badge tone={a.ativa ? "green" : "yellow"}>
+                        {a.ativa ? "Ativa" : "Inativa"}
+                      </Badge>
+                    </td>
+                    <td className="td-actions">
+                      <div className="action-cell">
+                        <button className="text-btn" onClick={() => gerarAgora(a.id)}>
+                          Gerar agora
+                        </button>
+                        <button className="text-btn" onClick={() => abrirEdicao(a)}>
+                          Editar
+                        </button>
+                        {!a.padrao && (
+                          <button className="text-btn danger-text" onClick={() => excluir(a.id)}>
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="automacoes-list">
+            {automacoes.map((a) => (
+              <article
+                key={a.id}
+                className={`automacao-card ${a.ativa ? "" : "inativa"}`}
+              >
+                <div className="auto-head">
+                  <strong>{nomeAutomacao(a)}</strong>
+                  <button
+                    type="button"
+                    className={`switch ${a.ativa ? "on" : ""}`}
+                    onClick={() => toggleAtiva(a.id)}
+                    aria-label={a.ativa ? "Desativar automação" : "Ativar automação"}
+                  >
+                    <span className="knob" />
+                  </button>
+                </div>
+                <div className="auto-badges">
+                  {a.padrao && <span className="auto-badge padrao">Padrão do sistema</span>}
+                  <span className={`auto-badge ${a.origem === "PNIB" ? "pnib" : "interna"}`}>
+                    {a.origem === "PNIB" ? "PNIB" : "Interna"}
+                  </span>
+                  <span className={`auto-badge ${a.tipo === "SISBOV" ? "sisbov" : "internacional"}`}>
+                    {a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                  </span>
+                  <span className="auto-badge gatilho">{gatilhoBadge(a)}</span>
+                  {!a.ativa && <span className="auto-badge off">Inativa</span>}
+                </div>
+                <div className="auto-meta">
+                  <b>Atores:</b>{" "}
+                  {a.alvoModo === "tipo"
+                    ? `Todos do tipo: ${a.tiposAtores.join(", ") || "—"}`
+                    : a.atores.join(", ") || "—"}
+                </div>
+                <div className="auto-meta">
+                  <b>Regra:</b> {regraTexto(a)}
+                </div>
+                <div className="auto-footer">
+                  <span className="auto-ultima">
+                    Última geração: {a.ultimaGeracao}
+                    {a.ultimaQtd ? ` · ${fmtBR(a.ultimaQtd)} numerações` : ""}
+                  </span>
+                  <div className="auto-acoes">
+                    <button onClick={() => gerarAgora(a.id)}>Gerar agora</button>
+                    <button onClick={() => abrirEdicao(a)}>Editar</button>
+                    {!a.padrao && (
+                      <button className="danger" onClick={() => excluir(a.id)}>
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       {form && (

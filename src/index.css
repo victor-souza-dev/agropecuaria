@@ -6070,6 +6070,9 @@ button.filter-select .chev {
 .af-col .radio-pills { flex-wrap: nowrap; }
 .af-stack { margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .af-stack span { font-size: 12px; color: #4b5563; }
+.alvos-cell { max-width: 240px; font-size: 11px; color: #6b7280; line-height: 1.45; }
+.data-table tr.row-inativa td { opacity: 0.7; }
+.text-btn.danger-text { color: #b03434; }
 .af-stack input { max-width: 280px; }
 .radio-pills button:disabled {
   opacity: 0.45;
@@ -6094,6 +6097,23 @@ button.filter-select .chev {
   margin: 6px 0 0;
   line-height: 1.5;
 }
+.form-hint.erro { color: #b03434; }
+.af-conflito {
+  border: 1px solid #e8b4b4;
+  background: #fdeaea;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.af-conflito b { font-size: 12px; color: #b03434; }
+.af-conflito p { font-size: 12px; color: #7a4444; margin: 0; line-height: 1.5; }
+.auto-badge.padrao { background: #ede7f6; color: #5e35b1; }
+.af-full { display: flex; flex-direction: column; gap: 6px; }
+.af-grid2 .af-full { grid-column: 1 / -1; }
+.af-grid2 .af-full select { width: 100%; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 720px) {
   .atores-check { grid-template-columns: 1fr; }
 }
