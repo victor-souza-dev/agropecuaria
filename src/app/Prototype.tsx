@@ -4872,11 +4872,17 @@ const automacoesIniciais: Automacao[] = [
 ];
 
 const atoresPendentes = [
-  { nome: "Brinco Sul Indústria", pendente: 480, perfil: "Fabricante associado" },
-  { nome: "Identifica Brasil S.A.", pendente: 1200, perfil: "Fabricante associado" },
-  { nome: "Pecúnia Etiquetas Ltda.", pendente: 350, perfil: "Fabricante associado" },
-  { nome: "Agropecuária Pampa Sul", pendente: 120, perfil: "Estoquista · PJ" },
-  { nome: "Prefeitura Municipal de Bagé", pendente: 960, perfil: "Estoquista · Prefeitura" },
+  { nome: "Brinco Sul Indústria", pendente: 480, perfil: "Fabricante de brincos" },
+  { nome: "Identifica Brasil S.A.", pendente: 1200, perfil: "Fabricante de brincos" },
+  { nome: "Pecúnia Etiquetas Ltda.", pendente: 350, perfil: "Fabricante de brincos" },
+  { nome: "Prefeitura Municipal de Bagé", pendente: 960, perfil: "Prefeitura" },
+  { nome: "Agropecuária Pampa Sul", pendente: 120, perfil: "Estoquista habilitado (PJ)" },
+  { nome: "Antônio C. Silveira", pendente: 240, perfil: "Estoquista habilitado (PF)" },
+  { nome: "Comercial Rural Tradição Ltda.", pendente: 600, perfil: "Credenciado" },
+  { nome: "Inspetoria Veterinária Zonal — Bagé", pendente: 300, perfil: "Inspetoria (IVZ)" },
+  { nome: "Posto de Brincos — Camaquã", pendente: 150, perfil: "Posto" },
+  { nome: "Integradora Sul Suínos", pendente: 500, perfil: "Integradora" },
+  { nome: "João Pedro Fagundes", pendente: 60, perfil: "Produtor rural" },
 ];
 
 const tiposAtoresDisponiveis = Array.from(
