@@ -4896,18 +4896,26 @@ const atoresPendentes = [
   { nome: "Identifica Brasil S.A.", pendente: 1200, perfil: "Fabricante de brincos" },
   { nome: "Pecúnia Etiquetas Ltda.", pendente: 350, perfil: "Fabricante de brincos" },
   { nome: "Prefeitura Municipal de Bagé", pendente: 960, perfil: "Prefeitura" },
-  { nome: "Agropecuária Pampa Sul", pendente: 120, perfil: "Loja agropecuária (PJ SEAPA)" },
-  { nome: "Antônio C. Silveira", pendente: 240, perfil: "Estoquista PF" },
-  { nome: "Comercial Rural Tradição Ltda.", pendente: 600, perfil: "Credenciado" },
-  { nome: "Inspetoria Veterinária Zonal — Bagé", pendente: 300, perfil: "Inspetoria (IVZ)" },
-  { nome: "Posto de Brincos — Camaquã", pendente: 150, perfil: "Posto" },
-  { nome: "Integradora Sul Suínos", pendente: 500, perfil: "Integradora" },
+  { nome: "Agropecuária Pampa Sul", pendente: 120, perfil: "Habilitado" },
+  { nome: "Antônio C. Silveira", pendente: 240, perfil: "Habilitado" },
+  { nome: "Comercial Rural Tradição Ltda.", pendente: 600, perfil: "Habilitado" },
+  { nome: "Inspetoria Veterinária Zonal — Bagé", pendente: 300, perfil: "IDA" },
+  { nome: "Posto de Brincos — Camaquã", pendente: 150, perfil: "EDA" },
   { nome: "João Pedro Fagundes", pendente: 60, perfil: "Produtor rural" },
 ];
 
-const tiposAtoresDisponiveis = Array.from(
-  new Set(atoresPendentes.map((a) => a.perfil))
-);
+// Fonte: dropdown "Tipo Estocador" da tela Pesquisar Estocador (DFDS legado)
+// + os atores novos do módulo (fabricante e produtor com estoque próprio)
+const tiposAtoresDisponiveis = [
+  "Habilitado",
+  "Prefeitura",
+  "IDA",
+  "EDA",
+  "SEAPI",
+  "Cooperativa de Leite PNCEBT",
+  "Fabricante de brincos",
+  "Produtor rural",
+];
 
 type FormAutomacao = {
   id?: number;
