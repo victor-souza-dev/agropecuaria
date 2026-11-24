@@ -5291,7 +5291,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
             {form.gatilho === "agendamento" && (
               <div className="af-section">
                 <span className="af-section-title">Agendamento</span>
-                <div className="af-row">
+                <div className="af-col">
                   <div className="radio-pills">
                     {([
                       ["mensal", "Mensal"],
@@ -5308,10 +5308,10 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                     ))}
                   </div>
                   {form.frequencia === "mensal" ? (
-                    <label className="af-inline">
+                    <label className="af-stack">
+                      <span>Dia do mês</span>
                       <select
                         value={form.diaMes}
-                        aria-label="Dia do mês"
                         onChange={(e) => setForm({ ...form, diaMes: Number(e.target.value) })}
                       >
                         {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
@@ -5320,10 +5320,10 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                       </select>
                     </label>
                   ) : (
-                    <label className="af-inline">
+                    <label className="af-stack">
+                      <span>Dia da semana</span>
                       <select
                         value={form.diaSemana}
-                        aria-label="Dia da semana"
                         onChange={(e) => setForm({ ...form, diaSemana: Number(e.target.value) })}
                       >
                         {diasSemanaNomes.map((d, i) => (
