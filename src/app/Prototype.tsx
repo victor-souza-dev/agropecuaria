@@ -4726,7 +4726,7 @@ function NumberingDashboard({ role }: { role: Role }) {
 
 type Automacao = {
   id: number;
-  nome: string;
+  padrao?: boolean;
   ativa: boolean;
   origem: "PNIB" | "Interna";
   tipo: "INTERNACIONAL" | "SISBOV";
@@ -4781,6 +4781,39 @@ const gatilhoBadge = (a: Automacao) =>
         ? "Agendamento mensal"
         : "Agendamento semanal";
 
+const gatilhoCurto = (a: Automacao) =>
+  a.gatilho === "estoque"
+    ? "estoque mínimo"
+    : a.gatilho === "pedido"
+      ? "pedido recebido"
+      : a.frequencia === "mensal"
+        ? `agendamento dia ${a.diaMes}`
+        : `agendamento ${diasSemanaNomes[a.diaSemana].toLowerCase()}`;
+
+// Nome derivado da configuração — não é campo livre, é sempre recalculado
+const nomeAutomacao = (a: Automacao) => {
+  const alvo =
+    a.alvoModo === "tipo"
+      ? a.tiposAtores.join(" + ") || "sem alvo"
+      : a.atores.join(" + ") || "sem alvo";
+  return `${alvo} · ${a.origem} ${a.tipo} · ${gatilhoCurto(a)}`;
+};
+
+// Duas automações concorrem quando atendem o mesmo ator com a mesma
+// origem e o mesmo tipo de brinco (uma sobrescreveria a outra)
+const escopoSobrepoe = (
+  a: Pick<Automacao, "origem" | "tipo" | "alvoModo" | "atores" | "tiposAtores">,
+  b: Pick<Automacao, "origem" | "tipo" | "alvoModo" | "atores" | "tiposAtores">
+) => {
+  if (a.origem !== b.origem || a.tipo !== b.tipo) return false;
+  const atoresDe = (x: typeof a) =>
+    x.alvoModo === "tipo"
+      ? atoresPendentes.filter((at) => x.tiposAtores.includes(at.perfil)).map((at) => at.nome)
+      : x.atores;
+  const intersecao = atoresDe(a).filter((n) => atoresDe(b).includes(n));
+  return intersecao.length > 0;
+};
+
 const regraTexto = (a: Automacao) =>
   a.gatilho === "estoque"
     ? `Dispara quando o estoque do ator fica baixo · ${qtdTexto(a)}`
@@ -4791,7 +4824,6 @@ const regraTexto = (a: Automacao) =>
 const automacoesIniciais: Automacao[] = [
   {
     id: 1,
-    nome: "Reposição Brinco Sul — SISBOV",
     ativa: true,
     origem: "Interna",
     tipo: "SISBOV",
@@ -4811,7 +4843,6 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 2,
-    nome: "Exportação — Identifica Brasil",
     ativa: true,
     origem: "PNIB",
     tipo: "INTERNACIONAL",
@@ -4831,7 +4862,6 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 3,
-    nome: "Fabricantes — pedido recebido",
     ativa: false,
     origem: "Interna",
     tipo: "INTERNACIONAL",
@@ -4851,7 +4881,6 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 4,
-    nome: "Reposição semanal — Prefeitura de Bagé",
     ativa: true,
     origem: "Interna",
     tipo: "SISBOV",
@@ -4871,7 +4900,6 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 5,
-    nome: "Reposição Agropecuária Pampa Sul — SISBOV",
     ativa: true,
     origem: "Interna",
     tipo: "SISBOV",
@@ -4891,8 +4919,8 @@ const automacoesIniciais: Automacao[] = [
   },
   {
     id: 6,
-    nome: "Agropecuárias — pedido direto à SEAPI",
-    ativa: false,
+    padrao: true,
+    ativa: true,
     origem: "Interna",
     tipo: "INTERNACIONAL",
     alvoModo: "tipo",
@@ -4941,7 +4969,6 @@ const tiposAtoresDisponiveis = [
 
 type FormAutomacao = {
   id?: number;
-  nome: string;
   origem: "PNIB" | "Interna";
   tipo: "INTERNACIONAL" | "SISBOV";
   alvoModo: "especifico" | "tipo";
@@ -4959,7 +4986,6 @@ type FormAutomacao = {
 };
 
 const formNova: FormAutomacao = {
-  nome: "",
   origem: "Interna",
   tipo: "SISBOV",
   alvoModo: "especifico",
@@ -4981,12 +5007,31 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
   const [form, setForm] = useState<FormAutomacao | null>(null);
   const [buscaAtor, setBuscaAtor] = useState("");
 
+  const alvoVazio =
+    !!form &&
+    (form.alvoModo === "especifico" ? form.atores.length === 0 : form.tiposAtores.length === 0);
+  const conflitos = form
+    ? automacoes.filter((a) => a.id !== form.id && a.ativa && escopoSobrepoe(a, form))
+    : [];
+
   const toggleAtiva = (id: number) => {
+    const alvo = automacoes.find((a) => a.id === id);
+    if (!alvo) return;
+    if (!alvo.ativa) {
+      const conflitos = automacoes.filter(
+        (a) => a.id !== id && a.ativa && escopoSobrepoe(a, alvo)
+      );
+      if (conflitos.length > 0) {
+        notify(
+          `Não é possível ativar: o escopo sobrepõe a automação ativa "${nomeAutomacao(conflitos[0])}".`
+        );
+        return;
+      }
+    }
     setAutomacoes((prev) =>
       prev.map((a) => (a.id === id ? { ...a, ativa: !a.ativa } : a))
     );
-    const alvo = automacoes.find((a) => a.id === id);
-    if (alvo) notify(`Automação "${alvo.nome}" ${alvo.ativa ? "desativada" : "ativada"}.`);
+    notify(`Automação "${nomeAutomacao(alvo)}" ${alvo.ativa ? "desativada" : "ativada"}.`);
   };
 
   const gerarAgora = (id: number) => {
@@ -5064,7 +5109,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               className={`automacao-card ${a.ativa ? "" : "inativa"}`}
             >
               <div className="auto-head">
-                <strong>{a.nome}</strong>
+                <strong>{nomeAutomacao(a)}</strong>
                 <button
                   type="button"
                   className={`switch ${a.ativa ? "on" : ""}`}
@@ -5075,6 +5120,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                 </button>
               </div>
               <div className="auto-badges">
+                {a.padrao && <span className="auto-badge padrao">Padrão do sistema</span>}
                 <span className={`auto-badge ${a.origem === "PNIB" ? "pnib" : "interna"}`}>
                   {a.origem === "PNIB" ? "PNIB" : "Interna"}
                 </span>
@@ -5104,7 +5150,6 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                     onClick={() =>
                       setForm({
                         id: a.id,
-                        nome: a.nome,
                         origem: a.origem,
                         tipo: a.tipo,
                         alvoModo: a.alvoModo,
@@ -5124,9 +5169,11 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                   >
                     Editar
                   </button>
-                  <button className="danger" onClick={() => excluir(a.id)}>
-                    Excluir
-                  </button>
+                  {!a.padrao && (
+                    <button className="danger" onClick={() => excluir(a.id)}>
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
@@ -5141,33 +5188,19 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
           onClose={() => setForm(null)}
         >
           <div className="modal-body form-grid af-form">
+            {conflitos.length > 0 && (
+              <div className="af-conflito">
+                <b>Sobreposição de escopo</b>
+                <p>
+                  Esta configuração atende atores já cobertos pela automação ativa{" "}
+                  <b>"{nomeAutomacao(conflitos[0])}"</b>
+                  {conflitos.length > 1 ? ` e mais ${conflitos.length - 1} outra(s)` : ""}. Duas
+                  automações concorrentes gerariam faixas duplicadas — desative a automação
+                  existente ou ajuste o escopo antes de salvar.
+                </p>
+              </div>
+            )}
             <div className="af-grid2">
-              <label>
-                <span>Nome da automação</span>
-                <input
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  placeholder="Ex.: Reposição Brinco Sul — SISBOV"
-                />
-              </label>
-              <label>
-                <span>Gatilho da geração</span>
-                <select
-                  value={form.gatilho}
-                  onChange={(e) => {
-                    const gatilho = e.target.value as Automacao["gatilho"];
-                    setForm({
-                      ...form,
-                      gatilho,
-                      quantidadeModo: gatilho === "pedido" ? "pedido" : "lote",
-                    });
-                  }}
-                >
-                  <option value="estoque">Estoque mínimo do ator</option>
-                  <option value="pedido">Pedido recebido do ator</option>
-                  <option value="agendamento">Agendamento</option>
-                </select>
-              </label>
               <label>
                 <span>Origem da numeração</span>
                 <div className="radio-pills">
@@ -5209,6 +5242,24 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                     Faixas PNIB são sempre do tipo Internacional (076).
                   </p>
                 )}
+              </label>
+              <label className="af-full">
+                <span>Gatilho da geração</span>
+                <select
+                  value={form.gatilho}
+                  onChange={(e) => {
+                    const gatilho = e.target.value as Automacao["gatilho"];
+                    setForm({
+                      ...form,
+                      gatilho,
+                      quantidadeModo: gatilho === "pedido" ? "pedido" : "lote",
+                    });
+                  }}
+                >
+                  <option value="estoque">Estoque mínimo do ator</option>
+                  <option value="pedido">Pedido recebido do ator</option>
+                  <option value="agendamento">Agendamento</option>
+                </select>
               </label>
             </div>
 
@@ -5391,6 +5442,9 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                       Nenhum ator encontrado{buscaAtor.trim() ? ` para "${buscaAtor.trim()}"` : ""}.
                     </p>
                   )}
+                  {form.atores.length === 0 && (
+                    <p className="form-hint erro">Selecione ao menos um ator para salvar.</p>
+                  )}
                   <p className="form-hint">
                     Somente os atores selecionados serão atendidos.
                   </p>
@@ -5416,6 +5470,11 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                       </label>
                     ))}
                   </div>
+                  {form.tiposAtores.length === 0 && (
+                    <p className="form-hint erro">
+                      Selecione ao menos um tipo de ator para salvar.
+                    </p>
+                  )}
                   <p className="form-hint">
                     Todos os atores dos tipos selecionados serão atendidos —
                     incluindo novos atores habilitados no futuro.
@@ -5428,7 +5487,11 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
             <button className="btn secondary" onClick={() => setForm(null)}>
               Cancelar
             </button>
-            <button className="btn primary" onClick={salvar}>
+            <button
+              className="btn primary"
+              disabled={alvoVazio || conflitos.length > 0}
+              onClick={salvar}
+            >
               Salvar automação
             </button>
           </div>
