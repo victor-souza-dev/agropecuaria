@@ -3707,7 +3707,7 @@ const numberingDemo = {
     { label: "60+ dias", value: 2000, color: "#d64545" },
   ],
   criadores: [
-    { nome: "PNIB — integração automática", value: 20000, color: "#1565c0" },
+    { nome: "PNIB — geração automática", value: 20000, color: "#1565c0" },
     { nome: "Ana R. Farias — SEAPI", value: 3000, color: "#4BA044" },
     { nome: "Carlos M. Duarte — SEAPI", value: 2000, color: "#6fbc5e" },
     { nome: "Juliana P. Rocha — SEAPI", value: 1000, color: "#96d18a" },
@@ -4147,7 +4147,7 @@ function NumberingDashboard({ role }: { role: Role }) {
           ))}
           <p className="aging-note">
             {fmtBR(totalCriado)} numerações criadas entre jan e jun/2025 —{" "}
-            {fmtBR(criadoPnib)} via PNIB (integração automática) e {fmtBR(criadoInterna)}{" "}
+            {fmtBR(criadoPnib)} via PNIB (geração automática) e {fmtBR(criadoInterna)}{" "}
             geradas internamente por analistas da SEAPI.
           </p>
         </div>
