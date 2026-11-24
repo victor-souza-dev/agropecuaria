@@ -12,6 +12,7 @@ type Page =
   | "pedidos-sda"
   | "pedidos-sda-novo"
   | "numeracao"
+  | "automacoes"
   | "pedidos"
   | "solicitar";
 type Modal = null | {
@@ -59,6 +60,7 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
     { id: "pedidos-sda", label: "Pedidos de brincos", icon: "request" },
     { id: "habilitacao", label: "Habilitações", icon: "users" },
     { id: "numeracao", label: "Gestão de numeração", icon: "hash" },
+    { id: "automacoes", label: "Automações de geração", icon: "document" },
   ],
   loja: [
     { id: "estoque", label: "Meu estoque", icon: "box" },
@@ -99,6 +101,10 @@ const pageMeta: Record<Page, [string, string]> = {
     "Pedidos ao estoque central SDA especificando o ator solicitante — ciclo de aprovação, envio e confirmação por leitura.",
   ],
   numeracao: ["Gestão de numeração", "Controle as faixas emitidas pelo PNIB ou internamente."],
+  automacoes: [
+    "Automações de geração",
+    "Configure quando e como o sistema gera faixas automaticamente — origem PNIB ou interna, tipo e atores atendidos.",
+  ],
   pedidos: ["Fila de pedidos da fábrica", "Pedidos aguardando produção e declaração de envio."],
   solicitar: ["Solicitar brincos", "Solicite novos brincos a uma fábrica habilitada."],
 };
@@ -856,6 +862,8 @@ export function ModulePage({ page }: { page: Page }) {
         return <NumberingDashboard role={context.role} />;
       }
       return <NumberingPage notify={context.notify} role={context.role} />;
+    case "automacoes":
+      return <AutomacoesPage notify={context.notify} />;
     case "pedidos":
       return <FactoryPage notify={context.notify} />;
     case "solicitar":
@@ -4712,6 +4720,356 @@ function NumberingDashboard({ role }: { role: Role }) {
           <AgingChart buckets={agingBuckets} />
         </section>
       </div>
+    </div>
+  );
+}
+
+type Automacao = {
+  id: number;
+  nome: string;
+  ativa: boolean;
+  origem: "PNIB" | "Interna";
+  tipo: "INTERNACIONAL" | "SISBOV";
+  atores: string[];
+  gatilho: "estoque" | "pedido" | "agendamento";
+  lote: number;
+  ultimaGeracao: string;
+  ultimaQtd: number | null;
+};
+
+const gatilhoTexto: Record<Automacao["gatilho"], string> = {
+  estoque: "Dispara quando o estoque do ator fica baixo",
+  pedido: "Dispara ao receber pedido do ator",
+  agendamento: "Dispara todo dia 1º do mês",
+};
+
+const automacoesIniciais: Automacao[] = [
+  {
+    id: 1,
+    nome: "Reposição Brinco Sul — SISBOV",
+    ativa: true,
+    origem: "Interna",
+    tipo: "SISBOV",
+    atores: ["Brinco Sul Indústria"],
+    gatilho: "estoque",
+    lote: 3000,
+    ultimaGeracao: "05/06/2025",
+    ultimaQtd: 3000,
+  },
+  {
+    id: 2,
+    nome: "Exportação — Identifica Brasil",
+    ativa: true,
+    origem: "PNIB",
+    tipo: "INTERNACIONAL",
+    atores: ["Identifica Brasil S.A."],
+    gatilho: "agendamento",
+    lote: 6000,
+    ultimaGeracao: "01/06/2025",
+    ultimaQtd: 6000,
+  },
+  {
+    id: 3,
+    nome: "Pecúnia Etiquetas — Internacional",
+    ativa: false,
+    origem: "Interna",
+    tipo: "INTERNACIONAL",
+    atores: ["Pecúnia Etiquetas Ltda."],
+    gatilho: "pedido",
+    lote: 2000,
+    ultimaGeracao: "—",
+    ultimaQtd: null,
+  },
+];
+
+const atoresPendentes = [
+  { nome: "Brinco Sul Indústria", pendente: 480, perfil: "Fabricante associado" },
+  { nome: "Identifica Brasil S.A.", pendente: 1200, perfil: "Fabricante associado" },
+  { nome: "Pecúnia Etiquetas Ltda.", pendente: 350, perfil: "Fabricante associado" },
+  { nome: "Agropecuária Pampa Sul", pendente: 120, perfil: "Estoquista · PJ" },
+  { nome: "Prefeitura Municipal de Bagé", pendente: 960, perfil: "Estoquista · Prefeitura" },
+];
+
+type FormAutomacao = {
+  id?: number;
+  nome: string;
+  origem: "PNIB" | "Interna";
+  tipo: "INTERNACIONAL" | "SISBOV";
+  gatilho: Automacao["gatilho"];
+  lote: number;
+  atores: string[];
+  ativa: boolean;
+};
+
+function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
+  const [automacoes, setAutomacoes] = useState(automacoesIniciais);
+  const [form, setForm] = useState<FormAutomacao | null>(null);
+
+  const toggleAtiva = (id: number) => {
+    setAutomacoes((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, ativa: !a.ativa } : a))
+    );
+    const alvo = automacoes.find((a) => a.id === id);
+    if (alvo) notify(`Automação "${alvo.nome}" ${alvo.ativa ? "desativada" : "ativada"}.`);
+  };
+
+  const gerarAgora = (id: number) => {
+    setAutomacoes((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, ultimaGeracao: "18/06/2025", ultimaQtd: a.lote } : a
+      )
+    );
+    notify("Geração manual executada — faixas criadas conforme a automação.");
+  };
+
+  const excluir = (id: number) => {
+    setAutomacoes((prev) => prev.filter((a) => a.id !== id));
+    notify("Automação excluída.");
+  };
+
+  const salvar = () => {
+    if (!form) return;
+    if (form.id) {
+      setAutomacoes((prev) =>
+        prev.map((a) => (a.id === form.id ? { ...a, ...form } : a))
+      );
+      notify("Automação atualizada — vale para as próximas gerações.");
+    } else {
+      setAutomacoes((prev) => [
+        ...prev,
+        { ...form, id: Date.now(), ultimaGeracao: "—", ultimaQtd: null },
+      ]);
+      notify("Automação criada — a geração seguirá a configuração definida.");
+    }
+    setForm(null);
+  };
+
+  const ativas = automacoes.filter((a) => a.ativa).length;
+
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Automações de geração</h3>
+        <div className="header-actions">
+          <button
+            className="btn primary"
+            onClick={() =>
+              setForm({
+                nome: "",
+                origem: "Interna",
+                tipo: "SISBOV",
+                gatilho: "estoque",
+                lote: 3000,
+                atores: [],
+                ativa: true,
+              })
+            }
+          >
+            <Icon name="hash" /> Nova automação
+          </button>
+        </div>
+      </section>
+
+      <div className="dash-note">
+        As automações geram faixas de numeração sem intervenção manual, conforme a
+        configuração definida pela SEAPI — origem (PNIB ou interna), tipo
+        (Internacional ou SISBOV), atores atendidos e gatilho de disparo.
+      </div>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Atores aguardando brincos</h2>
+            <p>Demandas pendentes que podem ser atendidas por automação</p>
+          </div>
+          <span className="head-badge">{atoresPendentes.length} atores</span>
+        </div>
+        <div className="atores-grid">
+          {atoresPendentes.map((a) => (
+            <article className="ator-card" key={a.nome}>
+              <strong>{a.nome}</strong>
+              <small>{a.perfil}</small>
+              <span className="ator-pend">{fmtBR(a.pendente)} numerações pendentes</span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel dash-mt">
+        <div className="panel-head">
+          <div>
+            <h2>Automações configuradas</h2>
+            <p>{ativas} ativa{ativas === 1 ? "" : "s"} de {automacoes.length}</p>
+          </div>
+        </div>
+        <div className="automacoes-list">
+          {automacoes.map((a) => (
+            <article
+              key={a.id}
+              className={`automacao-card ${a.ativa ? "" : "inativa"}`}
+            >
+              <div className="auto-head">
+                <strong>{a.nome}</strong>
+                <button
+                  type="button"
+                  className={`switch ${a.ativa ? "on" : ""}`}
+                  onClick={() => toggleAtiva(a.id)}
+                  aria-label={a.ativa ? "Desativar automação" : "Ativar automação"}
+                >
+                  <span className="knob" />
+                </button>
+              </div>
+              <div className="auto-badges">
+                <span className={`auto-badge ${a.origem === "PNIB" ? "pnib" : "interna"}`}>
+                  {a.origem === "PNIB" ? "PNIB" : "Interna"}
+                </span>
+                <span className={`auto-badge ${a.tipo === "SISBOV" ? "sisbov" : "internacional"}`}>
+                  {a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                </span>
+                <span className="auto-badge gatilho">{gatilhoTexto[a.gatilho]}</span>
+                {!a.ativa && <span className="auto-badge off">Inativa</span>}
+              </div>
+              <div className="auto-meta">
+                <b>Atores:</b> {a.atores.join(", ") || "—"}
+              </div>
+              <div className="auto-meta">
+                <b>Regra:</b> {gatilhoTexto[a.gatilho]} · lote de {fmtBR(a.lote)} numerações
+              </div>
+              <div className="auto-footer">
+                <span className="auto-ultima">
+                  Última geração: {a.ultimaGeracao}
+                  {a.ultimaQtd ? ` · ${fmtBR(a.ultimaQtd)} numerações` : ""}
+                </span>
+                <div className="auto-acoes">
+                  <button onClick={() => gerarAgora(a.id)}>Gerar agora</button>
+                  <button
+                    onClick={() =>
+                      setForm({
+                        id: a.id,
+                        nome: a.nome,
+                        origem: a.origem,
+                        tipo: a.tipo,
+                        gatilho: a.gatilho,
+                        lote: a.lote,
+                        atores: a.atores,
+                        ativa: a.ativa,
+                      })
+                    }
+                  >
+                    Editar
+                  </button>
+                  <button className="danger" onClick={() => excluir(a.id)}>
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {form && (
+        <ModalShell
+          title={form.id ? "Editar automação" : "Nova automação"}
+          subtitle="A configuração vale para as próximas gerações automáticas."
+          onClose={() => setForm(null)}
+        >
+          <div className="modal-body form-grid">
+            <label>
+              <span>Nome da automação</span>
+              <input
+                value={form.nome}
+                onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                placeholder="Ex.: Reposição Brinco Sul — SISBOV"
+              />
+            </label>
+            <label>
+              <span>Origem da numeração</span>
+              <div className="radio-pills">
+                {(["PNIB", "Interna"] as const).map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    className={form.origem === o ? "active" : ""}
+                    onClick={() => setForm({ ...form, origem: o })}
+                  >
+                    {o === "PNIB" ? "Brinco PNIB" : "Brinco Interno"}
+                  </button>
+                ))}
+              </div>
+            </label>
+            <label>
+              <span>Tipo de brinco</span>
+              <div className="radio-pills">
+                {([
+                  ["INTERNACIONAL", "Internacional"],
+                  ["SISBOV", "Nacional · SISBOV"],
+                ] as const).map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={form.tipo === v ? "active" : ""}
+                    onClick={() => setForm({ ...form, tipo: v })}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </label>
+            <label>
+              <span>Gatilho da geração</span>
+              <select
+                value={form.gatilho}
+                onChange={(e) =>
+                  setForm({ ...form, gatilho: e.target.value as Automacao["gatilho"] })
+                }
+              >
+                <option value="estoque">Estoque mínimo do ator</option>
+                <option value="pedido">Pedido recebido do ator</option>
+                <option value="agendamento">Agendamento mensal</option>
+              </select>
+            </label>
+            <label>
+              <span>Lote de geração (numerações)</span>
+              <input
+                type="number"
+                value={form.lote}
+                onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
+              />
+            </label>
+            <div className="atores-check-wrap">
+              <span className="atores-check-label">Atores atendidos</span>
+              <div className="atores-check">
+                {atoresPendentes.map((a) => (
+                  <label key={a.nome}>
+                    <input
+                      type="checkbox"
+                      checked={form.atores.includes(a.nome)}
+                      onChange={() =>
+                        setForm({
+                          ...form,
+                          atores: form.atores.includes(a.nome)
+                            ? form.atores.filter((n) => n !== a.nome)
+                            : [...form.atores, a.nome],
+                        })
+                      }
+                    />
+                    {a.nome}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setForm(null)}>
+              Cancelar
+            </button>
+            <button className="btn primary" onClick={salvar}>
+              Salvar automação
+            </button>
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 }

@@ -5873,6 +5873,172 @@ button.filter-select .chev {
 .ms-option:hover { background: #f3f7f3; }
 .ms-option input { accent-color: #4BA044; margin: 0; }
 .span-2 { grid-column: 1 / -1; }
+
+/* ===== Automações de geração ===== */
+.atores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  padding: 14px 20px 18px;
+}
+.ator-card {
+  border: 1px solid #e2e8e3;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fbfdfb;
+}
+.ator-card strong { font-size: 12.5px; color: #314138; }
+.ator-card small { font-size: 11px; color: #9ca3af; }
+.ator-pend {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a66e1c;
+}
+.automacoes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px 18px;
+}
+.automacao-card {
+  border: 1px solid #e2e8e3;
+  border-left: 3px solid #4BA044;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+}
+.automacao-card.inativa {
+  border-left-color: #d1d5db;
+  opacity: 0.72;
+}
+.auto-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.auto-head strong { font-size: 13.5px; color: #314138; }
+.auto-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.auto-badge {
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+.auto-badge.pnib { background: #e3f2fd; color: #1565c0; }
+.auto-badge.interna { background: #e0f2f1; color: #00695c; }
+.auto-badge.internacional { background: #f3e5f5; color: #7b1fa2; }
+.auto-badge.sisbov { background: #e8f5e9; color: #2e7d32; }
+.auto-badge.gatilho { background: #fff3e0; color: #e65100; }
+.auto-badge.off { background: #f3f4f6; color: #6b7280; }
+.auto-meta { font-size: 12px; color: #6b7280; }
+.auto-meta b { color: #314138; font-weight: 600; }
+.auto-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #eef2ee;
+  padding-top: 10px;
+  flex-wrap: wrap;
+}
+.auto-ultima { font-size: 11.5px; color: #9ca3af; }
+.auto-acoes { display: flex; gap: 6px; }
+.auto-acoes button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #4b5563;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.auto-acoes button:hover {
+  border-color: #4BA044;
+  color: #2e7d32;
+}
+.auto-acoes button.danger:hover {
+  border-color: #d64545;
+  color: #b03434;
+}
+.switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 20px;
+  border: 0;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+.switch.on { background: #4BA044; }
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s ease;
+}
+.switch.on .knob { left: 20px; }
+.radio-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.radio-pills button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #4b5563;
+  font-size: 12px;
+  cursor: pointer;
+}
+.radio-pills button.active {
+  background: #4BA044;
+  border-color: #4BA044;
+  color: #fff;
+  font-weight: 600;
+}
+.atores-check-wrap { display: flex; flex-direction: column; gap: 6px; }
+.atores-check-label { font-size: 12px; color: #4b5563; }
+.atores-check {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.atores-check label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  color: #374151;
+  padding: 6px 8px;
+  border: 1px solid #e2e8e3;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.atores-check input { accent-color: #4BA044; margin: 0; }
+@media (max-width: 720px) {
+  .atores-check { grid-template-columns: 1fr; }
+}
 .head-badge {
   font-size: 11px;
   letter-spacing: 0.4px;
