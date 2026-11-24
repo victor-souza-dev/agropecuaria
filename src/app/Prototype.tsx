@@ -5153,9 +5153,14 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                 <span>Gatilho da geração</span>
                 <select
                   value={form.gatilho}
-                  onChange={(e) =>
-                    setForm({ ...form, gatilho: e.target.value as Automacao["gatilho"] })
-                  }
+                  onChange={(e) => {
+                    const gatilho = e.target.value as Automacao["gatilho"];
+                    setForm({
+                      ...form,
+                      gatilho,
+                      quantidadeModo: gatilho === "pedido" ? "pedido" : form.quantidadeModo,
+                    });
+                  }}
                 >
                   <option value="estoque">Estoque mínimo do ator</option>
                   <option value="pedido">Pedido recebido do ator</option>
@@ -5170,7 +5175,13 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                       key={o}
                       type="button"
                       className={form.origem === o ? "active" : ""}
-                      onClick={() => setForm({ ...form, origem: o })}
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          origem: o,
+                          tipo: o === "PNIB" ? "INTERNACIONAL" : form.tipo,
+                        })
+                      }
                     >
                       {o === "PNIB" ? "Brinco PNIB" : "Brinco Interno"}
                     </button>
@@ -5179,58 +5190,83 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
               </label>
               <label>
                 <span>Tipo de brinco</span>
-                <div className="radio-pills">
-                  {([
-                    ["INTERNACIONAL", "Internacional"],
-                    ["SISBOV", "Nacional · SISBOV"],
-                  ] as const).map(([v, l]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={form.tipo === v ? "active" : ""}
-                      onClick={() => setForm({ ...form, tipo: v })}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
+                {form.origem === "PNIB" ? (
+                  <>
+                    <div className="radio-pills">
+                      <button type="button" className="active">
+                        Internacional
+                      </button>
+                    </div>
+                    <p className="form-hint">
+                      Faixas PNIB são sempre do tipo Internacional (076).
+                    </p>
+                  </>
+                ) : (
+                  <div className="radio-pills">
+                    {([
+                      ["INTERNACIONAL", "Internacional"],
+                      ["SISBOV", "Nacional · SISBOV"],
+                    ] as const).map(([v, l]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={form.tipo === v ? "active" : ""}
+                        onClick={() => setForm({ ...form, tipo: v })}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </label>
             </div>
 
             <div className="af-section">
               <span className="af-section-title">Quantidade gerada</span>
-              <div className="af-row">
-                <div className="radio-pills">
-                  {([
-                    ["lote", "Lote fixo"],
-                    ["pedido", "Conforme pedido do ator"],
-                  ] as const).map(([v, l]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={form.quantidadeModo === v ? "active" : ""}
-                      onClick={() => setForm({ ...form, quantidadeModo: v })}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
-                {form.quantidadeModo === "lote" && (
-                  <label className="af-inline">
-                    <input
-                      type="number"
-                      value={form.lote}
-                      title="Lote de geração (numerações)"
-                      onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
-                    />
-                  </label>
-                )}
-              </div>
-              {form.quantidadeModo === "pedido" && (
-                <p className="form-hint">
-                  Cada geração usará a quantidade solicitada pelo ator no pedido,
-                  ajustada pelos bloqueios abaixo.
-                </p>
+              {form.gatilho === "pedido" || form.quantidadeModo === "pedido" ? (
+                <>
+                  <div className="af-row">
+                    <div className="radio-pills">
+                      <button type="button" className="active">
+                        Conforme pedido do ator
+                      </button>
+                    </div>
+                    {form.gatilho === "pedido" && (
+                      <p className="form-hint" style={{ margin: 0 }}>
+                        Gatilho "pedido recebido" gera sempre conforme a quantidade
+                        solicitada pelo ator.
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="af-row">
+                    <div className="radio-pills">
+                      {([
+                        ["lote", "Lote fixo"],
+                        ["pedido", "Conforme pedido do ator"],
+                      ] as const).map(([v, l]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          className={form.quantidadeModo === v ? "active" : ""}
+                          onClick={() => setForm({ ...form, quantidadeModo: v })}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="af-inline">
+                      <input
+                        type="number"
+                        value={form.lote}
+                        title="Lote de geração (numerações)"
+                        onChange={(e) => setForm({ ...form, lote: Number(e.target.value) })}
+                      />
+                    </label>
+                  </div>
+                </>
               )}
             </div>
 
