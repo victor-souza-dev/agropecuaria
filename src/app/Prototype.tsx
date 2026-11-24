@@ -161,10 +161,10 @@ const producerStock = [
 ];
 
 const numberingRanges = [
-  { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false },
-  { start: "076210077220001", end: "076210077230000", qty: 10000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Disponível", destino: null, dataCadastro: "15/06/2025", fonteInterna: false },
-  { start: "105430057000001", end: "105430057005000", qty: 5000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "10/06/2025", fonteInterna: true },
-  { start: "076210077240001", end: "076210077241000", qty: 1000, tipo: "INTERNACIONAL", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "12/06/2025", fonteInterna: true },
+  { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true },
+  { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true },
+  { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false },
+  { start: "105430057010001", end: "105430057014000", qty: 4000, tipo: "INTERNACIONAL", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "12/06/2025", fonteInterna: true },
 ];
 
 const initialMoves = [
@@ -3703,18 +3703,18 @@ const numberingDemo = {
   celulas: {
     INTERNACIONAL: {
       PNIB: {
-        saidas: [1200, 1800, 2000, 2000, 2000, 1000],
-        saldo: [8800, 7000, 5000, 13000, 11000, 10000],
-        entradasPnib: [10000, 0, 0, 10000, 0, 0],
+        saidas: [800, 800, 600, 600, 600, 600],
+        saldo: [2200, 1400, 800, 3200, 2600, 2000],
+        entradasPnib: [3000, 0, 0, 3000, 0, 0],
         entradasInterna: [0, 0, 0, 0, 0, 0],
-        aging: [5000, 4000, 1000],
+        aging: [1200, 500, 300],
       },
       interna: {
-        saidas: [0, 0, 0, 0, 0, 0],
-        saldo: [0, 0, 1000, 1000, 1000, 1000],
+        saidas: [0, 0, 600, 600, 900, 900],
+        saldo: [1000, 1000, 1400, 800, 900, 2000],
         entradasPnib: [0, 0, 0, 0, 0, 0],
-        entradasInterna: [0, 0, 1000, 0, 0, 0],
-        aging: [1000, 0, 0],
+        entradasInterna: [1000, 0, 1000, 0, 1000, 2000],
+        aging: [1500, 500, 0],
       },
     },
     SISBOV: {
@@ -3726,17 +3726,18 @@ const numberingDemo = {
         aging: [0, 0, 0],
       },
       interna: {
-        saidas: [0, 0, 400, 1000, 1600, 2000],
-        saldo: [0, 0, 4600, 3600, 2000, 0],
+        saidas: [400, 1000, 1200, 1800, 2100, 1500],
+        saldo: [2600, 3600, 4400, 5600, 6500, 7000],
         entradasPnib: [0, 0, 0, 0, 0, 0],
-        entradasInterna: [0, 0, 5000, 0, 0, 0],
-        aging: [0, 0, 0],
+        entradasInterna: [3000, 2000, 2000, 3000, 3000, 2000],
+        aging: [4000, 2000, 1000],
       },
     },
   },
   destinatarios: [
-    { nome: "Identifica Brasil S.A.", value: 10000, tipo: "INTERNACIONAL", origem: "PNIB" },
-    { nome: "Brinco Sul Indústria", value: 5000, tipo: "SISBOV", origem: "interna" },
+    { nome: "Brinco Sul Indústria", value: 8000, tipo: "SISBOV", origem: "interna" },
+    { nome: "Identifica Brasil S.A.", value: 4000, tipo: "INTERNACIONAL", origem: "PNIB" },
+    { nome: "Pecúnia Etiquetas Ltda.", value: 3000, tipo: "INTERNACIONAL", origem: "interna" },
   ],
   leadTimePnib: [
     { id: "SOL-2025-01", autorizacao: 16, entrega: 23 },
@@ -3744,11 +3745,11 @@ const numberingDemo = {
     { id: "SOL-2025-03", autorizacao: 18, entrega: 23 },
   ],
   criadores: [
-    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 20000, SISBOV: 0 }, color: "#1565c0" },
-    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 1000, SISBOV: 2000 }, color: "#0e8a6d" },
-    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 1500 }, color: "#4BA044" },
-    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 1000 }, color: "#6fbc5e" },
-    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 500 }, color: "#96d18a" },
+    { nome: "Geração automática — interna", modo: "auto", origem: "interna", porTipo: { INTERNACIONAL: 2000, SISBOV: 6000 }, color: "#0e8a6d" },
+    { nome: "Geração automática — PNIB", modo: "auto", origem: "PNIB", porTipo: { INTERNACIONAL: 6000, SISBOV: 0 }, color: "#1565c0" },
+    { nome: "Juliana P. Rocha — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 3000, SISBOV: 2000 }, color: "#96d18a" },
+    { nome: "Ana R. Farias — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 4000 }, color: "#4BA044" },
+    { nome: "Carlos M. Duarte — SEAPI", modo: "manual", origem: "interna", porTipo: { INTERNACIONAL: 0, SISBOV: 3000 }, color: "#6fbc5e" },
   ],
 };
 
