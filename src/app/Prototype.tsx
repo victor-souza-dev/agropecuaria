@@ -4975,25 +4975,6 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
         (Internacional ou SISBOV), atores atendidos e gatilho de disparo.
       </div>
 
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Atores aguardando brincos</h2>
-            <p>Demandas pendentes que podem ser atendidas por automação</p>
-          </div>
-          <span className="head-badge">{atoresPendentes.length} atores</span>
-        </div>
-        <div className="atores-grid">
-          {atoresPendentes.map((a) => (
-            <article className="ator-card" key={a.nome}>
-              <strong>{a.nome}</strong>
-              <small>{a.perfil}</small>
-              <span className="ator-pend">{fmtBR(a.pendente)} numerações pendentes</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section className="panel dash-mt">
         <div className="panel-head">
           <div>
