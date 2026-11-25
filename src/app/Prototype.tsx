@@ -1452,7 +1452,8 @@ export function RangeDetailPage() {
                     : "Faixa interna gerada pela SDA"}
                 </h4>
                 <p>
-                  Gerada por {range.criadoPor} ({range.modoGeracao.toLowerCase()}) ·{" "}
+                  Gerada por {range.criadoPor}
+                  {range.modoGeracao !== "Herdada" && ` (${range.modoGeracao.toLowerCase()})`} ·{" "}
                   {range.qty.toLocaleString("pt-BR")} brincos &middot;{" "}
                   {range.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
                 </p>
