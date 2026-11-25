@@ -3140,15 +3140,9 @@ const escopoAtores: { id: string; label: string }[] = [
   { id: "ESTOQUE_SDA", label: "SEAPI" },
 ];
 
+// Postura padrão (RN-012): sem restrição registrada = fluxo livre com qualquer titular
 function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
   const base: Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> = {};
-  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
-    base[code] = {};
-    for (const movement of perfilMovimentos) {
-      base[code][movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
-    }
-  }
-  // Postura padrão (RN-012): sem restrição registrada = fluxo livre com qualquer titular
   for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
     base[code] = {};
     for (const movement of perfilMovimentos) {
@@ -3183,6 +3177,25 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   }
   base["SEAPI"]["Estorno"].destino = { tipo: "LIVRE" };
   return base;
+}
+
+// Semântica da matriz (RN-012): combinações que não existem no domínio — a célula fica travada como "Não aplicável"
+function celulaNaoAplicavel(perfil: string, movement: string, side: "origem" | "destino"): string | null {
+  // ABASTECIMENTO: a origem é a fábrica de brincos (fora do catálogo de perfis) — nenhum estocador abastece
+  if (movement === "Abastecimento" && side === "origem")
+    return "A origem do abastecimento é a fábrica de brincos (fora do catálogo de perfis) — nenhum estocador abastece.";
+  // VENDA é a venda ao produtor (RN-006): o único destinatário é o produtor; quem vende é Habilitado e Loja
+  if (movement === "Venda" && side === "destino" && perfil !== "PRODUTOR")
+    return "A venda só tem como destinatário o produtor rural (RN-006).";
+  if (movement === "Venda" && side === "origem" && perfil !== "HABILITADO" && perfil !== "LOJA_AGROPECUARIA")
+    return "A venda ao produtor é executada por Habilitado e Loja Agropecuária (RN-006).";
+  // PERDA/SAÍDA INTERNA não têm destinatário
+  if ((movement === "Perda" || movement === "Saída interna") && side === "destino")
+    return "Não tem destinatário — o movimento é uma saída na posse do titular.";
+  // PRODUTOR: a devolução/perda do brinco dele é declarada pela loja (RN-005)
+  if (perfil === "PRODUTOR" && movement === "Devolução")
+    return "A devolução do brinco do produtor é declarada pela loja (RN-005).";
+  return null;
 }
 
 function badgeRegraFluxo(regra: RegraFluxo) {
@@ -3818,10 +3831,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     </div>
                   </td>
                   <td>
-                    {movement === "Perda" ? (
+                    {celulaNaoAplicavel(selected, movement, "destino") ? (
                       <span
                         className="celula-na-aplicavel"
-                        title="Perda não tem destinatário — os brincos saem de circulação na posse do titular que os perdeu. Não existe 'receber' perda."
+                        title={celulaNaoAplicavel(selected, movement, "destino") ?? undefined}
                       >
                         <Badge tone="neutral">Não aplicável</Badge>
                       </span>
@@ -3832,9 +3845,18 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     )}
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
-                      {badgeRegraFluxo(rules[selected][movement].origem)}
-                    </button>
+                    {celulaNaoAplicavel(selected, movement, "origem") ? (
+                      <span
+                        className="celula-na-aplicavel"
+                        title={celulaNaoAplicavel(selected, movement, "origem") ?? undefined}
+                      >
+                        <Badge tone="neutral">Não aplicável</Badge>
+                      </span>
+                    ) : (
+                      <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
+                        {badgeRegraFluxo(rules[selected][movement].origem)}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -4112,10 +4134,10 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                       </div>
                     </td>
                     <td>
-                      {movement === "Perda" ? (
+                      {celulaNaoAplicavel(perfil, movement, "destino") ? (
                         <span
                           className="celula-na-aplicavel"
-                          title="Perda não tem destinatário — os brincos saem de circulação. Não existe 'receber' perda."
+                          title={celulaNaoAplicavel(perfil, movement, "destino") ?? undefined}
                         >
                           <Badge tone="neutral">Não aplicável</Badge>
                         </span>
@@ -4123,7 +4145,18 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                         badgeRegraFluxo(regras[movement].destino)
                       )}
                     </td>
-                    <td>{badgeRegraFluxo(regras[movement].origem)}</td>
+                    <td>
+                      {celulaNaoAplicavel(perfil, movement, "origem") ? (
+                        <span
+                          className="celula-na-aplicavel"
+                          title={celulaNaoAplicavel(perfil, movement, "origem") ?? undefined}
+                        >
+                          <Badge tone="neutral">Não aplicável</Badge>
+                        </span>
+                      ) : (
+                        badgeRegraFluxo(regras[movement].origem)
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
