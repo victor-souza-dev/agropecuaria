@@ -3186,27 +3186,13 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   return base;
 }
 
-// Semântica da matriz (RN-012): combinações que não existem no domínio — a célula fica travada como "Não aplicável"
+// Semântica da matriz (RN-012): "Não aplicável" SÓ para impossibilidade conceitual — a natureza do
+// movimento não tem destinatário. Todo o resto é política de negócio: configurável pela SEAPI,
+// com o seed restritivo como ponto de partida editável (governança da matriz).
 function celulaNaoAplicavel(perfil: string, movement: string, side: "origem" | "destino"): string | null {
-  // ABASTECIMENTO: a origem é a fábrica de brincos — nenhum estocador abastece (a FABRICA é a exceção: ela declara o envio)
-  if (movement === "Abastecimento" && side === "origem" && perfil !== "FABRICA")
-    return "A origem do abastecimento é a fábrica de brincos — nenhum estocador abastece.";
-  // VENDA é a venda ao produtor (RN-006): o único destinatário é o produtor; quem vende é Habilitado e Loja
-  if (movement === "Venda" && side === "destino" && perfil !== "PRODUTOR")
-    return "A venda só tem como destinatário o produtor rural (RN-006).";
-  if (movement === "Venda" && side === "origem" && perfil !== "HABILITADO" && perfil !== "LOJA_AGROPECUARIA")
-    return "A venda ao produtor é executada por Habilitado e Loja Agropecuária (RN-006).";
-  // PERDA/SAÍDA INTERNA não têm destinatário
+  // PERDA / SAÍDA INTERNA não têm destinatário — é uma saída na posse do titular; não existe "receber"
   if ((movement === "Perda" || movement === "Saída interna") && side === "destino")
-    return "Não tem destinatário — o movimento é uma saída na posse do titular.";
-  // PRODUTOR: a devolução/perda do brinco dele é declarada pela loja (RN-005)
-  if (perfil === "PRODUTOR" && movement === "Devolução")
-    return "A devolução do brinco do produtor é declarada pela loja (RN-005).";
-  // FABRICA (RN-003): produz e declara o envio (a origem do abastecimento) — não movimenta brincos
-  if (perfil === "FABRICA")
-    return movement === "Abastecimento" && side === "origem"
-      ? null
-      : "A fábrica produz e declara o envio (RN-003) — não movimenta brincos entre estocadores.";
+    return "Não tem destinatário — o movimento é uma saída na posse do titular. Não existe \"receber\".";
   return null;
 }
 
