@@ -4437,6 +4437,124 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   );
 }
 
+// Dados demonstrativos dos painéis de acompanhamento (RN-024..RN-029) — layout apenas.
+const estocadoresDashDemo = {
+  filaIdade: [
+    { label: "Até 2 dias", value: 9, color: "#4BA044" },
+    { label: "3 a 7 dias", value: 4, color: "#d99a3b" },
+    { label: "8 dias ou mais", value: 2, color: "#d64545" },
+  ],
+  tempoAprovador: [
+    { label: "SEAPI", value: "1,4 dia", hint: "média das decisões na fila do estoque central" },
+    { label: "Destinatário", value: "3,2 dias", hint: "aceite remoto (produtor e destino de transferência)" },
+  ],
+  throughput: [
+    { label: "Semana 1", value: 14, display: "14 aprovadas · 3 recusadas", color: "#4BA044" },
+    { label: "Semana 2", value: 11, display: "11 aprovadas · 2 recusadas", color: "#4BA044" },
+    { label: "Semana 3", value: 16, display: "16 aprovadas · 4 recusadas", color: "#4BA044" },
+    { label: "Semana 4", value: 9, display: "9 aprovadas · 1 recusada", color: "#4BA044" },
+  ],
+  motivosRecusa: [
+    { label: "Brinco já aplicado a animal", value: 5 },
+    { label: "Destinatário fora do escopo do perfil", value: 3 },
+    { label: "Quantidade divergente do pedido", value: 2 },
+    { label: "Brinco reservado em outra pendência", value: 1 },
+  ],
+  concentracao: [
+    { label: "Comercial Rural Tradição", value: 84500 },
+    { label: "Coop. Lacteária Santa Fé", value: 61200 },
+    { label: "Agropecuária Campos Novos", value: 43700 },
+    { label: "Prefeitura de Gravataí", value: 22400 },
+    { label: "Inspetoria de Porto Alegre", value: 18900 },
+  ],
+  envelhecimento: [
+    { label: "0 a 30 dias", value: 342000, color: "#4BA044" },
+    { label: "31 a 90 dias", value: 85000, color: "#d99a3b" },
+    { label: "Mais de 90 dias", value: 21000, color: "#d64545" },
+  ],
+  perdasPerfil: [
+    { label: "Habilitado", value: 380, display: "380 · 0,9% do movimento" },
+    { label: "Loja Agropecuária", value: 140, display: "140 · 0,6% do movimento" },
+    { label: "Prefeitura", value: 45, display: "45 · 0,3% do movimento" },
+    { label: "Cooperativa de Leite", value: 30, display: "30 · 0,4% do movimento" },
+  ],
+  devolucoesLoja: [
+    { label: "Agropecuária Campos Novos", value: 38 },
+    { label: "Comercial Rural Tradição", value: 21 },
+    { label: "Agropecuária Vale Verde", value: 9 },
+  ],
+  estornosAtor: [
+    { label: "Prefeitura de Gravataí", value: 7 },
+    { label: "Agropecuária Campos Novos", value: 5 },
+    { label: "Coop. Lacteária Santa Fé", value: 3 },
+    { label: "Outros titulares", value: 2 },
+  ],
+  recusasMatriz: [
+    { label: "Cooperativa de Leite · Transferência fora do escopo", value: 12 },
+    { label: "Produtor · envio de venda bloqueado", value: 8 },
+    { label: "Prefeitura · Transferência fora do escopo", value: 5 },
+    { label: "Loja · envio de abastecimento bloqueado", value: 3 },
+  ],
+  fluxoPosicao: [
+    { label: "Aplicados a animal", value: 62000, color: "#4BA044" },
+    { label: "Em estoque na rede", value: 38000, color: "#1565c0" },
+    { label: "Em fila ou trânsito", value: 5000, color: "#d99a3b" },
+  ],
+  leadTime: [
+    { label: "Fábrica → leitura no estoque", value: 6, display: "6 dias", color: "#1565c0" },
+    { label: "Estoque → produtor (venda)", value: 14, display: "14 dias", color: "#e5a33d" },
+    { label: "Crédito → aplicação no animal", value: 26, display: "26 dias", color: "#4BA044" },
+  ],
+  consumoPerfil: [
+    { label: "Habilitado", value: 6400, display: "6.400 brincos/mês" },
+    { label: "Loja Agropecuária", value: 2900, display: "2.900 brincos/mês" },
+    { label: "Prefeitura", value: 1100, display: "1.100 brincos/mês" },
+    { label: "Cooperativa de Leite", value: 950, display: "950 brincos/mês" },
+    { label: "IDA e EDA", value: 400, display: "400 brincos/mês" },
+  ],
+  posicao: [
+    { label: "SEAPI — estoque central", value: "120.000 brincos" },
+    { label: "Fábrica — envio declarado (aguarda leitura)", value: "85.000 brincos" },
+    { label: "Rede de estocadores", value: "448.000 brincos" },
+  ],
+  rupturas: [
+    { ator: "Agropecuária Campos Novos", detalhe: "projeção esgota o estoque em ~3 semanas ao consumo atual" },
+    { ator: "Coop. Lacteária Santa Fé", detalhe: "projeção esgota o estoque em ~6 semanas ao consumo atual" },
+  ],
+  auditoria: [
+    { data: "25/11 09:12", usuario: "victor.souza", perfil: "Produtor", celula: "Venda · Enviar", de: "Bloqueado", para: "Livre" },
+    { data: "25/11 08:47", usuario: "seapi.fiscal", perfil: "Cooperativa de Leite", celula: "Transferência · Enviar", de: "Livre", para: "Escopo · 1 ator" },
+    { data: "24/11 16:05", usuario: "victor.souza", perfil: "Habilitado", celula: "Venda · Receber", de: "Livre", para: "Com aprovação · destinatário" },
+    { data: "24/11 15:58", usuario: "seapi.fiscal", perfil: "Fábrica de brincos", celula: "Abastecimento · Enviar", de: "Bloqueado", para: "Livre" },
+  ],
+};
+
+function MiniBars({
+  rows,
+  unit,
+}: {
+  rows: { label: string; value: number; display?: string; color?: string }[];
+  unit?: string;
+}) {
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  return (
+    <div className="hbar-list">
+      {rows.map((r) => (
+        <div className="hbar-row creator" key={r.label}>
+          <span className="hbar-name" title={r.label}>{r.label}</span>
+          <div className="hbar-track">
+            <span
+              className="hbar-fill"
+              style={{ width: `${Math.max(8, Math.round((r.value / max) * 100))}%`, background: r.color ?? "#4BA044" }}
+            />
+          </div>
+          <span className="hbar-value">{r.display ?? `${fmtBR(r.value)}${unit ? ` ${unit}` : ""}`}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EstocadoresDashboard({ role }: { role: Role }) {
   const carga = 387;
   const ligados = 41;
@@ -4450,8 +4568,18 @@ function EstocadoresDashboard({ role }: { role: Role }) {
     { nome: "SEAPI", value: 1, color: "#e65100" },
     { nome: "LOJA_AGROPECUARIA", value: 1, color: "#46a2d5" },
   ];
-  const ligacoes = [6, 11, 14, 10];
-  const semanas = ["Sem 1", "Sem 2", "Sem 3", "Sem 4"];
+  const D = estocadoresDashDemo;
+  const [dashTab, setDashTab] = useState<
+    "aprovacoes" | "rede" | "anomalias" | "fluxo" | "demanda" | "auditoria"
+  >("aprovacoes");
+  const tabs: { id: typeof dashTab; label: string }[] = [
+    { id: "aprovacoes", label: "Aprovações" },
+    { id: "rede", label: "Rede de estocadores" },
+    { id: "anomalias", label: "Anomalias" },
+    { id: "fluxo", label: "Fluxo da cadeia" },
+    { id: "demanda", label: "Demanda e abastecimento" },
+    { id: "auditoria", label: "Auditoria das regras" },
+  ];
   return (
     <div className="page-container">
       <section className="header">
@@ -4463,8 +4591,10 @@ function EstocadoresDashboard({ role }: { role: Role }) {
         </div>
       </section>
       <div className="dash-note">
-        Dados demonstrativos para validação de layout — não refletem números de produção. A adoção
-        usa a carga inicial de identidade como base do funil de ligação.
+        Dados demonstrativos para validação de layout — não refletem números de produção. Os
+        painéis acompanham a rede de estocadores, a fila de aprovações e a cadeia de custódia;
+        os indicadores derivam dos registros do sistema (incluindo a visão dos titulares no
+        portal herdado).
       </div>
       <div className="dash-grid">
         <article className="proj-card">
@@ -4489,8 +4619,8 @@ function EstocadoresDashboard({ role }: { role: Role }) {
         <section className="panel">
           <div className="panel-head">
             <div>
-              <h2>Estocadores por canal</h2>
-              <p>Ligados no novo vs operando no portal herdado</p>
+              <h2>Estocadores por regime</h2>
+              <p>Ligados no novo × operando no portal herdado (visão unificada)</p>
             </div>
           </div>
           <SituacaoDonut
@@ -4505,60 +4635,278 @@ function EstocadoresDashboard({ role }: { role: Role }) {
       <section className="panel dash-mt">
         <div className="panel-head">
           <div>
-            <h2>Ligações por semana</h2>
-            <p>Titulares ligados no novo — junho/2025</p>
+            <h2>Estocadores por perfil</h2>
+            <p>Catálogo da carga inicial — 6 papéis + Loja Agropecuária</p>
           </div>
-          <span className="head-badge">{ligados} ligações</span>
+          <span className="head-badge">{carga} estocadores</span>
         </div>
-        <ConsumoBarChart data={ligacoes} months={semanas} />
-      </section>
-      <div className="dash-grid dash-mt">
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Estocadores por perfil</h2>
-              <p>Catálogo da carga inicial — 6 papéis + Loja Agropecuária</p>
+        <div className="hbar-list">
+          {porPerfil.map((p) => (
+            <div className="hbar-row creator" key={p.nome}>
+              <span className="hbar-name" title={p.nome}>{labelPerfil(p.nome)}</span>
+              <div className="hbar-track">
+                <span
+                  className="hbar-fill"
+                  style={{ width: `${Math.round((p.value / porPerfil[0].value) * 100)}%`, background: p.color }}
+                />
+              </div>
+              <span className="hbar-value">
+                {p.value} · {Math.round((p.value / carga) * 100)}%
+              </span>
             </div>
-            <span className="head-badge">{carga} estocadores</span>
-          </div>
-          <div className="hbar-list">
-            {porPerfil.map((p) => (
-              <div className="hbar-row creator" key={p.nome}>
-                <span className="hbar-name" title={p.nome}>{labelPerfil(p.nome)}</span>
-                <div className="hbar-track">
-                  <span
-                    className="hbar-fill"
-                    style={{ width: `${Math.round((p.value / porPerfil[0].value) * 100)}%`, background: p.color }}
-                  />
-                </div>
-                <span className="hbar-value">
-                  {p.value} · {Math.round((p.value / carga) * 100)}%
-                </span>
+          ))}
+          <p className="aging-note">
+            299 estocadores habilitados e 79 inspetorias dominam a carga inicial — perfis semeados
+            do V1 com as restrições praticadas no sistema anterior.
+          </p>
+        </div>
+      </section>
+      <div className="dash-tabs dash-mt">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            className={`dash-tab ${dashTab === t.id ? "active" : ""}`}
+            onClick={() => setDashTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {dashTab === "aprovacoes" && (
+        <div className="dash-mt">
+          <div className="kpi-grid">
+            {D.filaIdade.map((f) => (
+              <div className={`kpi-card ${f.label.includes("8 dias") ? "bad" : f.label.includes("3 a 7") ? "warn" : ""}`} key={f.label}>
+                <div className="kpi-value">{f.value}</div>
+                <div className="kpi-label">{f.label}</div>
               </div>
             ))}
-            <p className="aging-note">
-              299 estocadores habilitados e 79 inspetorias dominam a carga inicial — perfis semeados
-              do V1 com as restrições praticadas no sistema anterior.
-            </p>
+            {D.tempoAprovador.map((t) => (
+              <div className="kpi-card" key={t.label}>
+                <div className="kpi-value">{t.value}</div>
+                <div className="kpi-label">{t.label}</div>
+                <div className="proj-sub">{t.hint}</div>
+              </div>
+            ))}
           </div>
-        </section>
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Atendentes habilitados</h2>
-              <p>Vínculos por CPF em lojas PJ</p>
+          <div className="dash-grid dash-mt">
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Movimento da fila (4 semanas)</h2>
+                  <p>Decisões concluídas por semana</p>
+                </div>
+              </div>
+              <MiniBars rows={D.throughput} />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Motivos de recusa (90 dias)</h2>
+                  <p>Recusas com motivo registrado na fila</p>
+                </div>
+              </div>
+              <MiniBars rows={D.motivosRecusa} unit="recusas" />
+            </section>
+          </div>
+        </div>
+      )}
+      {dashTab === "rede" && (
+        <div className="dash-mt">
+          <div className="kpi-grid">
+            <div className="kpi-card warn">
+              <div className="kpi-value">17</div>
+              <div className="kpi-label">Estocadores adormecidos — sem movimento há 60+ dias</div>
+            </div>
+            <div className="kpi-card bad">
+              <div className="kpi-value">3</div>
+              <div className="kpi-label">Estocadores suspensos</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-value">49%</div>
+              <div className="kpi-label">Do estoque da rede nos 5 maiores titulares</div>
             </div>
           </div>
-          <div className="proj-value">33</div>
-          <div className="proj-sub">
-            atendentes habilitados em 21 lojas — a habilitação de atendentes existe apenas para
-            pessoa jurídica do tipo loja.
+          <div className="dash-grid dash-mt">
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Concentração — maiores titulares</h2>
+                  <p>Brincos em estoque na rede, por titular</p>
+                </div>
+              </div>
+              <MiniBars rows={D.concentracao} unit="brincos" />
+              <p className="aging-note">
+                Os 5 maiores titulares concentram 49% do estoque da rede — acompanhar risco
+                operacional e de dependência por região.
+              </p>
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Envelhecimento do estoque</h2>
+                  <p>Brincos por tempo sem movimentação</p>
+                </div>
+              </div>
+              <SituacaoDonut centerLabel="brincos em estoque" items={D.envelhecimento} />
+            </section>
           </div>
-          <div className="proj-meta">
-            Modelo herdado do usuário atual do SDA — cada atendente vinculado a um CPF.
+        </div>
+      )}
+      {dashTab === "anomalias" && (
+        <div className="dash-mt">
+          <div className="dash-grid">
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Perdas por perfil (90 dias)</h2>
+                  <p>Brincos declarados perdidos e taxa sobre o movimento</p>
+                </div>
+              </div>
+              <MiniBars rows={D.perdasPerfil} />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Devoluções por loja (90 dias)</h2>
+                  <p>Devolução alta pode indicar venda mal orientada</p>
+                </div>
+              </div>
+              <MiniBars rows={D.devolucoesLoja} unit="devoluções" />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Estornos por titular afetado (90 dias)</h2>
+                  <p>Correções de erro executadas pela SEAPI</p>
+                </div>
+              </div>
+              <MiniBars rows={D.estornosAtor} unit="estornos" />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Tentativas recusadas pela matriz (30 dias)</h2>
+                  <p>Muitas recusas na mesma regra indicam regra a recalibrar — ou burla</p>
+                </div>
+              </div>
+              <MiniBars rows={D.recusasMatriz} unit="tentativas" />
+            </section>
           </div>
+        </div>
+      )}
+      {dashTab === "fluxo" && (
+        <div className="dash-mt">
+          <div className="dash-grid">
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Onde estão os brincos recentes</h2>
+                  <p>Emissões dos últimos 90 dias — o objetivo é o brinco aplicado ao animal</p>
+                </div>
+              </div>
+              <SituacaoDonut centerLabel="brincos" items={D.fluxoPosicao} />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Lead time por etapa</h2>
+                  <p>Tempo médio entre os marcos da cadeia</p>
+                </div>
+              </div>
+              <MiniBars rows={D.leadTime} />
+              <p className="aging-note">
+                Do crédito da venda à aplicação no animal passam, em média, 26 dias — brincos
+                nesse intervalo já têm dono, mas ainda não identificam animal.
+              </p>
+            </section>
+          </div>
+        </div>
+      )}
+      {dashTab === "demanda" && (
+        <div className="dash-mt">
+          <div className="kpi-grid">
+            {D.posicao.map((p) => (
+              <div className="kpi-card" key={p.label}>
+                <div className="kpi-value">{p.value.split(" ")[0]}</div>
+                <div className="kpi-label">{p.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="dash-grid dash-mt">
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Consumo médio por perfil</h2>
+                  <p>Brincos por mês — média dos últimos 6 meses</p>
+                </div>
+              </div>
+              <MiniBars rows={D.consumoPerfil} />
+            </section>
+            <section className="panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Alertas de ruptura projetada</h2>
+                  <p>Onde o estoque não cobre o consumo previsto</p>
+                </div>
+                <span className="head-badge">{D.rupturas.length} alertas</span>
+              </div>
+              {D.rupturas.map((r) => (
+                <div className="warn-row" key={r.ator}>
+                  <Icon name="alert" />
+                  <span>
+                    <strong>{r.ator}</strong> — {r.detalhe}.
+                  </span>
+                </div>
+              ))}
+              <p className="aging-note">
+                O estoque central cobre ~4,2 meses da demanda média da rede — janela para
+                solicitar faixas ou pedir produção à fábrica antes da ruptura.
+              </p>
+            </section>
+          </div>
+        </div>
+      )}
+      {dashTab === "auditoria" && (
+        <section className="panel dash-mt">
+          <div className="panel-head">
+            <div>
+              <h2>Histórico de edições da matriz</h2>
+              <p>Cada mudança de regra com autoria, data e o que mudou — o efeito é sempre prospectivo</p>
+            </div>
+          </div>
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Quando</th>
+                <th>Usuário</th>
+                <th>Perfil</th>
+                <th>Célula da matriz</th>
+                <th>Mudança</th>
+              </tr>
+            </thead>
+            <tbody>
+              {D.auditoria.map((a, i) => (
+                <tr key={i}>
+                  <td>{a.data}</td>
+                  <td>{a.usuario}</td>
+                  <td>{a.perfil}</td>
+                  <td>{a.celula}</td>
+                  <td>
+                    <span className="audit-change">
+                      {a.de} <Icon name="chevron" size={12} /> {a.para}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="aging-note">
+            O rastro é imutável: editar a regra novamente cria um novo registro — nunca apaga o
+            anterior. Edição tem efeito prospectivo: movimentos já registrados não são revalidados.
+          </p>
         </section>
-      </div>
+      )}
     </div>
   );
 }

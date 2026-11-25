@@ -4366,6 +4366,85 @@ td {
 .attendant-panel .panel-head .btn.primary svg path {
   fill: #fff;
 }
+/* Dashboard de estocadores — abas de painéis (RN-024..RN-029) */
+.dash-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e7ebef;
+  padding: 0 2px;
+}
+.dash-tab {
+  border: 0;
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.dash-tab:hover {
+  color: #314138;
+}
+.dash-tab.active {
+  color: #338d3d;
+  border-bottom-color: #338d3d;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e7ebef;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #314138;
+}
+.kpi-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.kpi-card.warn .kpi-value {
+  color: #b45309;
+}
+.kpi-card.bad .kpi-value {
+  color: #c0392b;
+}
+.warn-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f3ddb8;
+  background: #fdf6ea;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #6b5b3e;
+}
+.warn-row + .warn-row {
+  margin-top: 8px;
+}
+.warn-row svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.audit-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #314138;
+  white-space: nowrap;
+}
 /* Cadastro de estocador — painel único, busca de titular e "i" de regras do perfil */
 .novo-estocador-panel {
   max-width: 720px;
