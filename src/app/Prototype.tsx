@@ -3865,7 +3865,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                   type="radio"
                   name="alvos-tipo"
                   checked={draft.alvosTipo === "BLOQUEIO"}
-                  onChange={() => setDraft((d) => ({ ...d, alvosTipo: "BLOQUEIO" }))}
+                  onChange={() =>
+                    setDraft((d) => ({ ...d, alvosTipo: "BLOQUEIO", exigeAprovacao: false }))
+                  }
                 />
                 <div>
                   <strong>Bloqueado</strong>
@@ -3910,6 +3912,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 ))}
               </div>
             )}
+            {draft.alvosTipo !== "BLOQUEIO" && (
             <div className="approval-block">
               <label className={`scope-option ${draft.exigeAprovacao ? "selected" : ""}`}>
                 <input
@@ -3943,6 +3946,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 </label>
               )}
             </div>
+            )}
             <p className="modal-copy">
               A aprovação é <strong>complementar</strong> — combina com Livre ou com Escopo; a
               exceção é o Bloqueado, que recusa sempre. O movimento aprovado executa com efeito
