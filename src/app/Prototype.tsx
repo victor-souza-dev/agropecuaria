@@ -4239,16 +4239,44 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   const [titular, setTitular] = useState<Titular | null>(null);
   const [perfil, setPerfil] = useState("LOJA_AGROPECUARIA");
   const [cidade, setCidade] = useState("");
+  const [usarMesmoEndereco, setUsarMesmoEndereco] = useState(true);
+  const [cep, setCep] = useState("");
+  const [tipoLogradouro, setTipoLogradouro] = useState("");
+  const [logradouro, setLogradouro] = useState("");
+  const [numero, setNumero] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [bairro, setBairro] = useState("");
   const [verRegras, setVerRegras] = useState(false);
   const navigate = useNavigate();
   const regras = perfilRulesSeed()[perfil];
   const resultados = busca.trim()
     ? baseBusca.filter((p) => `${p.nome} ${p.doc}`.toLowerCase().includes(busca.trim().toLowerCase()))
     : [];
+  function limparEndereco() {
+    setUsarMesmoEndereco(true);
+    setCep("");
+    setTipoLogradouro("");
+    setLogradouro("");
+    setNumero("");
+    setComplemento("");
+    setBairro("");
+  }
   function escolherTitular(p: Titular) {
     setTitular(p);
     setBusca("");
     setCidade(p.cidade);
+    limparEndereco();
+  }
+  function buscarCep() {
+    const digitos = cep.replace(/\D/g, "");
+    if (digitos.length < 8) {
+      notify("Informe um CEP com 8 dígitos para buscar o endereço.");
+      return;
+    }
+    setTipoLogradouro("Rua");
+    setLogradouro("Doutor José de Alencar");
+    setBairro("Centro");
+    notify("Endereço encontrado pelo CEP (base de demonstração).");
   }
   return (
     <div className="page-container">
@@ -4297,6 +4325,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                 onClick={() => {
                   setTitular(null);
                   setCidade("");
+                  limparEndereco();
                 }}
               >
                 trocar titular
@@ -4336,14 +4365,92 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               </button>
             </div>
           </label>
-          <label className="scan-input compact">
-            <span>MUNICÍPIO/UF</span>
-            <input
-              placeholder="Ex.: Bagé/RS..."
-              value={cidade}
-              onChange={(e) => setCidade(e.target.value)}
-            />
-          </label>
+          {titular && (
+            <div className="endereco-entrega">
+              <span className="endereco-titulo">ENDEREÇO DE ENTREGA DOS BRINCOS</span>
+              <label className="check-linha">
+                <input
+                  type="checkbox"
+                  checked={usarMesmoEndereco}
+                  onChange={(e) => setUsarMesmoEndereco(e.target.checked)}
+                />
+                <span>Usar o mesmo endereço do titular ({titular.cidade}).</span>
+              </label>
+              {!usarMesmoEndereco && (
+                <div className="endereco-grade">
+                  <label className="scan-input compact">
+                    <span>MUNICÍPIO/UF</span>
+                    <input
+                      placeholder="Ex.: Bagé/RS..."
+                      value={cidade}
+                      onChange={(e) => setCidade(e.target.value)}
+                    />
+                  </label>
+                  <div className="cep-bloco">
+                    <label className="scan-input compact">
+                      <span>CEP</span>
+                      <div>
+                        <input
+                          placeholder="00000-000..."
+                          value={cep}
+                          onChange={(e) => setCep(e.target.value)}
+                        />
+                      </div>
+                    </label>
+                    <button type="button" className="text-btn" onClick={buscarCep}>
+                      Buscar endereço
+                    </button>
+                  </div>
+                  <label className="scan-input compact">
+                    <span>TIPO DE LOGRADOURO</span>
+                    <select
+                      value={tipoLogradouro}
+                      onChange={(e) => setTipoLogradouro(e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option>Rua</option>
+                      <option>Avenida</option>
+                      <option>Travessa</option>
+                      <option>Rodovia</option>
+                      <option>Distrito</option>
+                    </select>
+                  </label>
+                  <label className="scan-input compact">
+                    <span>LOGRADOURO</span>
+                    <input
+                      placeholder="Ex.: Doutor José de Alencar..."
+                      value={logradouro}
+                      onChange={(e) => setLogradouro(e.target.value)}
+                    />
+                  </label>
+                  <label className="scan-input compact">
+                    <span>NÚMERO</span>
+                    <input
+                      placeholder="Ex.: 1234..."
+                      value={numero}
+                      onChange={(e) => setNumero(e.target.value)}
+                    />
+                  </label>
+                  <label className="scan-input compact">
+                    <span>COMPLEMENTO (OPCIONAL)</span>
+                    <input
+                      placeholder="Ex.: Sala 2..."
+                      value={complemento}
+                      onChange={(e) => setComplemento(e.target.value)}
+                    />
+                  </label>
+                  <label className="scan-input compact">
+                    <span>BAIRRO</span>
+                    <input
+                      placeholder="Ex.: Centro..."
+                      value={bairro}
+                      onChange={(e) => setBairro(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
           <p className="modal-copy">
             O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
             intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
@@ -4358,8 +4465,16 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
             className="btn primary pill"
             disabled={!titular}
             onClick={() => {
+              if (!usarMesmoEndereco && (!cep.trim() || !logradouro.trim())) {
+                notify(
+                  "Preencha o endereço de entrega dos brincos — ou volte a usar o endereço do titular.",
+                );
+                return;
+              }
               notify(
-                `Estocador habilitado e ligado no novo — ${titular?.nome}, perfil ${labelPerfil(perfil)}.`,
+                `Estocador habilitado e ligado no novo — ${titular?.nome}, perfil ${labelPerfil(
+                  perfil,
+                )}${usarMesmoEndereco ? "" : ", entrega em endereço próprio declarado"}.`,
               );
               navigate(`/${role}/habilitacao`);
             }}
@@ -4449,10 +4564,10 @@ const estocadoresDashDemo = {
     { label: "Destinatário", value: "3,2 dias", hint: "aceite remoto (produtor e destino de transferência)" },
   ],
   throughput: [
-    { label: "Semana 1", value: 14, display: "14 aprovadas · 3 recusadas", color: "#4BA044" },
-    { label: "Semana 2", value: 11, display: "11 aprovadas · 2 recusadas", color: "#4BA044" },
-    { label: "Semana 3", value: 16, display: "16 aprovadas · 4 recusadas", color: "#4BA044" },
-    { label: "Semana 4", value: 9, display: "9 aprovadas · 1 recusada", color: "#4BA044" },
+    { label: "Semana 1", aprovadas: 14, recusadas: 3 },
+    { label: "Semana 2", aprovadas: 11, recusadas: 2 },
+    { label: "Semana 3", aprovadas: 16, recusadas: 4 },
+    { label: "Semana 4", aprovadas: 9, recusadas: 1 },
   ],
   motivosRecusa: [
     { label: "Brinco já aplicado a animal", value: 5 },
@@ -4473,10 +4588,10 @@ const estocadoresDashDemo = {
     { label: "Mais de 90 dias", value: 21000, color: "#d64545" },
   ],
   perdasPerfil: [
-    { label: "Habilitado", value: 380, display: "380 · 0,9% do movimento" },
-    { label: "Loja Agropecuária", value: 140, display: "140 · 0,6% do movimento" },
-    { label: "Prefeitura", value: 45, display: "45 · 0,3% do movimento" },
-    { label: "Cooperativa de Leite", value: 30, display: "30 · 0,4% do movimento" },
+    { label: "Habilitado", value: 380, taxa: "0,9% do movimento" },
+    { label: "Loja Agropecuária", value: 140, taxa: "0,6% do movimento" },
+    { label: "Prefeitura", value: 45, taxa: "0,3% do movimento" },
+    { label: "Cooperativa de Leite", value: 30, taxa: "0,4% do movimento" },
   ],
   devolucoesLoja: [
     { label: "Agropecuária Campos Novos", value: 38 },
@@ -4513,9 +4628,9 @@ const estocadoresDashDemo = {
     { label: "IDA e EDA", value: 400, display: "400 brincos/mês" },
   ],
   posicao: [
-    { label: "SEAPI — estoque central", value: "120.000 brincos" },
-    { label: "Fábrica — envio declarado (aguarda leitura)", value: "85.000 brincos" },
-    { label: "Rede de estocadores", value: "448.000 brincos" },
+    { label: "SEAPI — estoque central", value: 120000 },
+    { label: "Fábrica — envio declarado (aguarda leitura)", value: 85000 },
+    { label: "Rede de estocadores", value: 448000 },
   ],
   rupturas: [
     { ator: "Agropecuária Campos Novos", detalhe: "projeção esgota o estoque em ~3 semanas ao consumo atual" },
@@ -4528,6 +4643,54 @@ const estocadoresDashDemo = {
     { data: "24/11 15:58", usuario: "seapi.fiscal", perfil: "Fábrica de brincos", celula: "Abastecimento · Enviar", de: "Bloqueado", para: "Livre" },
   ],
 };
+
+// Recortes de filtro do dashboard (padrão do dashboard de numeração: presets de período + chips)
+const PERIODOS_ESTOQUES = [
+  { id: 30, label: "Últimos 30 dias", nome: "30 dias", f: 1 / 3 },
+  { id: 90, label: "Últimos 90 dias", nome: "90 dias", f: 1 },
+  { id: 180, label: "Últimos 6 meses", nome: "6 meses", f: 2 },
+  { id: 365, label: "Últimos 12 meses", nome: "12 meses", f: 4 },
+];
+const PERFIS_FILTRO = [
+  "TODOS",
+  "CREDENCIADO",
+  "LOJA_AGROPECUARIA",
+  "PREFEITURA",
+  "COOPERATIVA_LEITE",
+  "INSPETORIA",
+  "POSTO",
+  "SEAPI",
+  "FABRICA",
+  "PRODUTOR",
+];
+const SHARE_PERFIL: Record<string, number> = {
+  TODOS: 1,
+  CREDENCIADO: 0.45,
+  LOJA_AGROPECUARIA: 0.18,
+  PREFEITURA: 0.12,
+  COOPERATIVA_LEITE: 0.1,
+  INSPETORIA: 0.07,
+  POSTO: 0.03,
+  SEAPI: 0.03,
+  FABRICA: 0.02,
+  PRODUTOR: 0.01,
+};
+const PREFIXO_PERFIL: Record<string, string> = {
+  CREDENCIADO: "Habilitado",
+  LOJA_AGROPECUARIA: "Loja Agropecuária",
+  PREFEITURA: "Prefeitura",
+  COOPERATIVA_LEITE: "Cooperativa de Leite",
+  INSPETORIA: "IDA e EDA",
+  POSTO: "IDA e EDA",
+  SEAPI: "SEAPI",
+  FABRICA: "Fábrica de brincos",
+  PRODUTOR: "Produtor",
+};
+const REGIMES_FILTRO = [
+  { id: "TODOS", label: "Todos os regimes" },
+  { id: "NOVO", label: "Ligado no novo" },
+  { id: "HERDADO", label: "Portal herdado" },
+] as const;
 
 function MiniBars({
   rows,
@@ -4572,6 +4735,32 @@ function EstocadoresDashboard({ role }: { role: Role }) {
   const [dashTab, setDashTab] = useState<
     "aprovacoes" | "rede" | "anomalias" | "fluxo" | "demanda" | "auditoria"
   >("aprovacoes");
+  const [periodoId, setPeriodoId] = useState(90);
+  const [perfilFiltro, setPerfilFiltro] = useState("TODOS");
+  const [regimeFiltro, setRegimeFiltro] = useState<"TODOS" | "NOVO" | "HERDADO">("TODOS");
+
+  // Recálculo dos painéis para o recorte selecionado (dados demonstrativos)
+  const periodoSel = PERIODOS_ESTOQUES.find((p) => p.id === periodoId)!;
+  const fP = periodoSel.f;
+  const fR = regimeFiltro === "NOVO" ? 0.11 : regimeFiltro === "HERDADO" ? 0.89 : 1;
+  const fS = SHARE_PERFIL[perfilFiltro] ?? 1;
+  const escSnap = (n: number) => (n > 0 ? Math.max(1, Math.round(n * fR * fS)) : 0);
+  const escPeriodo = (n: number) => (n > 0 ? Math.max(1, Math.round(n * fP * fR * fS)) : 0);
+  const prefixoPerfil =
+    perfilFiltro === "TODOS" ? null : PREFIXO_PERFIL[perfilFiltro] ?? labelPerfil(perfilFiltro);
+  const filtraPerfil = (rows: { label: string }[]) =>
+    prefixoPerfil ? rows.filter((r) => r.label.startsWith(prefixoPerfil)) : rows;
+  const barras = (
+    rows: { label: string; value: number; display?: string; color?: string }[],
+    unit?: string,
+  ) =>
+    rows.length === 0 ? (
+      <p className="aging-note">Sem registros no recorte selecionado.</p>
+    ) : (
+      <MiniBars rows={rows} unit={unit} />
+    );
+  const perfilNome = perfilFiltro === "TODOS" ? "todos os perfis" : labelPerfil(perfilFiltro);
+  const regimeNome = REGIMES_FILTRO.find((r) => r.id === regimeFiltro)?.label.toLowerCase() ?? "";
   const tabs: { id: typeof dashTab; label: string }[] = [
     { id: "aprovacoes", label: "Aprovações" },
     { id: "rede", label: "Rede de estocadores" },
@@ -4591,10 +4780,57 @@ function EstocadoresDashboard({ role }: { role: Role }) {
         </div>
       </section>
       <div className="dash-note">
-        Dados demonstrativos para validação de layout — não refletem números de produção. Os
-        painéis acompanham a rede de estocadores, a fila de aprovações e a cadeia de custódia;
-        os indicadores derivam dos registros do sistema (incluindo a visão dos titulares no
-        portal herdado).
+        <span>
+          Dados demonstrativos para validação de layout — não refletem números de produção. Os
+          painéis acompanham a rede de estocadores, a fila de aprovações e a cadeia de custódia;
+          os indicadores derivam dos registros do sistema (incluindo a visão dos titulares no
+          portal herdado). Recorte atual: <strong>{periodoSel.nome}</strong> · <strong>{perfilNome}</strong> ·{" "}
+          <strong>{regimeNome}</strong>.
+        </span>
+      </div>
+      <div className="dash-filters">
+        <div className="filter-group">
+          <span className="filter-label">Período</span>
+          <div className="chip-set">
+            {PERIODOS_ESTOQUES.map((p) => (
+              <button
+                key={p.id}
+                className={`chip ${periodoId === p.id ? "active" : ""}`}
+                onClick={() => setPeriodoId(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Perfil</span>
+          <div className="chip-set">
+            {PERFIS_FILTRO.map((code) => (
+              <button
+                key={code}
+                className={`chip ${perfilFiltro === code ? "active" : ""}`}
+                onClick={() => setPerfilFiltro(code)}
+              >
+                {code === "TODOS" ? "Todos os perfis" : labelPerfil(code)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Regime</span>
+          <div className="chip-set">
+            {REGIMES_FILTRO.map((r) => (
+              <button
+                key={r.id}
+                className={`chip ${regimeFiltro === r.id ? "active" : ""}`}
+                onClick={() => setRegimeFiltro(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="dash-grid">
         <article className="proj-card">
@@ -4677,7 +4913,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           <div className="kpi-grid">
             {D.filaIdade.map((f) => (
               <div className={`kpi-card ${f.label.includes("8 dias") ? "bad" : f.label.includes("3 a 7") ? "warn" : ""}`} key={f.label}>
-                <div className="kpi-value">{f.value}</div>
+                <div className="kpi-value">{fmtBR(escSnap(f.value))}</div>
                 <div className="kpi-label">{f.label}</div>
               </div>
             ))}
@@ -4697,16 +4933,23 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   <p>Decisões concluídas por semana</p>
                 </div>
               </div>
-              <MiniBars rows={D.throughput} />
+              <MiniBars
+                rows={D.throughput.map((w) => ({
+                  label: w.label,
+                  value: escSnap(w.aprovadas),
+                  display: `${fmtBR(escSnap(w.aprovadas))} aprovadas · ${fmtBR(escSnap(w.recusadas))} recusadas`,
+                  color: "#4BA044",
+                }))}
+              />
             </section>
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Motivos de recusa (90 dias)</h2>
+                  <h2>Motivos de recusa ({periodoSel.nome})</h2>
                   <p>Recusas com motivo registrado na fila</p>
                 </div>
               </div>
-              <MiniBars rows={D.motivosRecusa} unit="recusas" />
+              {barras(D.motivosRecusa.map((r) => ({ ...r, value: escPeriodo(r.value) })), "recusas")}
             </section>
           </div>
         </div>
@@ -4715,11 +4958,11 @@ function EstocadoresDashboard({ role }: { role: Role }) {
         <div className="dash-mt">
           <div className="kpi-grid">
             <div className="kpi-card warn">
-              <div className="kpi-value">17</div>
+              <div className="kpi-value">{fmtBR(escSnap(17))}</div>
               <div className="kpi-label">Estocadores adormecidos — sem movimento há 60+ dias</div>
             </div>
             <div className="kpi-card bad">
-              <div className="kpi-value">3</div>
+              <div className="kpi-value">{fmtBR(escSnap(3))}</div>
               <div className="kpi-label">Estocadores suspensos</div>
             </div>
             <div className="kpi-card">
@@ -4735,7 +4978,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   <p>Brincos em estoque na rede, por titular</p>
                 </div>
               </div>
-              <MiniBars rows={D.concentracao} unit="brincos" />
+              <MiniBars rows={D.concentracao.map((r) => ({ ...r, value: escSnap(r.value) }))} unit="brincos" />
               <p className="aging-note">
                 Os 5 maiores titulares concentram 49% do estoque da rede — acompanhar risco
                 operacional e de dependência por região.
@@ -4748,7 +4991,10 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   <p>Brincos por tempo sem movimentação</p>
                 </div>
               </div>
-              <SituacaoDonut centerLabel="brincos em estoque" items={D.envelhecimento} />
+              <SituacaoDonut
+                centerLabel="brincos em estoque"
+                items={D.envelhecimento.map((r) => ({ ...r, value: escSnap(r.value) }))}
+              />
             </section>
           </div>
         </div>
@@ -4759,38 +5005,55 @@ function EstocadoresDashboard({ role }: { role: Role }) {
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Perdas por perfil (90 dias)</h2>
+                  <h2>Perdas por perfil ({periodoSel.nome})</h2>
                   <p>Brincos declarados perdidos e taxa sobre o movimento</p>
                 </div>
               </div>
-              <MiniBars rows={D.perdasPerfil} />
+              {barras(
+                filtraPerfil(D.perdasPerfil).map((r) => ({
+                  label: r.label,
+                  value: escPeriodo(r.value),
+                  display: `${fmtBR(escPeriodo(r.value))} · ${r.taxa}`,
+                  color: "#d64545",
+                })),
+              )}
             </section>
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Devoluções por loja (90 dias)</h2>
+                  <h2>Devoluções por loja ({periodoSel.nome})</h2>
                   <p>Devolução alta pode indicar venda mal orientada</p>
                 </div>
               </div>
-              <MiniBars rows={D.devolucoesLoja} unit="devoluções" />
+              {perfilFiltro !== "TODOS" && perfilFiltro !== "LOJA_AGROPECUARIA" ? (
+                <p className="aging-note">
+                  Devoluções se aplicam ao varejo (Loja Agropecuária) — sem registros no perfil
+                  selecionado.
+                </p>
+              ) : (
+                barras(D.devolucoesLoja.map((r) => ({ ...r, value: escPeriodo(r.value) })), "devoluções")
+              )}
             </section>
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Estornos por titular afetado (90 dias)</h2>
+                  <h2>Estornos por titular afetado ({periodoSel.nome})</h2>
                   <p>Correções de erro executadas pela SEAPI</p>
                 </div>
               </div>
-              <MiniBars rows={D.estornosAtor} unit="estornos" />
+              {barras(D.estornosAtor.map((r) => ({ ...r, value: escPeriodo(r.value) })), "estornos")}
             </section>
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Tentativas recusadas pela matriz (30 dias)</h2>
+                  <h2>Tentativas recusadas pela matriz ({periodoSel.nome})</h2>
                   <p>Muitas recusas na mesma regra indicam regra a recalibrar — ou burla</p>
                 </div>
               </div>
-              <MiniBars rows={D.recusasMatriz} unit="tentativas" />
+              {barras(
+                filtraPerfil(D.recusasMatriz).map((r) => ({ ...r, value: escPeriodo(r.value) })),
+                "tentativas",
+              )}
             </section>
           </div>
         </div>
@@ -4805,7 +5068,10 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   <p>Emissões dos últimos 90 dias — o objetivo é o brinco aplicado ao animal</p>
                 </div>
               </div>
-              <SituacaoDonut centerLabel="brincos" items={D.fluxoPosicao} />
+              <SituacaoDonut
+                centerLabel="brincos"
+                items={D.fluxoPosicao.map((r) => ({ ...r, value: escSnap(r.value) }))}
+              />
             </section>
             <section className="panel">
               <div className="panel-head">
@@ -4828,8 +5094,10 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           <div className="kpi-grid">
             {D.posicao.map((p) => (
               <div className="kpi-card" key={p.label}>
-                <div className="kpi-value">{p.value.split(" ")[0]}</div>
-                <div className="kpi-label">{p.label}</div>
+                <div className="kpi-value">{fmtBR(escSnap(p.value))}</div>
+                <div className="kpi-label">
+                  {p.label} — brincos
+                </div>
               </div>
             ))}
           </div>
@@ -4841,7 +5109,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   <p>Brincos por mês — média dos últimos 6 meses</p>
                 </div>
               </div>
-              <MiniBars rows={D.consumoPerfil} />
+              {barras(filtraPerfil(D.consumoPerfil))}
             </section>
             <section className="panel">
               <div className="panel-head">
@@ -4886,7 +5154,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
               </tr>
             </thead>
             <tbody>
-              {D.auditoria.map((a, i) => (
+              {filtraPerfil(D.auditoria.map((a) => ({ ...a, label: a.perfil }))).map((a, i) => (
                 <tr key={i}>
                   <td>{a.data}</td>
                   <td>{a.usuario}</td>
