@@ -3233,17 +3233,19 @@ function badgeRegraFluxo(regra: RegraFluxo) {
 // Mapeamento código (enum TP_MOVIMENTACAO) → rótulo: RECEBIMENTO → "Abastecimento"; demais mantêm o nome.
 const movimentoDesc: Record<string, string> = {
   Abastecimento:
-    "Entrada de brincos por leitura de código de barras, vinda do abastecimento oficial: a fábrica que produziu (após declarar o envio) ou o estoque central da SEAPI que atendeu um pedido. Repõe o estoque do titular.",
+    "Brincos novos chegando ao estoque. A fábrica produz, declara o envio e o destinatário recebe lendo o código de barras — também é assim que a SEAPI atende pedidos do estoque central. É a única porta de entrada de brincos no sistema.",
   Venda:
-    "Venda de brincos ao produtor rural: o atendente da loja lê os códigos de barras dos brincos e declara a venda — no mesmo ato, o brinco passa à custódia do produtor (crédito imediato). A declaração é definitiva: o produtor pode recusar ali mesmo, e depois a saída só ocorre por devolução.",
+    "O brinco vendido direto ao produtor rural. No balcão, o atendente lê o código de barras e o brinco passa à custódia do produtor na hora, sem espera. A venda é definitiva: o produtor pode recusar ali mesmo e, depois, o brinco só volta por devolução.",
   Transferência:
-    "Mudança de custódia entre estocadores: o brinco sai do estoque do titular e entra no do alvo, sempre registrada por leitura de código de barras.",
+    "O brinco muda de mãos entre dois estocadores — por exemplo, a prefeitura repassa ao credenciado da região. Sai do estoque de quem envia e entra no de quem recebe, sempre com leitura do código de barras dos dois lados.",
   Devolução:
-    "Devolução de venda ou transferência de brinco ainda não aplicado a animal: o brinco retorna ao estoque de origem e volta a ficar disponível para venda ou transferência.",
+    "O brinco volta para de onde veio. Cancela uma venda ou transferência enquanto o brinco ainda não foi aplicado a um animal: o estoque de origem o recebe de volta e ele volta a ficar disponível para venda ou transferência.",
   Perda:
-    "Registro de brincos perdidos, extraviados ou inutilizados em posse do titular: saem de circulação com trilha de auditoria completa.",
+    "O brinco se perdeu, foi extraviado ou inutilizado. Ele sai de circulação definitivamente, na posse de quem declarou — não existe \"receber\" uma perda. Fica registrado com justificativa na trilha do brinco.",
   "Saída interna":
-    "Saída de brincos do estoque do titular sem contraparte externa (consumo interno, amostra ou descarte administrativo), sempre documentada.",
+    "O próprio titular consome o brinco — uso interno, amostra ou descarte administrativo. Sai do estoque sem destino a ninguém: não tem destinatário, apenas documentação obrigatória.",
+  Estorno:
+    "Correção de erro, exclusiva da SEAPI: desfaz uma movimentação já executada (ex.: transferência registrada por engano) e devolve os brincos à custódia anterior. Tudo fica registrado na trilha de auditoria.",
 };
 
 function InfoTip({ texto }: { texto: string }) {
