@@ -3264,6 +3264,18 @@ function celulaNaoAplicavel(perfil: string, movement: string, side: "origem" | "
   return null;
 }
 
+// Rótulo legível de uma restrição — usado no histórico de auditoria da matriz (RN-029)
+function regraLabel(r: RegraFluxo): string {
+  if (r.tipo === "BLOQUEIO") return "Bloqueado";
+  const base =
+    r.tipo === "ESCOPO"
+      ? `Escopo · ${r.alvos?.length ?? 0} ${r.alvos?.length === 1 ? "ator" : "atores"}`
+      : "Livre";
+  return r.aprovacao
+    ? `${base} · com aprovação (${r.aprovacao.aprovador === "SEAPI" ? "SEAPI" : "destinatário"})`
+    : base;
+}
+
 function badgeRegraFluxo(regra: RegraFluxo) {
   if (regra.tipo === "BLOQUEIO") return <Badge tone="red">Bloqueio</Badge>;
   const partes: React.ReactNode[] = [];
@@ -3782,7 +3794,6 @@ function ProfilesPanel({
   const profiles = perfis;
   const rules = regras;
   const movements = perfilMovimentos;
-  const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
@@ -3820,7 +3831,7 @@ function ProfilesPanel({
     const regrasNovas: Record<string, { origem: RegraFluxo; destino: RegraFluxo }> = {};
     for (const movement of perfilMovimentos)
       regrasNovas[movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
-    setRules((current) => ({ ...current, [code]: regrasNovas }));
+    setRegras((current) => ({ ...current, [code]: regrasNovas }));
     setSelected(code);
     setNovoPerfilOpen(false);
     notify(`Perfil "${nome}" criado — postura padrão livre; ajuste as regras na matriz.`);
@@ -3839,7 +3850,7 @@ function ProfilesPanel({
           destino && p.code === destino.code ? { ...p, holders: p.holders + apagarAlvo.holders } : p,
         ),
     );
-    setRules((current) => {
+    setRegras((current) => {
       const next = { ...current };
       delete next[apagarAlvo.code];
       return next;
@@ -3883,7 +3894,24 @@ function ProfilesPanel({
         : draft.alvosTipo === "ESCOPO"
           ? { tipo: "ESCOPO", alvos: [...draft.alvos], aprovacao: aprov }
           : { tipo: "LIVRE", aprovacao: aprov };
-    setRules((current) => ({
+    const anterior = rules[selected][editor.movement][editor.side];
+    if (JSON.stringify(anterior) !== JSON.stringify(nova)) {
+      // RN-029: rastro imutável de toda alteração de restrição — usuário, quando, célula, anterior → nova
+      registraAuditoria({
+        data: new Date().toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        usuario: "seapi.fiscal",
+        perfil: labelDe(selected),
+        celula: `${editor.movement} · ${editor.side === "origem" ? "Enviar" : "Receber"}`,
+        de: regraLabel(anterior),
+        para: regraLabel(nova),
+      });
+    }
+    setRegras((current) => ({
       ...current,
       [selected]: {
         ...current[selected],
@@ -4803,12 +4831,6 @@ const estocadoresDashDemo = {
       detalhe: "estoque de 3.200 brincos e consumo de ~1.100/mês — esgota em ~3 meses",
     },
   ],
-  auditoria: [
-    { data: "25/11 09:12", usuario: "victor.souza", perfil: "Produtor", celula: "Venda · Enviar", de: "Bloqueado", para: "Livre" },
-    { data: "25/11 08:47", usuario: "seapi.fiscal", perfil: "Cooperativa de Leite", celula: "Transferência · Enviar", de: "Livre", para: "Escopo · 1 ator" },
-    { data: "24/11 16:05", usuario: "victor.souza", perfil: "Habilitado", celula: "Venda · Receber", de: "Livre", para: "Com aprovação · destinatário" },
-    { data: "24/11 15:58", usuario: "seapi.fiscal", perfil: "Fábrica de brincos", celula: "Abastecimento · Enviar", de: "Bloqueado", para: "Livre" },
-  ],
 };
 
 // Recortes de filtro do dashboard (padrão do dashboard de numeração: presets de período + chips)
@@ -4876,9 +4898,11 @@ function MiniBars({
 function EstocadoresDashboard({
   role,
   perfis,
+  auditoriaMatriz,
 }: {
   role: Role;
   perfis: PerfilCatalogo[];
+  auditoriaMatriz: AuditoriaMatrizRow[];
 }) {
   const carga = 387;
   const ligados = 41;
@@ -4936,6 +4960,9 @@ function EstocadoresDashboard({
     );
   const perfilNome = perfilFiltro === "TODOS" ? "todos os perfis" : labelDeFiltro(perfilFiltro);
   const regimeNome = REGIMES_FILTRO.find((r) => r.id === regimeFiltro)?.label.toLowerCase() ?? "";
+  const auditoriaFiltrada = prefixoPerfil
+    ? auditoriaMatriz.filter((a) => a.perfil.startsWith(prefixoPerfil))
+    : auditoriaMatriz;
   const tabs: { id: typeof dashTab; label: string }[] = [
     { id: "aprovacoes", label: "Aprovações" },
     { id: "rede", label: "Rede de estocadores" },
@@ -5333,33 +5360,40 @@ function EstocadoresDashboard({
               <h2>Histórico de edições da matriz</h2>
               <p>Cada mudança de regra com autoria, data e o que mudou — o efeito é sempre prospectivo</p>
             </div>
+            <span className="head-badge">{auditoriaFiltrada.length} registros</span>
           </div>
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Quando</th>
-                <th>Usuário</th>
-                <th>Perfil</th>
-                <th>Célula da matriz</th>
-                <th>Mudança</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtraPerfil(D.auditoria.map((a) => ({ ...a, label: a.perfil }))).map((a, i) => (
-                <tr key={i}>
-                  <td>{a.data}</td>
-                  <td>{a.usuario}</td>
-                  <td>{a.perfil}</td>
-                  <td>{a.celula}</td>
-                  <td>
-                    <span className="audit-change">
-                      {a.de} <Icon name="chevron" size={12} /> {a.para}
-                    </span>
-                  </td>
+          {auditoriaFiltrada.length === 0 ? (
+            <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+              Sem edições no recorte selecionado — ajuste o perfil para ver o histórico.
+            </p>
+          ) : (
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Usuário</th>
+                  <th>Perfil</th>
+                  <th>Célula da matriz</th>
+                  <th>Mudança</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {auditoriaFiltrada.map((a, i) => (
+                  <tr key={`${a.data}-${i}`}>
+                    <td>{a.data}</td>
+                    <td>{a.usuario}</td>
+                    <td>{a.perfil}</td>
+                    <td>{a.celula}</td>
+                    <td>
+                      <span className="audit-change">
+                        {a.de} <Icon name="chevron" size={12} /> {a.para}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <p className="aging-note">
             O rastro é imutável: editar a regra novamente cria um novo registro — nunca apaga o
             anterior. Edição tem efeito prospectivo: movimentos já registrados não são revalidados.
