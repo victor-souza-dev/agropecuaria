@@ -4575,11 +4575,9 @@ td {
   background: #f0fdf4;
 }
 .info-tip-pop {
-  position: absolute;
-  bottom: calc(100% + 9px);
-  left: 0;
-  z-index: 40;
-  width: 250px;
+  position: fixed;
+  z-index: 60;
+  width: 260px;
   padding: 11px 13px;
   background: #243b30;
   color: #f4faf6;
@@ -4591,14 +4589,6 @@ td {
   text-align: left;
   text-transform: none;
   letter-spacing: 0;
-}
-.info-tip-pop::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 14px;
-  border: 6px solid transparent;
-  border-top-color: #243b30;
 }
 .filter-field {
   display: flex;

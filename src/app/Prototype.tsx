@@ -3196,25 +3196,48 @@ const movimentoDesc: Record<string, string> = {
 
 function InfoTip({ texto }: { texto: string }) {
   const [aberto, setAberto] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLSpanElement | null>(null);
   useEffect(() => {
     const fechar = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+      const alvo = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(alvo) && !alvo.closest(".info-tip-pop")) {
+        setAberto(false);
+      }
     };
     document.addEventListener("mousedown", fechar);
     return () => document.removeEventListener("mousedown", fechar);
   }, []);
+  function abrir() {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) {
+      const top = rect.bottom + 8;
+      const left = Math.max(8, Math.min(rect.left - 12, window.innerWidth - 272));
+      setPos({ top, left });
+    }
+    setAberto(true);
+  }
   return (
     <span className="info-tip" ref={ref}>
       <button
         type="button"
         className="info-tip-btn"
         aria-label="Entender este movimento"
-        onClick={() => setAberto((v) => !v)}
+        onClick={abrir}
       >
         i
       </button>
-      {aberto && <span className="info-tip-pop">{texto}</span>}
+      {aberto &&
+        createPortal(
+          <span
+            className="info-tip-pop"
+            style={{ top: pos.top, left: pos.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {texto}
+          </span>,
+          document.body
+        )}
     </span>
   );
 }
