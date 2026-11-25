@@ -3116,7 +3116,7 @@ const perfilLabel: Record<string, string> = {
 function labelPerfil(code: string) {
   return perfilLabel[code] ?? code;
 }
-const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
+const perfilMovimentos = ["Abastecimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna", "Estorno"];
 
 type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
 
@@ -3159,6 +3159,11 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   }
   base["PRODUTOR"]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
   base["PRODUTOR"]["Transferência"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
+  // ESTORNO (CR-013): seed — apenas o perfil SEAPI estorna (de qualquer titular); demais bloqueados
+  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+    base[code]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
+  }
+  base["SEAPI"]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
   return base;
 }
 
@@ -3178,10 +3183,11 @@ function badgeRegraFluxo(regra: RegraFluxo) {
   );
 }
 
-// Definições de negócio dos movimentos — exibidas no tooltip "i" da matriz de regras
+// Definições de negócio dos movimentos — exibidas no tooltip "i" da matriz de regras.
+// Mapeamento código (enum TP_MOVIMENTACAO) → rótulo: RECEBIMENTO → "Abastecimento"; demais mantêm o nome.
 const movimentoDesc: Record<string, string> = {
-  Recebimento:
-    "Entrada de brincos por leitura de código de barras: o titular confirma a custódia ao receber caixas ou faixas de outro ator (fábrica, estoque central ou transferência de um colega).",
+  Abastecimento:
+    "Entrada de brincos por leitura de código de barras, vinda do abastecimento oficial: a fábrica que produziu (após declarar o envio) ou o estoque central da SEAPI que atendeu um pedido. Repõe o estoque do titular.",
   Venda:
     "Venda de brincos ao produtor rural, declarada pelo atendente da loja: o brinco é creditado imediatamente no estoque SDA do produtor no ato da declaração.",
   Transferência:
@@ -3645,7 +3651,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const profiles = [
     { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2 },
-    { code: "HABILITADO", desc: "Estocador habilitado pela SEAPI", holders: 2 },
+    { code: "CREDENCIADO", desc: "Estocador habilitado pela SEAPI", holders: 2 },
     { code: "PREFEITURA", desc: "Estocador municipal", holders: 1 },
     { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1 },
     { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0 },
@@ -3781,10 +3787,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           <span>
             Coluna Receber = de quem o ator aceita receber brincos; coluna Enviar = para quem pode
             enviar. Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com
-            seleção múltipla de atores oficiais (perfis e titulares fixos). Seed do V1:
-            PREFEITURA transfere só a habilitados; COOPERATIVA_LEITE só a habilitados via
-            integradora; PRODUTOR não envia e só recebe venda/transferência — seed editável pela
-            SEAPI.
+            seleção múltipla de atores oficiais (perfis e titulares fixos). Seed do V1: PREFEITURA
+            remete só a habilitados; COOPERATIVA_LEITE só a habilitados via integradora; PRODUTOR
+            não envia e só recebe venda/transferência; ESTORNO exclusivo da SEAPI — seed editável
+            pela SEAPI (delegação de estorno: CR-013).
           </span>
         </div>
       </aside>
