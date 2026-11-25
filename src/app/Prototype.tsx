@@ -3129,7 +3129,7 @@ const escopoAtores: { id: string; label: string }[] = [
   { id: "POSTO", label: "Escritório de Defesa Agropecuária (EDA)" },
   { id: "PRODUTOR", label: "Produtores rurais" },
   { id: "FABRICA", label: "Fábricas de brincos" },
-  { id: "ESTOQUE_SDA", label: "Estoque SDA (estoque central)" },
+  { id: "ESTOQUE_SDA", label: "SEAPI" },
 ];
 
 function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
