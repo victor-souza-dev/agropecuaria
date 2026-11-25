@@ -3914,14 +3914,14 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             </p>
           </div>
           <button
-            className="btn secondary"
+            className="btn primary"
             onClick={() =>
               notify(
                 "Regras do perfil salvas — efeito prospectivo: movimentos já registrados não são revalidados.",
               )
             }
           >
-            Salvar regras
+            <Icon name="check" size={16} /> Salvar regras
           </button>
         </div>
         <div className="table-wrap">
@@ -4216,7 +4216,7 @@ function EstocadoresRegrasPage({ notify, role }: { notify: (m: string) => void; 
       <section className="header">
         <h3>Perfis e regras de fluxo</h3>
         <div className="header-actions">
-          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao`}>
             ← Voltar
           </Link>
         </div>
@@ -4238,7 +4238,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
       <section className="header">
         <h3>Nova habilitação de estocador</h3>
         <div className="header-actions">
-          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao`}>
             ← Voltar
           </Link>
         </div>
@@ -4400,7 +4400,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
       <section className="header">
         <h3>Dashboard de estocadores</h3>
         <div className="header-actions">
-          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao`}>
             ← Voltar
           </Link>
         </div>

@@ -4339,6 +4339,33 @@ td {
 .header-actions .chart-btn:hover {
   color: #374151;
 }
+/* Botões do fluxo de estocadores no padrão pill da Gestão de Numeração */
+.header-actions .voltar-pill {
+  height: 45px;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.attendant-panel .panel-head .btn.primary {
+  height: 45px;
+  padding: 12px 20px;
+  border-radius: 25px;
+  border: none;
+  background: #4BA044;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 400;
+  gap: 10px;
+  white-space: nowrap;
+}
+.attendant-panel .panel-head .btn.primary:hover {
+  background: #4BA044;
+}
+.attendant-panel .panel-head .btn.primary svg path {
+  fill: #fff;
+}
 .filters-card {
   background: #fff;
   border-radius: 12px;
