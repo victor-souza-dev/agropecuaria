@@ -3148,32 +3148,40 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
       base[code][movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
     }
   }
-  // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601) — agora com escopo multi-ator
-  base["PREFEITURA"]["Transferência"] = {
-    origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
-  };
-  base["COOPERATIVA_LEITE"]["Transferência"] = {
-    origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
-  };
-  // PRODUTOR (CR-014): não envia (origem bloqueada); a venda e a transferência recebidas exigem o aceite do próprio produtor (aprovação complementar — aprovador: o destinatário)
-  for (const movement of perfilMovimentos) {
+  // Postura padrão (RN-012): sem restrição registrada = fluxo livre com qualquer titular
+  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+    base[code] = {};
+    for (const movement of perfilMovimentos) {
+      base[code][movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
+    }
+  }
+  // ABASTECIMENTO (RN-003): a origem do abastecimento é a fábrica (sem perfil) — nenhum estocador abastece
+  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+    base[code]["Abastecimento"].origem = { tipo: "BLOQUEIO" };
+  }
+  // PRODUTOR: não abastece nem recebe abastecimento direto — brincos chegam por venda (RN-006) ou transferência
+  base["PRODUTOR"]["Abastecimento"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
+  // VENDA é a venda ao produtor (RN-006, leitura obrigatória — RN-015): executada por Habilitado e Loja Agropecuária;
+  // os órgãos (Prefeitura/Cooperativa/IDA/Posto/SEAPI) não vendem nem compram brincos
+  for (const code of ["PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO", "SEAPI"]) {
+    base[code]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
+  }
+  // PRODUTOR: recebe venda com crédito imediato (RN-006 — sem aprovação) e não vende
+  base["PRODUTOR"]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
+  // TRANSFERÊNCIA entre estocadores: livre; o produtor só recebe (RN-005 cobre a devolução dele)
+  base["PRODUTOR"]["Transferência"].origem = { tipo: "BLOQUEIO" };
+  // DEVOLUÇÃO/PERDA/SAÍDA INTERNA: operações de estocador — o produtor não executa
+  for (const movement of ["Devolução", "Perda", "Saída interna"]) {
     base["PRODUTOR"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
-  base["PRODUTOR"]["Venda"] = {
-    origem: { tipo: "BLOQUEIO" },
-    destino: { tipo: "LIVRE", aprovacao: { aprovador: "DESTINO" } },
-  };
-  base["PRODUTOR"]["Transferência"] = {
-    origem: { tipo: "BLOQUEIO" },
-    destino: { tipo: "LIVRE", aprovacao: { aprovador: "DESTINO" } },
-  };
-  // ESTORNO (CR-013): seed — apenas o perfil SEAPI estorna (de qualquer titular); demais bloqueados
+  // Escopo do legado (CAND-MONO-601): prefeitura e cooperativa remetem só a credenciados
+  base["PREFEITURA"]["Transferência"].destino = { tipo: "ESCOPO", alvos: ["CREDENCIADO"] };
+  base["COOPERATIVA_LEITE"]["Transferência"].destino = { tipo: "ESCOPO", alvos: ["CREDENCIADO"] };
+  // ESTORNO (RN-005): exclusivo da SEAPI
   for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
     base[code]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
-  base["SEAPI"]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
+  base["SEAPI"]["Estorno"].destino = { tipo: "LIVRE" };
   return base;
 }
 
@@ -3828,11 +3836,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           <Icon name="alert" />
           <span>
             Coluna Receber = de quem o ator aceita receber brincos; coluna Enviar = para quem pode
-            enviar. Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com
-            seleção múltipla de atores oficiais (perfis e titulares fixos). Seed do V1: PREFEITURA
-            remete só a habilitados; COOPERATIVA_LEITE só a habilitados via integradora; PRODUTOR
-            não envia e só recebe venda/transferência; ESTORNO exclusivo da SEAPI — seed editável
-            pela SEAPI (delegação de estorno: CR-013).
+            enviar. Clique em uma célula para editar a restrição: Livre, Bloqueado ou Escopo com
+            seleção múltipla de atores oficiais. Seed do V1: PREFEITURA remete só a habilitados;
+            COOPERATIVA_LEITE só a habilitados via integradora; PRODUTOR não envia e recebe
+            venda/transferência; ESTORNO exclusivo da SEAPI — tudo editável pela SEAPI.
           </span>
         </div>
       </aside>
