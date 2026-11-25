@@ -3118,7 +3118,11 @@ function labelPerfil(code: string) {
 }
 const perfilMovimentos = ["Abastecimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna", "Estorno"];
 
-type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO" | "APROVACAO"; alvos?: string[] };
+type RegraFluxo = {
+  tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO" | "APROVACAO";
+  alvos?: string[];
+  aprovador?: "SEAPI" | "DESTINO";
+};
 
 // Atores autorizáveis no escopo de uma regra (RN-012) — seleção múltipla.
 // Perfis = classes de estocadores habilitáveis; titulares fixos = atores de estado sempre existentes:
@@ -3153,12 +3157,18 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
     origem: { tipo: "LIVRE" },
     destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
   };
-  // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
+  // PRODUTOR (ADR-027/CR-014): seed restritivo — a venda ao produtor exige o aceite dele (aprovador: o próprio destinatário)
   for (const movement of perfilMovimentos) {
     base["PRODUTOR"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
-  base["PRODUTOR"]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
-  base["PRODUTOR"]["Transferência"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
+  base["PRODUTOR"]["Venda"] = {
+    origem: { tipo: "BLOQUEIO" },
+    destino: { tipo: "APROVACAO", aprovador: "DESTINO" },
+  };
+  base["PRODUTOR"]["Transferência"] = {
+    origem: { tipo: "BLOQUEIO" },
+    destino: { tipo: "APROVACAO", aprovador: "DESTINO" },
+  };
   // ESTORNO (CR-013): seed — apenas o perfil SEAPI estorna (de qualquer titular); demais bloqueados
   for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
     base[code]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
@@ -3170,7 +3180,14 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
 function badgeRegraFluxo(regra: RegraFluxo) {
   if (regra.tipo === "LIVRE") return <Badge tone="green">Livre</Badge>;
   if (regra.tipo === "BLOQUEIO") return <Badge tone="red">Bloqueio</Badge>;
-  if (regra.tipo === "APROVACAO") return <Badge tone="blue">Com aprovação</Badge>;
+  if (regra.tipo === "APROVACAO") {
+    const quem = regra.aprovador === "DESTINO" ? "o próprio destinatário" : "a SEAPI";
+    return (
+      <span title={`A movimentação só executa após aprovação — aprovador: ${quem}`}>
+        <Badge tone="blue">Com aprovação</Badge>
+      </span>
+    );
+  }
   const n = regra.alvos?.length ?? 0;
   const labels = (regra.alvos ?? [])
     .map((a) => escopoAtores.find((x) => x.id === a)?.label ?? a)
@@ -3664,10 +3681,18 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
-  const [draft, setDraft] = useState<{ tipo: RegraFluxo["tipo"]; alvos: string[] }>({ tipo: "LIVRE", alvos: [] });
+  const [draft, setDraft] = useState<{
+    tipo: RegraFluxo["tipo"];
+    alvos: string[];
+    aprovador: "SEAPI" | "DESTINO";
+  }>({ tipo: "LIVRE", alvos: [], aprovador: "SEAPI" });
   function abrirEditor(movement: string, side: "origem" | "destino") {
     const regra = rules[selected][movement][side];
-    setDraft({ tipo: regra.tipo, alvos: regra.alvos ? [...regra.alvos] : [] });
+    setDraft({
+      tipo: regra.tipo,
+      alvos: regra.alvos ? [...regra.alvos] : [],
+      aprovador: regra.aprovador ?? "SEAPI",
+    });
     setEditor({ movement, side });
   }
   function salvarEditor() {
@@ -3677,7 +3702,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
       return;
     }
     const nova: RegraFluxo =
-      draft.tipo === "ESCOPO" ? { tipo: "ESCOPO", alvos: [...draft.alvos] } : { tipo: draft.tipo };
+      draft.tipo === "ESCOPO"
+        ? { tipo: "ESCOPO", alvos: [...draft.alvos] }
+        : draft.tipo === "APROVACAO"
+          ? { tipo: "APROVACAO", aprovador: draft.aprovador }
+          : { tipo: draft.tipo };
     setRules((current) => ({
       ...current,
       [selected]: {
@@ -3851,17 +3880,31 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                   type="radio"
                   name="regra-tipo"
                   checked={draft.tipo === "APROVACAO"}
-                  onChange={() => setDraft((d) => ({ tipo: "APROVACAO", alvos: d.alvos }))}
+                  onChange={() => setDraft((d) => ({ tipo: "APROVACAO", alvos: d.alvos, aprovador: d.aprovador }))}
                 />
                 <div>
                   <strong>Com aprovação</strong>
                   <span>
-                    Permitido, mas a movimentação entra na fila de aprovações da SEAPI e só executa
-                    após aprovação (o brinco fica reservado no estoque do remetente até lá).
+                    Permitido, mas a movimentação só executa após aprovação — configurável abaixo
+                    quem aprova. O brinco fica reservado no estoque do remetente até lá.
                   </span>
                 </div>
               </label>
             </div>
+            {draft.tipo === "APROVACAO" && (
+              <label className="scan-input compact">
+                <span>QUEM APROVA CADA MOVIMENTAÇÃO</span>
+                <select
+                  value={draft.aprovador}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, aprovador: e.target.value as "SEAPI" | "DESTINO" }))
+                  }
+                >
+                  <option value="DESTINO">O próprio destinatário da movimentação</option>
+                  <option value="SEAPI">A SEAPI (secretaria)</option>
+                </select>
+              </label>
+            )}
             {draft.tipo === "ESCOPO" && (
               <div className="scope-targets">
                 <span className="scope-targets-title">Atores autorizados (seleção múltipla)</span>
