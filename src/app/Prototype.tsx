@@ -3315,6 +3315,8 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
   const [filterTipo, setFilterTipo] = useState("Todos os tipos");
   const [filterSituacao, setFilterSituacao] = useState("Todas as situações");
   const [filterFonte, setFilterFonte] = useState("Todas as proveniências");
+  const [filterDataDe, setFilterDataDe] = useState("");
+  const [filterDataAte, setFilterDataAte] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [filtersExpanded, setFiltersExpanded] = useState(true);
 
@@ -3323,6 +3325,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
     filterTipo !== "Todos os tipos",
     filterSituacao !== "Todas as situações",
     filterFonte !== "Todas as proveniências",
+    filterDataDe !== "" || filterDataAte !== "",
     searchNum.trim() !== "",
   ].filter(Boolean).length;
 
@@ -3332,6 +3335,8 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
     setFilterTipo("Todos os tipos");
     setFilterSituacao("Todas as situações");
     setFilterFonte("Todas as proveniências");
+    setFilterDataDe("");
+    setFilterDataAte("");
   }
 
   function gerarFaixaInterna() {
@@ -3375,6 +3380,11 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
     if (filterSituacao !== "Todas as situações" && r.situacao !== filterSituacao) return false;
     if (filterFonte === "Herdadas" && r.modoGeracao !== "Herdada") return false;
     if (filterFonte === "Geradas no novo" && r.modoGeracao === "Herdada") return false;
+    if (filterDataDe !== "" || filterDataAte !== "") {
+      const criacao = r.dataCadastro.split("/").reverse().join("-");
+      if (filterDataDe !== "" && criacao < filterDataDe) return false;
+      if (filterDataAte !== "" && criacao > filterDataAte) return false;
+    }
     if (searchNum.trim() !== "") {
       const q = searchNum.replace(/\D/g, "");
       if (q.length > 0) {
@@ -3482,6 +3492,10 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                 <option>Geradas no novo</option>
               </select>
             </div>
+            <div className="filter-row">
+              <input type="date" className="filter-field" title="Data de criação — de" value={filterDataDe} onChange={(e) => setFilterDataDe(e.target.value)} />
+              <input type="date" className="filter-field" title="Data de criação — até" value={filterDataAte} onChange={(e) => setFilterDataAte(e.target.value)} />
+            </div>
           </div>
         )}
       </form>
@@ -3497,6 +3511,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                 <th>Origem</th>
                 <th>Situação</th>
                 <th>Destinação</th>
+                <th>Data de criação</th>
                 <th className="th-actions">Ações</th>
               </tr>
             </thead>
@@ -3523,6 +3538,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                     <Badge tone={r.situacao === "Disponível" ? "green" : "yellow"}>{r.situacao}</Badge>
                   </td>
                   <td>{r.destino ?? "—"}</td>
+                  <td>{r.dataCadastro}</td>
                   <td className="td-actions">
                     <div className="action-cell">
                       {r.situacao === "Disponível" ? (
