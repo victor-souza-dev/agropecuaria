@@ -167,7 +167,7 @@ const producerStock = [
 ];
 
 const numberingRanges = [
-  { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa (herdada)", modoGeracao: "Legado" },
+  { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa (herdada)", modoGeracao: "Herdada" },
   { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true, criadoPor: "Geração automática — reposição Brinco Sul", modoGeracao: "Automática" },
   { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true, criadoPor: "Ana R. Farias — SEAPI", modoGeracao: "Manual" },
   { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false, criadoPor: "Geração automática — PNIB", modoGeracao: "Automática" },
@@ -3372,8 +3372,8 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
       if (r.tipo !== filterVal) return false;
     }
     if (filterSituacao !== "Todas as situações" && r.situacao !== filterSituacao) return false;
-    if (filterFonte === "Herdadas" && r.modoGeracao !== "Legado") return false;
-    if (filterFonte === "Geradas no novo" && r.modoGeracao === "Legado") return false;
+    if (filterFonte === "Herdadas" && r.modoGeracao !== "Herdada") return false;
+    if (filterFonte === "Geradas no novo" && r.modoGeracao === "Herdada") return false;
     if (searchNum.trim() !== "") {
       const q = searchNum.replace(/\D/g, "");
       if (q.length > 0) {
@@ -3514,7 +3514,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                   </td>
                   <td>
                     <Badge tone={r.origem === "PNIB" ? "blue" : "purple"}>{r.origem}</Badge>
-                    {r.modoGeracao === "Legado" && (
+                    {r.modoGeracao === "Herdada" && (
                       <span className="proveniencia-tag">Herdada</span>
                     )}
                   </td>
@@ -3564,7 +3564,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                       <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                     </svg>
                     <span>Origem: <strong>{r.origem}</strong></span>
-                    {r.modoGeracao === "Legado" && <span className="proveniencia-tag">Herdada</span>}
+                    {r.modoGeracao === "Herdada" && <span className="proveniencia-tag">Herdada</span>}
                   </div>
                   <div className="grid-card-info-row">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
