@@ -3081,7 +3081,7 @@ const estocadoresBase: Estocador[] = [
     type: "PF",
     active: true,
     canal: "NOVO",
-    perfil: "HABILITADO",
+    perfil: "CREDENCIADO",
     origem: "Carga inicial de identidade — 01/05/2025",
     ligadoEm: "02/06/2025",
     atendentes: 0,
@@ -3093,21 +3093,30 @@ const estocadoresBase: Estocador[] = [
     type: "PF",
     active: false,
     canal: "NOVO",
-    perfil: "HABILITADO",
+    perfil: "CREDENCIADO",
     origem: "Habilitado pela SEAPI em 18/06/2025",
     ligadoEm: "18/06/2025",
     atendentes: 0,
   },
 ];
 
-const perfilOptions = ["LOJA_AGROPECUARIA", "HABILITADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
+const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
+
+// Rótulos de exibição por perfil (decisão do operador 25/11/2026 — ADR-026): o código canônico do banco
+// (tabela SDA_CREDENCIADO do legado) permanece CREDENCIADO; a UI mostra "Habilitado".
+const perfilLabel: Record<string, string> = {
+  CREDENCIADO: "Habilitado",
+};
+function labelPerfil(code: string) {
+  return perfilLabel[code] ?? code;
+}
 const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
 
 type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
 
 // Atores autorizáveis no escopo de uma regra (RN-012): outros perfis, titulares fixos e escopos dinâmicos — seleção múltipla.
 const escopoAtores: { id: string; label: string }[] = [
-  { id: "HABILITADO", label: "Estocadores habilitados (perfil)" },
+  { id: "CREDENCIADO", label: "Habilitado (perfil)" },
   { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias (perfil)" },
   { id: "PREFEITURA", label: "Prefeituras (perfil)" },
   { id: "COOPERATIVA_LEITE", label: "Cooperativas de leite (perfil)" },
@@ -3132,11 +3141,11 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601) — agora com escopo multi-ator
   base["PREFEITURA"]["Transferência"] = {
     origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["HABILITADO", "DIN_MUNICIPIO"] },
+    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO", "DIN_MUNICIPIO"] },
   };
   base["COOPERATIVA_LEITE"]["Transferência"] = {
     origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["HABILITADO", "DIN_INTEGRADORA"] },
+    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO", "DIN_INTEGRADORA"] },
   };
   // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
   for (const movement of perfilMovimentos) {
@@ -3177,7 +3186,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
     if (filterPerfilH !== "Todos os perfis" && h.perfil !== filterPerfilH) return false;
     if (filterCanalH === "Ligado no novo" && h.canal !== "NOVO") return false;
     if (filterCanalH === "Portal herdado" && h.canal !== "HERDADO") return false;
-    if (filterSituacaoH === "Habilitados" && !h.active) return false;
+    if (filterSituacaoH === "Ativos" && !h.active) return false;
     if (filterSituacaoH === "Suspensos" && h.active) return false;
     const q = searchH.trim().toLowerCase();
     if (q && !`${h.name} ${h.doc} ${h.city}`.toLowerCase().includes(q)) return false;
@@ -3280,7 +3289,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
               <select className="filter-field" value={filterPerfilH} onChange={(e) => setFilterPerfilH(e.target.value)}>
                 <option>Todos os perfis</option>
                 {perfilOptions.map((p) => (
-                  <option key={p}>{p}</option>
+                  <option key={p} value={p}>{labelPerfil(p)}</option>
                 ))}
               </select>
               <select className="filter-field" value={filterCanalH} onChange={(e) => setFilterCanalH(e.target.value)}>
@@ -3290,7 +3299,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
               </select>
               <select className="filter-field" value={filterSituacaoH} onChange={(e) => setFilterSituacaoH(e.target.value)}>
                 <option>Todas as situações</option>
-                <option>Habilitados</option>
+                <option>Ativos</option>
                 <option>Suspensos</option>
               </select>
             </div>
@@ -3319,7 +3328,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
                   <span>{h.doc}</span>
                 </td>
                 <td>
-                  <Badge tone="neutral">{h.perfil}</Badge>
+                  <Badge tone="neutral">{labelPerfil(h.perfil)}</Badge>
                 </td>
                 <td>
                   <Badge tone={h.canal === "NOVO" ? "blue" : "yellow"}>
@@ -3328,7 +3337,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
                 </td>
                 <td>
                   <Badge tone={h.active ? "green" : "red"}>
-                    {h.active ? "Habilitado" : "Suspenso"}
+                    {h.active ? "Ativo" : "Suspenso"}
                   </Badge>
                 </td>
                 <td>{h.origem}</td>
@@ -3417,7 +3426,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
               <dl>
                 <div>
                   <dt>Perfil de estocador</dt>
-                  <dd>{detalheAtual.perfil}</dd>
+                  <dd>{labelPerfil(detalheAtual.perfil)}</dd>
                 </div>
                 <div>
                   <dt>Canal de operação</dt>
@@ -3571,7 +3580,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             >
               <div className="company-icon">{profile.code.slice(0, 2)}</div>
               <div>
-                <strong>{profile.code}</strong>
+                <strong>{labelPerfil(profile.code)}</strong>
                 <span>{profile.desc}</span>
               </div>
               {profile.travado ? (
@@ -3596,7 +3605,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="panel-head">
           <div>
             <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO (RN-012)</span>
-            <h2>{selected}</h2>
+            <h2>{labelPerfil(selected)}</h2>
             <p>
               {selectedProfile.desc} ·{" "}
               {selectedProfile.travado
@@ -3666,7 +3675,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
       {editor && (
         <ModalShell
           title="Editar restrição de fluxo"
-          subtitle={`${selected} · ${editor.movement} · lado ${editor.side === "origem" ? "origem — quem envia" : "destino — quem recebe"}`}
+          subtitle={`${labelPerfil(selected)} · ${editor.movement} · lado ${editor.side === "origem" ? "origem — quem envia" : "destino — quem recebe"}`}
           onClose={() => setEditor(null)}
         >
           <div className="modal-body">
@@ -3818,7 +3827,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               <span>PERFIL DE ESTOCADOR (RN-012)</span>
               <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
                 {perfilOptions.map((p) => (
-                  <option key={p}>{p}</option>
+                  <option key={p} value={p}>{labelPerfil(p)}</option>
                 ))}
               </select>
             </label>
@@ -3855,7 +3864,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
           <div className="panel-head">
             <div>
               <h2>Regras do perfil selecionado</h2>
-              <p>{perfil} — em vigor a partir do primeiro movimento (RN-012)</p>
+              <p>{labelPerfil(perfil)} — em vigor a partir do primeiro movimento (RN-012)</p>
             </div>
           </div>
           <div className="table-wrap">
@@ -3899,7 +3908,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
   const noPortal = carga - ligados;
   const pct = Math.max(1, Math.round((ligados / carga) * 100));
   const porPerfil = [
-    { nome: "HABILITADO", value: 299, color: "#4BA044" },
+    { nome: "CREDENCIADO", value: 299, color: "#4BA044" },
     { nome: "INSPETORIA", value: 79, color: "#1565c0" },
     { nome: "PREFEITURA", value: 5, color: "#9c27b0" },
     { nome: "COOPERATIVA_LEITE", value: 2, color: "#e5a33d" },
@@ -3980,7 +3989,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           <div className="hbar-list">
             {porPerfil.map((p) => (
               <div className="hbar-row creator" key={p.nome}>
-                <span className="hbar-name" title={p.nome}>{p.nome}</span>
+                <span className="hbar-name" title={p.nome}>{labelPerfil(p.nome)}</span>
                 <div className="hbar-track">
                   <span
                     className="hbar-fill"
