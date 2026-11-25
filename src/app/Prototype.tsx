@@ -8356,9 +8356,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                           {p.mov && (
                             <section>
                               <span>MOVIMENTO DE ENVIO VINCULADO</span>
-                              <a>
-                                {p.mov} · Transferência ESTOQUE SDA → {p.ator}
-                              </a>
+                              <a>Transferência ESTOQUE SDA → {p.ator} — consultável no histórico de movimentações</a>
                             </section>
                           )}
                         </div>
