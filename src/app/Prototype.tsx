@@ -1672,7 +1672,7 @@ function StockPage({
     {
       select: "Antônio Carlos Silveira — PF",
       titular: "Antônio Carlos Silveira",
-      perfil: "PF · CREDENCIADO",
+      perfil: "PF · HABILITADO",
       canal: "NOVO",
       ranges: 2,
       brincos: 120,
@@ -3081,7 +3081,7 @@ const estocadoresBase: Estocador[] = [
     type: "PF",
     active: true,
     canal: "NOVO",
-    perfil: "CREDENCIADO",
+    perfil: "HABILITADO",
     origem: "Carga inicial de identidade — 01/05/2025",
     ligadoEm: "02/06/2025",
     atendentes: 0,
@@ -3093,35 +3093,74 @@ const estocadoresBase: Estocador[] = [
     type: "PF",
     active: false,
     canal: "NOVO",
-    perfil: "CREDENCIADO",
+    perfil: "HABILITADO",
     origem: "Habilitado pela SEAPI em 18/06/2025",
     ligadoEm: "18/06/2025",
     atendentes: 0,
   },
 ];
 
-const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
+const perfilOptions = ["LOJA_AGROPECUARIA", "HABILITADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
 const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
-const perfilCycle = ["Livre", "Bloqueio", "Escopo: Mesmo município", "Escopo: Via integradora", "Escopo: Só produtor"];
 
-function perfilRulesSeed(): Record<string, Record<string, { origem: string; destino: string }>> {
-  const base: Record<string, Record<string, { origem: string; destino: string }>> = {};
+type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
+
+// Atores autorizáveis no escopo de uma regra (RN-012): outros perfis, titulares fixos e escopos dinâmicos — seleção múltipla.
+const escopoAtores: { id: string; label: string }[] = [
+  { id: "HABILITADO", label: "Estocadores habilitados (perfil)" },
+  { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias (perfil)" },
+  { id: "PREFEITURA", label: "Prefeituras (perfil)" },
+  { id: "COOPERATIVA_LEITE", label: "Cooperativas de leite (perfil)" },
+  { id: "INSPETORIA", label: "Inspetorias veterinárias (perfil)" },
+  { id: "POSTO", label: "Postos de defesa sanitária (perfil)" },
+  { id: "SEAPI", label: "Estoque central SEAPI (titular fixo)" },
+  { id: "PRODUTOR", label: "Produtores rurais (titular fixo)" },
+  { id: "FABRICA", label: "Fábricas de brincos (titular fixo)" },
+  { id: "ESTOQUE_SDA", label: "Estoque SDA (titular fixo)" },
+  { id: "DIN_MUNICIPIO", label: "Dinâmico: mesmo município do titular" },
+  { id: "DIN_INTEGRADORA", label: "Dinâmico: via integradora do titular" },
+];
+
+function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
+  const base: Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> = {};
   for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
     base[code] = {};
     for (const movement of perfilMovimentos) {
-      base[code][movement] = { origem: "Livre", destino: "Livre" };
+      base[code][movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
     }
   }
-  // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601)
-  base["PREFEITURA"]["Transferência"] = { origem: "Livre", destino: "Escopo: Mesmo município" };
-  base["COOPERATIVA_LEITE"]["Transferência"] = { origem: "Livre", destino: "Escopo: Via integradora" };
+  // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601) — agora com escopo multi-ator
+  base["PREFEITURA"]["Transferência"] = {
+    origem: { tipo: "LIVRE" },
+    destino: { tipo: "ESCOPO", alvos: ["HABILITADO", "DIN_MUNICIPIO"] },
+  };
+  base["COOPERATIVA_LEITE"]["Transferência"] = {
+    origem: { tipo: "LIVRE" },
+    destino: { tipo: "ESCOPO", alvos: ["HABILITADO", "DIN_INTEGRADORA"] },
+  };
   // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
   for (const movement of perfilMovimentos) {
-    base["PRODUTOR"][movement] = { origem: "Bloqueio", destino: "Bloqueio" };
+    base["PRODUTOR"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
-  base["PRODUTOR"]["Venda"] = { origem: "Bloqueio", destino: "Livre" };
-  base["PRODUTOR"]["Transferência"] = { origem: "Bloqueio", destino: "Livre" };
+  base["PRODUTOR"]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
+  base["PRODUTOR"]["Transferência"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
   return base;
+}
+
+function badgeRegraFluxo(regra: RegraFluxo) {
+  if (regra.tipo === "LIVRE") return <Badge tone="green">Livre</Badge>;
+  if (regra.tipo === "BLOQUEIO") return <Badge tone="red">Bloqueio</Badge>;
+  const n = regra.alvos?.length ?? 0;
+  const labels = (regra.alvos ?? [])
+    .map((a) => escopoAtores.find((x) => x.id === a)?.label ?? a)
+    .join(" · ");
+  return (
+    <span title={labels}>
+      <Badge tone="yellow">
+        Escopo · {n} {n === 1 ? "ator" : "atores"}
+      </Badge>
+    </span>
+  );
 }
 
 function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
@@ -3470,7 +3509,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const profiles = [
     { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2, travado: false },
-    { code: "CREDENCIADO", desc: "Credenciado SEAPI", holders: 2, travado: false },
+    { code: "HABILITADO", desc: "Estocador habilitado pela SEAPI", holders: 2, travado: false },
     { code: "PREFEITURA", desc: "Estocador municipal", holders: 1, travado: false },
     { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1, travado: false },
     { code: "INSPETORIA", desc: "Inspetoria veterinária", holders: 0, travado: false },
@@ -3479,27 +3518,33 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "PRODUTOR", desc: "Produtor rural — só recebe venda e transferência; nunca envia (ADR-024)", holders: 0, travado: true },
   ];
   const movements = perfilMovimentos;
-  const cycle = perfilCycle;
-  const [rules, setRules] = useState<Record<string, Record<string, { origem: string; destino: string }>>>(perfilRulesSeed);
+  const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
-  function cycleCell(movement: string, side: "origem" | "destino") {
+  const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
+  const [draft, setDraft] = useState<{ tipo: RegraFluxo["tipo"]; alvos: string[] }>({ tipo: "LIVRE", alvos: [] });
+  function abrirEditor(movement: string, side: "origem" | "destino") {
     if (selected === "PRODUTOR") return;
-    setRules((current) => {
-      const atual = current[selected][movement][side];
-      const next = cycle[(cycle.indexOf(atual) + 1) % cycle.length];
-      return {
-        ...current,
-        [selected]: {
-          ...current[selected],
-          [movement]: { ...current[selected][movement], [side]: next },
-        },
-      };
-    });
+    const regra = rules[selected][movement][side];
+    setDraft({ tipo: regra.tipo, alvos: regra.alvos ? [...regra.alvos] : [] });
+    setEditor({ movement, side });
   }
-  function cellBadge(value: string) {
-    if (value === "Livre") return <Badge tone="green">Livre</Badge>;
-    if (value === "Bloqueio") return <Badge tone="red">Bloqueio</Badge>;
-    return <Badge tone="yellow">{value}</Badge>;
+  function salvarEditor() {
+    if (!editor) return;
+    if (draft.tipo === "ESCOPO" && draft.alvos.length === 0) {
+      notify("Selecione ao menos um ator para o escopo — ou use Livre/Bloqueio.");
+      return;
+    }
+    const nova: RegraFluxo =
+      draft.tipo === "ESCOPO" ? { tipo: "ESCOPO", alvos: [...draft.alvos] } : { tipo: draft.tipo };
+    setRules((current) => ({
+      ...current,
+      [selected]: {
+        ...current[selected],
+        [editor.movement]: { ...current[selected][editor.movement], [editor.side]: nova },
+      },
+    }));
+    setEditor(null);
+    notify("Restrição atualizada — efeito prospectivo: movimentos já registrados não são revalidados.");
   }
   const selectedProfile = profiles.find((p) => p.code === selected)!;
   return (
@@ -3588,19 +3633,19 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                   </td>
                   <td>
                     {selected === "PRODUTOR" ? (
-                      cellBadge(rules[selected][movement].origem)
+                      badgeRegraFluxo(rules[selected][movement].origem)
                     ) : (
-                      <button className="text-btn" onClick={() => cycleCell(movement, "origem")}>
-                        {cellBadge(rules[selected][movement].origem)}
+                      <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
+                        {badgeRegraFluxo(rules[selected][movement].origem)}
                       </button>
                     )}
                   </td>
                   <td>
                     {selected === "PRODUTOR" ? (
-                      cellBadge(rules[selected][movement].destino)
+                      badgeRegraFluxo(rules[selected][movement].destino)
                     ) : (
-                      <button className="text-btn" onClick={() => cycleCell(movement, "destino")}>
-                        {cellBadge(rules[selected][movement].destino)}
+                      <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
+                        {badgeRegraFluxo(rules[selected][movement].destino)}
                       </button>
                     )}
                   </td>
@@ -3614,10 +3659,91 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           <span>
             {selected === "PRODUTOR"
               ? "Perfil travado (ADR-024): o produtor só recebe venda e transferência — nunca envia brincos. A restrição já vem do modelo, não é configurável."
-              : "Clique em uma célula para alternar: Livre → Bloqueio → Escopos. Seed do V1 (RN-012) com as restrições praticadas no sistema anterior: PREFEITURA transfere só no município; COOPERATIVA_LEITE só via integradora (CAND-MONO-601)."}
+              : "Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com seleção múltipla de atores (perfis, titulares fixos e escopos dinâmicos — RN-012). Seed do V1: PREFEITURA transfere só a habilitados do mesmo município; COOPERATIVA_LEITE só a habilitados via integradora (CAND-MONO-601)."}
           </span>
         </div>
       </aside>
+      {editor && (
+        <ModalShell
+          title="Editar restrição de fluxo"
+          subtitle={`${selected} · ${editor.movement} · lado ${editor.side === "origem" ? "origem — quem envia" : "destino — quem recebe"}`}
+          onClose={() => setEditor(null)}
+        >
+          <div className="modal-body">
+            <div className="scope-options">
+              <label className={`scope-option ${draft.tipo === "LIVRE" ? "selected" : ""}`}>
+                <input
+                  type="radio"
+                  name="regra-tipo"
+                  checked={draft.tipo === "LIVRE"}
+                  onChange={() => setDraft({ tipo: "LIVRE", alvos: [] })}
+                />
+                <div>
+                  <strong>Livre</strong>
+                  <span>Sem restrição — o fluxo é permitido com qualquer titular (postura padrão da RN-012).</span>
+                </div>
+              </label>
+              <label className={`scope-option ${draft.tipo === "BLOQUEIO" ? "selected" : ""}`}>
+                <input
+                  type="radio"
+                  name="regra-tipo"
+                  checked={draft.tipo === "BLOQUEIO"}
+                  onChange={() => setDraft({ tipo: "BLOQUEIO", alvos: [] })}
+                />
+                <div>
+                  <strong>Bloqueio</strong>
+                  <span>Recusa o movimento neste lado, independentemente do alvo.</span>
+                </div>
+              </label>
+              <label className={`scope-option ${draft.tipo === "ESCOPO" ? "selected" : ""}`}>
+                <input
+                  type="radio"
+                  name="regra-tipo"
+                  checked={draft.tipo === "ESCOPO"}
+                  onChange={() => setDraft((d) => ({ tipo: "ESCOPO", alvos: d.alvos }))}
+                />
+                <div>
+                  <strong>Escopo — múltiplos atores</strong>
+                  <span>
+                    Permite o movimento somente com os atores selecionados abaixo: perfis, titulares
+                    fixos ou escopos dinâmicos.
+                  </span>
+                </div>
+              </label>
+            </div>
+            {draft.tipo === "ESCOPO" && (
+              <div className="scope-targets">
+                <span className="scope-targets-title">Atores autorizados (seleção múltipla)</span>
+                {escopoAtores.map((a) => (
+                  <label key={a.id} className="scope-target">
+                    <input
+                      type="checkbox"
+                      checked={draft.alvos.includes(a.id)}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          alvos: e.target.checked
+                            ? [...d.alvos, a.id]
+                            : d.alvos.filter((x) => x !== a.id),
+                        }))
+                      }
+                    />
+                    <span>{a.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setEditor(null)}>
+              Cancelar
+            </button>
+            <button className="btn primary" onClick={salvarEditor}>
+              Salvar restrição
+            </button>
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 }
@@ -3645,11 +3771,6 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   const [cidade, setCidade] = useState("");
   const navigate = useNavigate();
   const regras = perfilRulesSeed()[perfil];
-  function badgeRegra(value: string) {
-    if (value === "Livre") return <Badge tone="green">Livre</Badge>;
-    if (value === "Bloqueio") return <Badge tone="red">Bloqueio</Badge>;
-    return <Badge tone="yellow">{value}</Badge>;
-  }
   return (
     <div className="page-container">
       <section className="header">
@@ -3752,8 +3873,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                     <td>
                       <strong>{movement}</strong>
                     </td>
-                    <td>{badgeRegra(regras[movement].origem)}</td>
-                    <td>{badgeRegra(regras[movement].destino)}</td>
+                    <td>{badgeRegraFluxo(regras[movement].origem)}</td>
+                    <td>{badgeRegraFluxo(regras[movement].destino)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3778,7 +3899,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
   const noPortal = carga - ligados;
   const pct = Math.max(1, Math.round((ligados / carga) * 100));
   const porPerfil = [
-    { nome: "CREDENCIADO", value: 299, color: "#4BA044" },
+    { nome: "HABILITADO", value: 299, color: "#4BA044" },
     { nome: "INSPETORIA", value: 79, color: "#1565c0" },
     { nome: "PREFEITURA", value: 5, color: "#9c27b0" },
     { nome: "COOPERATIVA_LEITE", value: 2, color: "#e5a33d" },
@@ -3872,7 +3993,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
               </div>
             ))}
             <p className="aging-note">
-              299 credenciados e 79 inspetorias dominam a carga inicial (RN-001) — perfis semeados
+              299 estocadores habilitados e 79 inspetorias dominam a carga inicial (RN-001) — perfis semeados
               do V1 com as restrições praticadas no sistema anterior (RN-012, CAND-MONO-601).
             </p>
           </div>
