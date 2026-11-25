@@ -3372,7 +3372,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
       if (r.tipo !== filterVal) return false;
     }
     if (filterSituacao !== "Todas as situações" && r.situacao !== filterSituacao) return false;
-    if (filterFonte === "Herdadas do legado" && r.modoGeracao !== "Legado") return false;
+    if (filterFonte === "Herdadas" && r.modoGeracao !== "Legado") return false;
     if (filterFonte === "Geradas no novo" && r.modoGeracao === "Legado") return false;
     if (searchNum.trim() !== "") {
       const q = searchNum.replace(/\D/g, "");
@@ -3477,7 +3477,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
               </select>
               <select className="filter-field" value={filterFonte} onChange={(e) => setFilterFonte(e.target.value)}>
                 <option>Todas as proveniências</option>
-                <option>Herdadas do legado</option>
+                <option>Herdadas</option>
                 <option>Geradas no novo</option>
               </select>
             </div>
@@ -3515,7 +3515,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                   <td>
                     <Badge tone={r.origem === "PNIB" ? "blue" : "purple"}>{r.origem}</Badge>
                     {r.modoGeracao === "Legado" && (
-                      <span className="proveniencia-tag">Herdada do legado</span>
+                      <span className="proveniencia-tag">Herdada</span>
                     )}
                   </td>
                   <td>
@@ -3564,7 +3564,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                       <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                     </svg>
                     <span>Origem: <strong>{r.origem}</strong></span>
-                    {r.modoGeracao === "Legado" && <span className="proveniencia-tag">Herdada do legado</span>}
+                    {r.modoGeracao === "Legado" && <span className="proveniencia-tag">Herdada</span>}
                   </div>
                   <div className="grid-card-info-row">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
