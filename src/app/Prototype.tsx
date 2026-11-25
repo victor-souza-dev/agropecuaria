@@ -3002,18 +3002,31 @@ function HistoryPage({
 function EnablementPage({ notify }: { notify: (m: string) => void }) {
   const [tab, setTab] = useState<"holders" | "profiles">("holders");
   const [showEnable, setShowEnable] = useState(false);
-  const [regime, setRegime] = useState<"NOVO" | "LEGADO">("NOVO");
   const [enableNatureza, setEnableNatureza] = useState<"PJ" | "PF">("PJ");
+  const [enablePerfil, setEnablePerfil] = useState("LOJA_AGROPECUARIA");
+  const [enableNome, setEnableNome] = useState("");
+  const [enableCidade, setEnableCidade] = useState("");
   const [natureza, setNatureza] = useState<"ALL" | "PJ" | "PF">("ALL");
-  const holders = [
+  const [searchH, setSearchH] = useState("");
+  const [filterPerfilH, setFilterPerfilH] = useState("Todos os perfis");
+  const [filterCanalH, setFilterCanalH] = useState("Todos os canais");
+  const [filterSituacaoH, setFilterSituacaoH] = useState("Todas as situações");
+  const [ligar, setLigar] = useState<(typeof holdersBase)[number] | null>(null);
+
+  // RN-001 (CR-003/ADR-012): habilitação constitutiva do cadastro; carga inicial de identidade traz os estocadores já habilitados.
+  // RN-013 emendada (CR-012/ADR-025): sem regimes — canal de operação (ligado no novo × portal herdado) sobre o estado único.
+  const holdersBase = [
     {
       name: "Agropecuária Pampa Sul Ltda.",
       doc: "CNPJ 92.841.760/0001-08",
       city: "Bagé/RS",
       type: "PJ",
       active: true,
-      regime: "NOVO",
-      profile: "LOJA_AGROPECUARIA",
+      canal: "NOVO",
+      perfil: "LOJA_AGROPECUARIA",
+      origem: "Habilitado pela SEAPI em 02/03/2025",
+      ligadoEm: "02/03/2025",
+      atendentes: 2,
     },
     {
       name: "Comercial Rural Tradição Ltda.",
@@ -3021,8 +3034,35 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
       city: "Cruz Alta/RS",
       type: "PJ",
       active: true,
-      regime: "LEGADO",
-      profile: "LOJA_AGROPECUARIA",
+      canal: "HERDADO",
+      perfil: "LOJA_AGROPECUARIA",
+      origem: "Carga inicial de identidade — 01/05/2025",
+      ligadoEm: null,
+      atendentes: 0,
+    },
+    {
+      name: "Prefeitura Municipal de Bagé",
+      doc: "CNPJ 85.987.342/0001-31",
+      city: "Bagé/RS",
+      type: "PJ",
+      active: true,
+      canal: "HERDADO",
+      perfil: "PREFEITURA",
+      origem: "Carga inicial de identidade — 01/05/2025",
+      ligadoEm: null,
+      atendentes: 0,
+    },
+    {
+      name: "Cooperativa Agropecuária Vale do Verde",
+      doc: "CNPJ 78.412.905/0001-44",
+      city: "Ijuí/RS",
+      type: "PJ",
+      active: true,
+      canal: "HERDADO",
+      perfil: "COOPERATIVA_LEITE",
+      origem: "Carga inicial de identidade — 01/05/2025",
+      ligadoEm: null,
+      atendentes: 0,
     },
     {
       name: "Antônio Carlos Silveira",
@@ -3030,8 +3070,11 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
       city: "Alegrete/RS",
       type: "PF",
       active: true,
-      regime: "NOVO",
-      profile: "CREDENCIADO",
+      canal: "NOVO",
+      perfil: "CREDENCIADO",
+      origem: "Carga inicial de identidade — 01/05/2025",
+      ligadoEm: "02/06/2025",
+      atendentes: 0,
     },
     {
       name: "Paulo Renato Dornelles",
@@ -3039,16 +3082,31 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
       city: "São Borja/RS",
       type: "PF",
       active: false,
-      regime: "NOVO",
-      profile: "CREDENCIADO",
+      canal: "NOVO",
+      perfil: "CREDENCIADO",
+      origem: "Habilitado pela SEAPI em 18/06/2025",
+      ligadoEm: "18/06/2025",
+      atendentes: 0,
     },
   ];
-  const [selectedName, setSelectedName] = useState(holders[0].name);
-  const visible = holders.filter((h) => natureza === "ALL" || h.type === natureza);
-  const current = holders.find((h) => h.name === selectedName) ?? holders[0];
+  const [holderList, setHolderList] = useState(holdersBase);
+  const [selectedName, setSelectedName] = useState(holdersBase[0].name);
+  const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
+  const visible = holderList.filter((h) => {
+    if (natureza !== "ALL" && h.type !== natureza) return false;
+    if (filterPerfilH !== "Todos os perfis" && h.perfil !== filterPerfilH) return false;
+    if (filterCanalH === "Ligado no novo" && h.canal !== "NOVO") return false;
+    if (filterCanalH === "Portal herdado" && h.canal !== "HERDADO") return false;
+    if (filterSituacaoH === "Habilitados" && !h.active) return false;
+    if (filterSituacaoH === "Suspensos" && h.active) return false;
+    const q = searchH.trim().toLowerCase();
+    if (q && !`${h.name} ${h.doc} ${h.city}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const current = holderList.find((h) => h.name === selectedName) ?? holderList[0];
   function changeNatureza(next: "ALL" | "PJ" | "PF") {
     setNatureza(next);
-    const first = holders.find((h) => next === "ALL" || h.type === next);
+    const first = holderList.find((h) => next === "ALL" || h.type === next);
     if (first) setSelectedName(first.name);
   }
   return (
@@ -3067,7 +3125,10 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
         <div className="panel-head">
           <div>
             <h2>Estoquistas habilitados</h2>
-            <p>{holders.length} cadastros encontrados</p>
+            <p>
+              {visible.length} de {holderList.length} cadastros · habilitação constitutiva do
+              cadastro (RN-001)
+            </p>
           </div>
           <button
             className="btn primary"
@@ -3079,11 +3140,37 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
             <Icon name="plus" /> Habilitar estoquista
           </button>
         </div>
-        <div className="filters">
-          <div className="search-field">
-            <Icon name="search" />
-            <input placeholder="Buscar nome ou documento..." />
+        <div className="filter-row filter-row--full">
+          <div className="search-field filter-field">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              placeholder="Buscar por nome, documento ou município..."
+              value={searchH}
+              onChange={(e) => setSearchH(e.target.value)}
+            />
           </div>
+        </div>
+        <div className="filter-row">
+          <select className="filter-field" value={filterPerfilH} onChange={(e) => setFilterPerfilH(e.target.value)}>
+            <option>Todos os perfis</option>
+            {perfilOptions.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
+          <select className="filter-field" value={filterCanalH} onChange={(e) => setFilterCanalH(e.target.value)}>
+            <option>Todos os canais</option>
+            <option>Ligado no novo</option>
+            <option>Portal herdado</option>
+          </select>
+          <select className="filter-field" value={filterSituacaoH} onChange={(e) => setFilterSituacaoH(e.target.value)}>
+            <option>Todas as situações</option>
+            <option>Habilitados</option>
+            <option>Suspensos</option>
+          </select>
+        </div>
+        <div className="filters">
           <div className="segmented">
             <button
               className={natureza === "ALL" ? "selected" : ""}
@@ -3120,8 +3207,9 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
                 </span>
               </div>
               <div className="holder-tags">
-                <Badge tone={h.regime === "NOVO" ? "blue" : "neutral"}>
-                  {h.regime === "NOVO" ? "Regime NOVO" : "Legado · só leitura"}
+                <Badge tone="neutral">{h.perfil}</Badge>
+                <Badge tone={h.canal === "NOVO" ? "blue" : "yellow"}>
+                  {h.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
                 </Badge>
                 <Badge tone={h.active ? "green" : "red"}>
                   {h.active ? "Habilitado" : "Suspenso"}
@@ -3132,76 +3220,19 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
           ))}
           {visible.length === 0 && (
             <div className="producer-no-results">
-              <strong>Nenhum estoquista nesta natureza</strong>
-              <span>Ajuste o filtro ou habilite um novo.</span>
+              <strong>Nenhum estoquista neste filtro</strong>
+              <span>Ajuste os filtros ou habilite um novo titular.</span>
             </div>
           )}
         </div>
       </section>
       <aside className="panel attendant-panel">
-        {current.type === "PJ" ? (
-          <>
         <div className="panel-head">
           <div>
             <span className="eyebrow">
-              PESSOA JURÍDICA SELECIONADA ·{" "}
-              {current.regime === "NOVO" ? "REGIME NOVO" : "REGIME LEGADO"}
+              {current.type === "PJ" ? "PESSOA JURÍDICA" : "PESSOA FÍSICA"} · PERFIL{" "}
+              {current.perfil}
             </span>
-            <h2>{current.name}</h2>
-            <p>{current.doc}</p>
-          </div>
-          <Badge tone={current.regime === "NOVO" ? "blue" : "neutral"}>
-            {current.regime === "NOVO" ? "Regime NOVO" : "Legado · só leitura"}
-          </Badge>
-        </div>
-        <div className="attendant-title">
-          <div>
-            <strong>Atendentes</strong>
-            <span>Usuários autorizados a operar em nome da loja</span>
-          </div>
-          <button
-            className="btn secondary"
-            disabled={current.regime === "LEGADO"}
-            title={
-              current.regime === "LEGADO"
-                ? "Titular em regime LEGADO — gerencie no legado ou migre o estoquista para o regime NOVO"
-                : ""
-            }
-            onClick={() => notify("Atendente habilitado e vinculado à pessoa jurídica.")}
-          >
-            <Icon name="plus" /> Habilitar atendente
-          </button>
-        </div>
-        <div className="attendants">
-          <article>
-            <div className="initials">MO</div>
-            <div>
-              <strong>Mariana Teixeira Oliveira</strong>
-              <span>CPF 023.***.***-90</span>
-              <small>mariana.oliveira</small>
-            </div>
-            <Badge tone="green">Ativo</Badge>
-          </article>
-          <article>
-            <div className="initials">LC</div>
-            <div>
-              <strong>Luiz Carlos Prestes</strong>
-              <span>CPF 591.***.***-17</span>
-              <small>luiz.prestes</small>
-            </div>
-            <Badge tone="green">Ativo</Badge>
-          </article>
-        </div>
-        <div className="audit-note">
-          <Icon name="history" />
-          <span>Última atualização em 12/06/2025 por Fiscal SEAPI</span>
-        </div>
-          </>
-        ) : (
-          <>
-        <div className="panel-head">
-          <div>
-            <span className="eyebrow">PESSOA FÍSICA SELECIONADA · REGIME {current.regime}</span>
             <h2>{current.name}</h2>
             <p>
               {current.doc} · {current.city}
@@ -3211,48 +3242,195 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
             {current.active ? "Habilitado" : "Suspenso"}
           </Badge>
         </div>
+        <div className="tag-detail-list">
+          <dl>
+            <div>
+              <dt>Perfil de estocador</dt>
+              <dd>{current.perfil}</dd>
+            </div>
+            <div>
+              <dt>Canal de operação</dt>
+              <dd>
+                <Badge tone={current.canal === "NOVO" ? "blue" : "yellow"}>
+                  {current.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
+                </Badge>
+              </dd>
+            </div>
+            <div>
+              <dt>Proveniência do cadastro</dt>
+              <dd>{current.origem}</dd>
+            </div>
+            <div>
+              <dt>Operação no novo desde</dt>
+              <dd>{current.ligadoEm ?? "—"}</dd>
+            </div>
+            {current.type === "PJ" && (
+              <div>
+                <dt>Atendentes habilitados</dt>
+                <dd>{current.atendentes}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+        {current.canal === "HERDADO" && (
+          <>
+            <div className="audit-note">
+              <Icon name="alert" />
+              <span>
+                Titular ingressado pela carga inicial e ainda operando no Portal herdado. Ao ligar
+                neste sistema, o acesso operacional no Portal herdado é bloqueado (RN-013) — o
+                estoque é o mesmo estado, nada é migrado.
+              </span>
+            </div>
+            <div className="attendant-title">
+              <div>
+                <strong>Ligação do titular</strong>
+                <span>Adoção gradual por ligação de ator — Opção 3 (ADR-025)</span>
+              </div>
+              <button className="btn primary" onClick={() => setLigar(current)}>
+                Ligar no novo
+              </button>
+            </div>
+          </>
+        )}
+        {current.type === "PJ" ? (
+          <>
         <div className="attendant-title">
           <div>
-            <strong>Estoquista pessoa física</strong>
-            <span>Opera com o próprio usuário do sistema</span>
-          </div>
-        </div>
-        <div className="audit-note">
-          <Icon name="alert" />
-          <span>
-            PF não possui atendentes — a habilitação de atendentes existe apenas para PJ (loja). Ao
-            selecionar uma PF, este painel mostra a ficha do estoquista em vez de atendentes.
-          </span>
-        </div>
-        <div className="attendant-title">
-          <div>
-            <strong>Perfil de fluxo</strong>
-            <span>{current.profile}</span>
+            <strong>Atendentes</strong>
+            <span>Usuários autorizados a operar em nome da loja</span>
           </div>
           <button
             className="btn secondary"
-            onClick={() =>
+            disabled={current.canal === "HERDADO"}
+            title={
+              current.canal === "HERDADO"
+                ? "Titular operando no Portal herdado — a gestão de atendentes é feita lá até a ligação neste sistema"
+                : ""
+            }
+            onClick={() => {
+              setHolderList((prev) =>
+                prev.map((x) => (x.name === current.name ? { ...x, atendentes: x.atendentes + 1 } : x)),
+              );
+              notify("Atendente habilitado e vinculado à pessoa jurídica.");
+            }}
+          >
+            <Icon name="plus" /> Habilitar atendente
+          </button>
+        </div>
+        <div className="attendants">
+          {current.name === "Agropecuária Pampa Sul Ltda." ? (
+            <>
+              <article>
+                <div className="initials">MO</div>
+                <div>
+                  <strong>Mariana Teixeira Oliveira</strong>
+                  <span>CPF 023.***.***-90</span>
+                  <small>mariana.oliveira</small>
+                </div>
+                <Badge tone="green">Ativo</Badge>
+              </article>
+              <article>
+                <div className="initials">LC</div>
+                <div>
+                  <strong>Luiz Carlos Prestes</strong>
+                  <span>CPF 591.***.***-17</span>
+                  <small>luiz.prestes</small>
+                </div>
+                <Badge tone="green">Ativo</Badge>
+              </article>
+            </>
+          ) : (
+            <div className="producer-no-results">
+              <strong>Nenhum atendente habilitado</strong>
+              <span>Habilite o primeiro atendente vinculado por CPF (RN-001).</span>
+            </div>
+          )}
+        </div>
+        <div className="audit-note">
+          <Icon name="history" />
+          <span>Última atualização em 12/06/2025 por Fiscal SEAPI</span>
+        </div>
+          </>
+        ) : (
+          <>
+        <div className="attendant-title">
+          <div>
+            <strong>Estoquista pessoa física</strong>
+            <span>Opera com o próprio usuário do sistema — PF não possui atendentes (RN-001)</span>
+          </div>
+        </div>
+          </>
+        )}
+        <div className="attendant-title">
+          <div>
+            <strong>Estado do cadastro</strong>
+            <span>A suspensão impede a operação em qualquer canal</span>
+          </div>
+          <button
+            className="btn secondary"
+            onClick={() => {
+              setHolderList((prev) =>
+                prev.map((x) => (x.name === current.name ? { ...x, active: !x.active } : x)),
+              );
               notify(
                 current.active
                   ? `Estoquista suspenso com sucesso.`
                   : `Estoquista reativado com sucesso.`,
-              )
-            }
+              );
+            }}
           >
             {current.active ? "Suspender estoquista" : "Reativar estoquista"}
           </button>
         </div>
-          </>
-        )}
       </aside>
       </div>
       ) : (
         <ProfilesPanel notify={notify} />
       )}
+      {ligar && (
+        <ModalShell
+          title="Ligar titular no novo"
+          subtitle={`${ligar.name} · ${ligar.doc}`}
+          onClose={() => setLigar(null)}
+        >
+          <div className="modal-body">
+            <p className="modal-copy">
+              O titular passa a operar neste sistema e o acesso operacional no Portal herdado é
+              bloqueado no mesmo ato (RN-013 — ligação por ator). O estoque é o{" "}
+              <strong>mesmo estado</strong>: nada é migrado ou duplicado.
+            </p>
+            <p className="modal-copy">
+              O perfil e as regras de fluxo vinculados ao titular (RN-012) passam a valer no novo
+              sem retrabalho.
+            </p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setLigar(null)}>
+              Cancelar
+            </button>
+            <button
+              className="btn primary"
+              onClick={() => {
+                const hoje = new Date().toLocaleDateString("pt-BR");
+                setHolderList((prev) =>
+                  prev.map((x) =>
+                    x.name === ligar.name ? { ...x, canal: "NOVO", ligadoEm: hoje } : x,
+                  ),
+                );
+                setLigar(null);
+                notify(`${ligar.name} ligado no novo — acesso no Portal herdado bloqueado.`);
+              }}
+            >
+              Confirmar ligação
+            </button>
+          </div>
+        </ModalShell>
+      )}
       {showEnable && (
         <ModalShell
           title="Habilitar estoquista"
-          subtitle="Habilitação constitutiva do cadastro — sem etapa adicional de aprovação."
+          subtitle="Habilitação constitutiva do cadastro (RN-001) — sem etapa adicional de aprovação."
           onClose={() => setShowEnable(false)}
         >
           <div className="modal-body">
@@ -3260,7 +3438,11 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
               <span>PESSOA (BUSCA NA BASE DE CADASTRO)</span>
               <div>
                 <Icon name="search" />
-                <input placeholder="Nome, CPF ou CNPJ..." />
+                <input
+                  placeholder="Nome, CPF ou CNPJ..."
+                  value={enableNome}
+                  onChange={(e) => setEnableNome(e.target.value)}
+                />
               </div>
             </label>
             <label className="scan-input compact">
@@ -3274,18 +3456,25 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
               </select>
             </label>
             <label className="scan-input compact">
-              <span>REGIME</span>
-              <select
-                value={regime}
-                onChange={(e) => setRegime(e.target.value as "NOVO" | "LEGADO")}
-              >
-                <option value="NOVO">NOVO — movimenta neste sistema</option>
-                <option value="LEGADO">LEGADO — movimenta no legado; o novo só consulta</option>
+              <span>PERFIL DE ESTOCADOR (RN-012)</span>
+              <select value={enablePerfil} onChange={(e) => setEnablePerfil(e.target.value)}>
+                {perfilOptions.map((p) => (
+                  <option key={p}>{p}</option>
+                ))}
               </select>
             </label>
+            <label className="scan-input compact">
+              <span>MUNICÍPIO/UF</span>
+              <input
+                placeholder="Ex.: Bagé/RS..."
+                value={enableCidade}
+                onChange={(e) => setEnableCidade(e.target.value)}
+              />
+            </label>
             <p className="modal-copy">
-              Estoquistas em regime LEGADO aparecem nas telas deste sistema em modo somente leitura
-              até migrarem (RN-013).
+              O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
+              intermediário. As regras de fluxo do perfil selecionado passam a valer imediatamente
+              (RN-012).
             </p>
           </div>
           <div className="modal-actions">
@@ -3295,8 +3484,28 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
             <button
               className="btn primary"
               onClick={() => {
+                const hoje = new Date().toLocaleDateString("pt-BR");
+                const nome = enableNome.trim() || "Novo titular habilitado";
+                setHolderList((prev) => [
+                  {
+                    name: nome,
+                    doc: enableNatureza === "PJ" ? "CNPJ informado na busca" : "CPF informado na busca",
+                    city: enableCidade.trim() || "—",
+                    type: enableNatureza,
+                    active: true,
+                    canal: "NOVO",
+                    perfil: enablePerfil,
+                    origem: `Habilitado pela SEAPI em ${hoje}`,
+                    ligadoEm: hoje,
+                    atendentes: 0,
+                  },
+                  ...prev,
+                ]);
+                setSelectedName(nome);
                 setShowEnable(false);
-                notify(`Estoquista habilitado — regime ${regime}.`);
+                setEnableNome("");
+                setEnableCidade("");
+                notify(`Estoquista habilitado e ligado no novo — perfil ${enablePerfil}.`);
               }}
             >
               Habilitar estoquista
@@ -3310,16 +3519,17 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const profiles = [
-    { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2 },
-    { code: "PREFEITURA", desc: "Estocador municipal", holders: 6 },
-    { code: "COOPERATIVA_LEITE", desc: "Representante de cooperativa de leite", holders: 3 },
-    { code: "CREDENCIADO", desc: "Credenciado SEAPI", holders: 1 },
-    { code: "INSPETORIA", desc: "Inspetoria veterinária", holders: 1 },
-    { code: "POSTO", desc: "Posto de defesa sanitária", holders: 1 },
-    { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
+    { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2, travado: false },
+    { code: "CREDENCIADO", desc: "Credenciado SEAPI", holders: 2, travado: false },
+    { code: "PREFEITURA", desc: "Estocador municipal", holders: 1, travado: false },
+    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1, travado: false },
+    { code: "INSPETORIA", desc: "Inspetoria veterinária", holders: 0, travado: false },
+    { code: "POSTO", desc: "Posto de defesa sanitária", holders: 0, travado: false },
+    { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1, travado: false },
+    { code: "PRODUTOR", desc: "Produtor rural — só recebe venda e transferência; nunca envia (ADR-024)", holders: 0, travado: true },
   ];
-  const movements = ["Recebimento", "Venda", "Transferência", "Perda", "Saída interna"];
-  const cycle = ["Livre", "Bloqueio", "Escopo: Mesmo município", "Escopo: Produtor"];
+  const movements = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
+  const cycle = ["Livre", "Bloqueio", "Escopo: Mesmo município", "Escopo: Via integradora", "Escopo: Só produtor"];
   const [rules, setRules] = useState<
     Record<string, Record<string, { origem: string; destino: string }>>
   >(() => {
@@ -3330,15 +3540,23 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         base[profile.code][movement] = { origem: "Livre", destino: "Livre" };
       }
     }
+    // Seed do V1 (RN-012): restrições praticadas no legado (CAND-MONO-601)
     base["PREFEITURA"]["Transferência"] = { origem: "Livre", destino: "Escopo: Mesmo município" };
     base["COOPERATIVA_LEITE"]["Transferência"] = {
       origem: "Livre",
       destino: "Escopo: Via integradora",
     };
+    // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
+    for (const movement of movements) {
+      base["PRODUTOR"][movement] = { origem: "Bloqueio", destino: "Bloqueio" };
+    }
+    base["PRODUTOR"]["Venda"] = { origem: "Bloqueio", destino: "Livre" };
+    base["PRODUTOR"]["Transferência"] = { origem: "Bloqueio", destino: "Livre" };
     return base;
   });
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   function cycleCell(movement: string, side: "origem" | "destino") {
+    if (selected === "PRODUTOR") return;
     setRules((current) => {
       const atual = current[selected][movement][side];
       const next = cycle[(cycle.indexOf(atual) + 1) % cycle.length];
@@ -3384,7 +3602,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 <strong>{profile.code}</strong>
                 <span>{profile.desc}</span>
               </div>
-              <Badge tone="green">{profile.holders} estoquistas</Badge>
+              {profile.travado ? (
+                <Badge tone="yellow">Travado · nativo</Badge>
+              ) : (
+                <Badge tone="green">{profile.holders} estocadores</Badge>
+              )}
               <Icon name="chevron" size={15} />
             </button>
           ))}
@@ -3392,22 +3614,27 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="history" />
           <span>
-            Inativação de perfil com estoquistas vinculados é bloqueada (ERR-043) — transfira-os
-            para outro perfil antes.
+            Inativação de perfil com estocadores vinculados é bloqueada (ERR-043) — transfira-os
+            para outro perfil antes. O V1 semeia os 6 papéis do sistema anterior +
+            LOJA_AGROPECUARIA + PRODUTOR travado.
           </span>
         </div>
       </section>
       <aside className="panel attendant-panel">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO</span>
+            <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO (RN-012)</span>
             <h2>{selected}</h2>
             <p>
-              {selectedProfile.desc} · {selectedProfile.holders} estoquistas vinculados
+              {selectedProfile.desc} ·{" "}
+              {selectedProfile.travado
+                ? "perfil nativo travado — não editável"
+                : `${selectedProfile.holders} estocadores vinculados`}
             </p>
           </div>
           <button
             className="btn secondary"
+            disabled={selected === "PRODUTOR"}
             onClick={() =>
               notify(
                 "Regras do perfil salvas — efeito prospectivo: movimentos já registrados não são revalidados.",
@@ -3422,8 +3649,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <thead>
               <tr>
                 <th>Movimento</th>
-                <th>Origem (de quem recebe)</th>
-                <th>Destino (para quem envia)</th>
+                <th>Lado origem — quem envia</th>
+                <th>Lado destino — quem recebe</th>
               </tr>
             </thead>
             <tbody>
@@ -3433,14 +3660,22 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     <strong>{movement}</strong>
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => cycleCell(movement, "origem")}>
-                      {cellBadge(rules[selected][movement].origem)}
-                    </button>
+                    {selected === "PRODUTOR" ? (
+                      cellBadge(rules[selected][movement].origem)
+                    ) : (
+                      <button className="text-btn" onClick={() => cycleCell(movement, "origem")}>
+                        {cellBadge(rules[selected][movement].origem)}
+                      </button>
+                    )}
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => cycleCell(movement, "destino")}>
-                      {cellBadge(rules[selected][movement].destino)}
-                    </button>
+                    {selected === "PRODUTOR" ? (
+                      cellBadge(rules[selected][movement].destino)
+                    ) : (
+                      <button className="text-btn" onClick={() => cycleCell(movement, "destino")}>
+                        {cellBadge(rules[selected][movement].destino)}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -3450,9 +3685,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="alert" />
           <span>
-            Clique em uma célula para alternar: Livre → Bloqueio → Escopo. Seed do legado:
-            PREFEITURA transfere só a credenciados do município; COOPERATIVA_LEITE só a credenciados
-            da integradora (CAND-MONO-601).
+            {selected === "PRODUTOR"
+              ? "Perfil travado (ADR-024): o produtor só recebe venda e transferência — nunca envia brincos. A restrição já vem do modelo, não é configurável."
+              : "Clique em uma célula para alternar: Livre → Bloqueio → Escopos. Seed do V1 (RN-012) com as restrições praticadas no sistema anterior: PREFEITURA transfere só no município; COOPERATIVA_LEITE só via integradora (CAND-MONO-601)."}
           </span>
         </div>
       </aside>
