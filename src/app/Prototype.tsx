@@ -33,6 +33,8 @@ type PrototypeContext = {
   notify: (message: string) => void;
   requests: RequestRecord[];
   createRequest: (quantity: number, factory: string) => void;
+  perfis: PerfilCatalogo[];
+  setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
 };
 
 type RequestRecord = {
@@ -43,6 +45,21 @@ type RequestRecord = {
   status: "Pendente" | "Atendida" | "Recusada";
   updatedAt: string;
 };
+
+type PerfilCatalogo = { code: string; desc: string; holders: number; label?: string };
+
+// Catálogo inicial de perfis de estocador — fonte única para a tela de regras e os filtros do dashboard
+const PERFIS_INICIAIS: PerfilCatalogo[] = [
+  { code: "LOJA_AGROPECUARIA", desc: "Varejo do agro: vende brincos ao produtor rural no balcão, com leitura do código no ato da venda", holders: 2 },
+  { code: "CREDENCIADO", desc: "Estocador credenciado pela SEAPI: mantém estoque próprio e movimenta brincos com os demais titulares da cadeia", holders: 2 },
+  { code: "PREFEITURA", desc: "Estoque público municipal: brincos para programas e demandas do município", holders: 1 },
+  { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite: centraliza brincos para os produtores associados da bacia leiteira", holders: 1 },
+  { code: "INSPETORIA", desc: "Unidade da Defesa Agropecuária no município-sede: serviço veterinário oficial com estoque próprio", holders: 0 },
+  { code: "POSTO", desc: "Unidade de atendimento da Defesa Agropecuária, vinculada a uma Inspetoria (IDA): atende o produtor na região e se abastece pela IDA de origem", holders: 0 },
+  { code: "SEAPI", desc: "Estoque central da Secretaria: mantém o estoque oficial e governa as regras da cadeia de custódia", holders: 1 },
+  { code: "FABRICA", desc: "Produz os brincos e declara o envio — nunca tem posse: a custódia abre direto no destinatário", holders: 1 },
+  { code: "PRODUTOR", desc: "Fim da linha da custódia: recebe os brincos para aplicar nos animais da produção rural", holders: 1 },
+];
 
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "seapi", label: "SEAPI", detail: "Fiscal estadual" },
@@ -632,6 +649,7 @@ export default function Prototype() {
   const [pendingSale, setPendingSale] = useState<string[]>([]);
   const [pendingProducer, setPendingProducer] = useState("");
   const [saleReset, setSaleReset] = useState(0);
+  const [perfis, setPerfis] = useState<PerfilCatalogo[]>(PERFIS_INICIAIS);
   const [moves, setMoves] = useState(initialMoves);
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -839,6 +857,8 @@ export default function Prototype() {
               setExpanded,
               notify,
               requests,
+              perfis,
+              setPerfis,
               createRequest: (quantity: number, factory: string) => {
                 setRequests((current) => {
                   const nextId = String(
@@ -4380,11 +4400,13 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                 <div className="endereco-grade">
                   <label className="scan-input compact">
                     <span>MUNICÍPIO/UF</span>
-                    <input
-                      placeholder="Ex.: Bagé/RS..."
-                      value={cidade}
-                      onChange={(e) => setCidade(e.target.value)}
-                    />
+                    <div>
+                      <input
+                        placeholder="Ex.: Bagé/RS..."
+                        value={cidade}
+                        onChange={(e) => setCidade(e.target.value)}
+                      />
+                    </div>
                   </label>
                   <div className="cep-bloco">
                     <label className="scan-input compact">
@@ -4403,49 +4425,59 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                   </div>
                   <label className="scan-input compact">
                     <span>TIPO DE LOGRADOURO</span>
-                    <select
-                      value={tipoLogradouro}
-                      onChange={(e) => setTipoLogradouro(e.target.value)}
-                    >
-                      <option value="">Selecione...</option>
-                      <option>Rua</option>
-                      <option>Avenida</option>
-                      <option>Travessa</option>
-                      <option>Rodovia</option>
-                      <option>Distrito</option>
-                    </select>
+                    <div>
+                      <select
+                        value={tipoLogradouro}
+                        onChange={(e) => setTipoLogradouro(e.target.value)}
+                      >
+                        <option value="">Selecione...</option>
+                        <option>Rua</option>
+                        <option>Avenida</option>
+                        <option>Travessa</option>
+                        <option>Rodovia</option>
+                        <option>Distrito</option>
+                      </select>
+                    </div>
                   </label>
                   <label className="scan-input compact">
                     <span>LOGRADOURO</span>
-                    <input
-                      placeholder="Ex.: Doutor José de Alencar..."
-                      value={logradouro}
-                      onChange={(e) => setLogradouro(e.target.value)}
-                    />
+                    <div>
+                      <input
+                        placeholder="Ex.: Doutor José de Alencar..."
+                        value={logradouro}
+                        onChange={(e) => setLogradouro(e.target.value)}
+                      />
+                    </div>
                   </label>
                   <label className="scan-input compact">
                     <span>NÚMERO</span>
-                    <input
-                      placeholder="Ex.: 1234..."
-                      value={numero}
-                      onChange={(e) => setNumero(e.target.value)}
-                    />
+                    <div>
+                      <input
+                        placeholder="Ex.: 1234..."
+                        value={numero}
+                        onChange={(e) => setNumero(e.target.value)}
+                      />
+                    </div>
                   </label>
                   <label className="scan-input compact">
                     <span>COMPLEMENTO (OPCIONAL)</span>
-                    <input
-                      placeholder="Ex.: Sala 2..."
-                      value={complemento}
-                      onChange={(e) => setComplemento(e.target.value)}
-                    />
+                    <div>
+                      <input
+                        placeholder="Ex.: Sala 2..."
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
+                      />
+                    </div>
                   </label>
                   <label className="scan-input compact">
                     <span>BAIRRO</span>
-                    <input
-                      placeholder="Ex.: Centro..."
-                      value={bairro}
-                      onChange={(e) => setBairro(e.target.value)}
-                    />
+                    <div>
+                      <input
+                        placeholder="Ex.: Centro..."
+                        value={bairro}
+                        onChange={(e) => setBairro(e.target.value)}
+                      />
+                    </div>
                   </label>
                 </div>
               )}
@@ -5144,14 +5176,16 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                 </div>
                 <span className="head-badge">{D.rupturas.length} alertas</span>
               </div>
-              {D.rupturas.map((r) => (
-                <div className="warn-row" key={r.ator}>
-                  <Icon name="alert" />
-                  <span>
-                    <strong>{r.ator}</strong> — {r.detalhe}.
-                  </span>
-                </div>
-              ))}
+              <div className="warn-list">
+                {D.rupturas.map((r) => (
+                  <div className="warn-row" key={r.ator}>
+                    <Icon name="alert" />
+                    <span>
+                      <strong>{r.ator}</strong> — {r.detalhe}.
+                    </span>
+                  </div>
+                ))}
+              </div>
               <p className="aging-note">
                 O estoque central cobre ~4,2 meses da demanda média da rede — janela para
                 solicitar faixas ou pedir produção à fábrica antes da ruptura.
