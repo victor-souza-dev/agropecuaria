@@ -58,7 +58,7 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
     { id: "recebimento", label: "Recebimento", icon: "scan" },
     { id: "historico", label: "Movimentações", icon: "history" },
     { id: "pedidos-sda", label: "Pedidos de brincos", icon: "request" },
-    { id: "habilitacao", label: "Habilitações", icon: "users" },
+    { id: "habilitacao", label: "Gestão de estocadores", icon: "users" },
     { id: "numeracao", label: "Gestão de numeração", icon: "hash" },
     { id: "automacoes", label: "Automações de geração", icon: "document" },
   ],
@@ -93,8 +93,8 @@ const pageMeta: Record<Page, [string, string]> = {
     "Rastreabilidade completa das entradas e saídas de brincos.",
   ],
   habilitacao: [
-    "Habilitação de estoquistas",
-    "Gerencie pessoas físicas, jurídicas, seus atendentes e os perfis de estocador com suas regras de fluxo.",
+    "Gestão de estocadores",
+    "Habilite pessoas físicas e jurídicas como estocadores, gerencie atendentes e os perfis com suas regras de fluxo.",
   ],
   "pedidos-sda": [
     "Pedidos de brincos",
@@ -604,6 +604,10 @@ export default function Prototype() {
   const isRangeDetailPage =
     page === "numeracao" && pathSegments.length === 3 && pathSegments[2] !== undefined && pathSegments[2] !== "dashboard";
   const isNumeracaoDashboard = page === "numeracao" && pathSegments.length === 3 && pathSegments[2] === "dashboard";
+  const isEstocadoresSubPage =
+    page === "habilitacao" &&
+    pathSegments.length === 3 &&
+    (pathSegments[2] === "dashboard" || pathSegments[2] === "novo" || pathSegments[2] === "regras");
   const headingTitle = isMovementItemsPage
     ? "Itens da movimentação"
     : isTagDetailPage
@@ -643,11 +647,13 @@ export default function Prototype() {
       !isRequestDetailPage &&
       !isPedidoSdaFormPage &&
       !isRangeDetailPage &&
-      !isNumeracaoDashboard
+      !isNumeracaoDashboard &&
+      !isEstocadoresSubPage
     ) {
       navigate(canonicalPath, { replace: true });
     }
   }, [
+    isEstocadoresSubPage,
     isMovementItemsPage,
     isRequestDetailPage,
     isTagDetailPage,
@@ -955,8 +961,13 @@ export function ModulePage({ page }: { page: Page }) {
           onModal={context.openModal}
         />
       );
-    case "habilitacao":
-      return <EnablementPage notify={context.notify} />;
+    case "habilitacao": {
+      const sub = window.location.pathname.split("/").pop();
+      if (sub === "dashboard") return <EstocadoresDashboard role={context.role} />;
+      if (sub === "novo") return <HabilitacaoNovoPage notify={context.notify} role={context.role} />;
+      if (sub === "regras") return <EstocadoresRegrasPage notify={context.notify} role={context.role} />;
+      return <EstocadoresPage notify={context.notify} role={context.role} />;
+    }
     case "pedidos-sda":
       return <PedidosSdaPage notify={context.notify} />;
     case "pedidos-sda-novo":
@@ -2999,101 +3010,131 @@ function HistoryPage({
   );
 }
 
-function EnablementPage({ notify }: { notify: (m: string) => void }) {
-  const [tab, setTab] = useState<"holders" | "profiles">("holders");
-  const [showEnable, setShowEnable] = useState(false);
-  const [enableNatureza, setEnableNatureza] = useState<"PJ" | "PF">("PJ");
-  const [enablePerfil, setEnablePerfil] = useState("LOJA_AGROPECUARIA");
-  const [enableNome, setEnableNome] = useState("");
-  const [enableCidade, setEnableCidade] = useState("");
-  const [natureza, setNatureza] = useState<"ALL" | "PJ" | "PF">("ALL");
+type Estocador = {
+  name: string;
+  doc: string;
+  city: string;
+  type: "PJ" | "PF";
+  active: boolean;
+  canal: "NOVO" | "HERDADO";
+  perfil: string;
+  origem: string;
+  ligadoEm: string | null;
+  atendentes: number;
+};
+
+// RN-001 (CR-003/ADR-012): habilitação constitutiva do cadastro; carga inicial de identidade traz os estocadores já habilitados.
+// RN-013 emendada (CR-012/ADR-025): sem regimes — canal de operação (ligado no novo × portal herdado) sobre o estado único.
+const estocadoresBase: Estocador[] = [
+  {
+    name: "Agropecuária Pampa Sul Ltda.",
+    doc: "CNPJ 92.841.760/0001-08",
+    city: "Bagé/RS",
+    type: "PJ",
+    active: true,
+    canal: "NOVO",
+    perfil: "LOJA_AGROPECUARIA",
+    origem: "Habilitado pela SEAPI em 02/03/2025",
+    ligadoEm: "02/03/2025",
+    atendentes: 2,
+  },
+  {
+    name: "Comercial Rural Tradição Ltda.",
+    doc: "CNPJ 04.228.195/0001-62",
+    city: "Cruz Alta/RS",
+    type: "PJ",
+    active: true,
+    canal: "HERDADO",
+    perfil: "LOJA_AGROPECUARIA",
+    origem: "Carga inicial de identidade — 01/05/2025",
+    ligadoEm: null,
+    atendentes: 0,
+  },
+  {
+    name: "Prefeitura Municipal de Bagé",
+    doc: "CNPJ 85.987.342/0001-31",
+    city: "Bagé/RS",
+    type: "PJ",
+    active: true,
+    canal: "HERDADO",
+    perfil: "PREFEITURA",
+    origem: "Carga inicial de identidade — 01/05/2025",
+    ligadoEm: null,
+    atendentes: 0,
+  },
+  {
+    name: "Cooperativa Agropecuária Vale do Verde",
+    doc: "CNPJ 78.412.905/0001-44",
+    city: "Ijuí/RS",
+    type: "PJ",
+    active: true,
+    canal: "HERDADO",
+    perfil: "COOPERATIVA_LEITE",
+    origem: "Carga inicial de identidade — 01/05/2025",
+    ligadoEm: null,
+    atendentes: 0,
+  },
+  {
+    name: "Antônio Carlos Silveira",
+    doc: "CPF 318.***.***-02",
+    city: "Alegrete/RS",
+    type: "PF",
+    active: true,
+    canal: "NOVO",
+    perfil: "CREDENCIADO",
+    origem: "Carga inicial de identidade — 01/05/2025",
+    ligadoEm: "02/06/2025",
+    atendentes: 0,
+  },
+  {
+    name: "Paulo Renato Dornelles",
+    doc: "CPF 701.***.***-44",
+    city: "São Borja/RS",
+    type: "PF",
+    active: false,
+    canal: "NOVO",
+    perfil: "CREDENCIADO",
+    origem: "Habilitado pela SEAPI em 18/06/2025",
+    ligadoEm: "18/06/2025",
+    atendentes: 0,
+  },
+];
+
+const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
+const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
+const perfilCycle = ["Livre", "Bloqueio", "Escopo: Mesmo município", "Escopo: Via integradora", "Escopo: Só produtor"];
+
+function perfilRulesSeed(): Record<string, Record<string, { origem: string; destino: string }>> {
+  const base: Record<string, Record<string, { origem: string; destino: string }>> = {};
+  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+    base[code] = {};
+    for (const movement of perfilMovimentos) {
+      base[code][movement] = { origem: "Livre", destino: "Livre" };
+    }
+  }
+  // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601)
+  base["PREFEITURA"]["Transferência"] = { origem: "Livre", destino: "Escopo: Mesmo município" };
+  base["COOPERATIVA_LEITE"]["Transferência"] = { origem: "Livre", destino: "Escopo: Via integradora" };
+  // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
+  for (const movement of perfilMovimentos) {
+    base["PRODUTOR"][movement] = { origem: "Bloqueio", destino: "Bloqueio" };
+  }
+  base["PRODUTOR"]["Venda"] = { origem: "Bloqueio", destino: "Livre" };
+  base["PRODUTOR"]["Transferência"] = { origem: "Bloqueio", destino: "Livre" };
+  return base;
+}
+
+function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+  const [holderList, setHolderList] = useState<Estocador[]>(estocadoresBase);
   const [searchH, setSearchH] = useState("");
   const [filterPerfilH, setFilterPerfilH] = useState("Todos os perfis");
   const [filterCanalH, setFilterCanalH] = useState("Todos os canais");
   const [filterSituacaoH, setFilterSituacaoH] = useState("Todas as situações");
-  const [ligar, setLigar] = useState<(typeof holdersBase)[number] | null>(null);
-
-  // RN-001 (CR-003/ADR-012): habilitação constitutiva do cadastro; carga inicial de identidade traz os estocadores já habilitados.
-  // RN-013 emendada (CR-012/ADR-025): sem regimes — canal de operação (ligado no novo × portal herdado) sobre o estado único.
-  const holdersBase = [
-    {
-      name: "Agropecuária Pampa Sul Ltda.",
-      doc: "CNPJ 92.841.760/0001-08",
-      city: "Bagé/RS",
-      type: "PJ",
-      active: true,
-      canal: "NOVO",
-      perfil: "LOJA_AGROPECUARIA",
-      origem: "Habilitado pela SEAPI em 02/03/2025",
-      ligadoEm: "02/03/2025",
-      atendentes: 2,
-    },
-    {
-      name: "Comercial Rural Tradição Ltda.",
-      doc: "CNPJ 04.228.195/0001-62",
-      city: "Cruz Alta/RS",
-      type: "PJ",
-      active: true,
-      canal: "HERDADO",
-      perfil: "LOJA_AGROPECUARIA",
-      origem: "Carga inicial de identidade — 01/05/2025",
-      ligadoEm: null,
-      atendentes: 0,
-    },
-    {
-      name: "Prefeitura Municipal de Bagé",
-      doc: "CNPJ 85.987.342/0001-31",
-      city: "Bagé/RS",
-      type: "PJ",
-      active: true,
-      canal: "HERDADO",
-      perfil: "PREFEITURA",
-      origem: "Carga inicial de identidade — 01/05/2025",
-      ligadoEm: null,
-      atendentes: 0,
-    },
-    {
-      name: "Cooperativa Agropecuária Vale do Verde",
-      doc: "CNPJ 78.412.905/0001-44",
-      city: "Ijuí/RS",
-      type: "PJ",
-      active: true,
-      canal: "HERDADO",
-      perfil: "COOPERATIVA_LEITE",
-      origem: "Carga inicial de identidade — 01/05/2025",
-      ligadoEm: null,
-      atendentes: 0,
-    },
-    {
-      name: "Antônio Carlos Silveira",
-      doc: "CPF 318.***.***-02",
-      city: "Alegrete/RS",
-      type: "PF",
-      active: true,
-      canal: "NOVO",
-      perfil: "CREDENCIADO",
-      origem: "Carga inicial de identidade — 01/05/2025",
-      ligadoEm: "02/06/2025",
-      atendentes: 0,
-    },
-    {
-      name: "Paulo Renato Dornelles",
-      doc: "CPF 701.***.***-44",
-      city: "São Borja/RS",
-      type: "PF",
-      active: false,
-      canal: "NOVO",
-      perfil: "CREDENCIADO",
-      origem: "Habilitado pela SEAPI em 18/06/2025",
-      ligadoEm: "18/06/2025",
-      atendentes: 0,
-    },
-  ];
-  const [holderList, setHolderList] = useState(holdersBase);
-  const [selectedName, setSelectedName] = useState(holdersBase[0].name);
-  const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
-  const visible = holderList.filter((h) => {
-    if (natureza !== "ALL" && h.type !== natureza) return false;
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [ligar, setLigar] = useState<Estocador | null>(null);
+  const [detalheNome, setDetalheNome] = useState<string | null>(null);
+  const detalheAtual = detalheNome ? holderList.find((h) => h.name === detalheNome) ?? null : null;
+  const rows = holderList.filter((h) => {
     if (filterPerfilH !== "Todos os perfis" && h.perfil !== filterPerfilH) return false;
     if (filterCanalH === "Ligado no novo" && h.canal !== "NOVO") return false;
     if (filterCanalH === "Portal herdado" && h.canal !== "HERDADO") return false;
@@ -3103,291 +3144,190 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
     if (q && !`${h.name} ${h.doc} ${h.city}`.toLowerCase().includes(q)) return false;
     return true;
   });
-  const current = holderList.find((h) => h.name === selectedName) ?? holderList[0];
-  function changeNatureza(next: "ALL" | "PJ" | "PF") {
-    setNatureza(next);
-    const first = holderList.find((h) => next === "ALL" || h.type === next);
-    if (first) setSelectedName(first.name);
+  const activeFilterCount = [
+    filterPerfilH !== "Todos os perfis",
+    filterCanalH !== "Todos os canais",
+    filterSituacaoH !== "Todas as situações",
+    searchH.trim() !== "",
+  ].filter(Boolean).length;
+  function clearFilters() {
+    setSearchH("");
+    setFilterPerfilH("Todos os perfis");
+    setFilterCanalH("Todos os canais");
+    setFilterSituacaoH("Todas as situações");
+  }
+  function ligarNoNovo(est: Estocador) {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    setHolderList((prev) =>
+      prev.map((x) => (x.name === est.name ? { ...x, canal: "NOVO", ligadoEm: hoje } : x)),
+    );
+    setLigar(null);
+    notify(`${est.name} ligado no novo — acesso no Portal herdado bloqueado.`);
+  }
+  function toggleAtivo(est: Estocador) {
+    setHolderList((prev) =>
+      prev.map((x) => (x.name === est.name ? { ...x, active: !x.active } : x)),
+    );
+    notify(est.active ? "Estocador suspenso com sucesso." : "Estocador reativado com sucesso.");
+  }
+  function addAtendente(est: Estocador) {
+    setHolderList((prev) =>
+      prev.map((x) => (x.name === est.name ? { ...x, atendentes: x.atendentes + 1 } : x)),
+    );
+    notify("Atendente habilitado e vinculado à pessoa jurídica.");
   }
   return (
-    <>
-      <div className="segmented page-tabs">
-        <button className={tab === "holders" ? "selected" : ""} onClick={() => setTab("holders")}>
-          Estoquistas
-        </button>
-        <button className={tab === "profiles" ? "selected" : ""} onClick={() => setTab("profiles")}>
-          Perfis e regras de fluxo
-        </button>
-      </div>
-      {tab === "holders" ? (
-      <div className="enable-layout">
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Estoquistas habilitados</h2>
-            <p>
-              {visible.length} de {holderList.length} cadastros · habilitação constitutiva do
-              cadastro (RN-001)
-            </p>
-          </div>
-          <button
-            className="btn primary"
-            onClick={() => {
-              setEnableNatureza(natureza === "PF" ? "PF" : "PJ");
-              setShowEnable(true);
-            }}
-          >
-            <Icon name="plus" /> Habilitar estoquista
-          </button>
-        </div>
-        <div className="filter-row filter-row--full">
-          <div className="search-field filter-field">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    <div className="page-container">
+      <section className="header">
+        <h3>Estocadores habilitados</h3>
+        <div className="header-actions">
+          <Link className="text-btn muted-action chart-btn" to={`/${role}/habilitacao/dashboard`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
             </svg>
-            <input
-              placeholder="Buscar por nome, documento ou município..."
-              value={searchH}
-              onChange={(e) => setSearchH(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="filter-row">
-          <select className="filter-field" value={filterPerfilH} onChange={(e) => setFilterPerfilH(e.target.value)}>
-            <option>Todos os perfis</option>
-            {perfilOptions.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
-          <select className="filter-field" value={filterCanalH} onChange={(e) => setFilterCanalH(e.target.value)}>
-            <option>Todos os canais</option>
-            <option>Ligado no novo</option>
-            <option>Portal herdado</option>
-          </select>
-          <select className="filter-field" value={filterSituacaoH} onChange={(e) => setFilterSituacaoH(e.target.value)}>
-            <option>Todas as situações</option>
-            <option>Habilitados</option>
-            <option>Suspensos</option>
-          </select>
-        </div>
-        <div className="filters">
-          <div className="segmented">
-            <button
-              className={natureza === "ALL" ? "selected" : ""}
-              onClick={() => changeNatureza("ALL")}
-            >
-              Todos
-            </button>
-            <button
-              className={natureza === "PJ" ? "selected" : ""}
-              onClick={() => changeNatureza("PJ")}
-            >
-              PJ · com atendentes
-            </button>
-            <button
-              className={natureza === "PF" ? "selected" : ""}
-              onClick={() => changeNatureza("PF")}
-            >
-              PF · sem atendentes
-            </button>
-          </div>
-        </div>
-        <div className="holder-list">
-          {visible.map((h) => (
-            <button
-              key={h.name}
-              className={current.name === h.name ? "selected" : ""}
-              onClick={() => setSelectedName(h.name)}
-            >
-              <div className="company-icon">{h.type}</div>
-              <div>
-                <strong>{h.name}</strong>
-                <span>
-                  {h.doc} · {h.city}
-                </span>
-              </div>
-              <div className="holder-tags">
-                <Badge tone="neutral">{h.perfil}</Badge>
-                <Badge tone={h.canal === "NOVO" ? "blue" : "yellow"}>
-                  {h.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
-                </Badge>
-                <Badge tone={h.active ? "green" : "red"}>
-                  {h.active ? "Habilitado" : "Suspenso"}
-                </Badge>
-              </div>
-              <Icon name="chevron" size={15} />
-            </button>
-          ))}
-          {visible.length === 0 && (
-            <div className="producer-no-results">
-              <strong>Nenhum estoquista neste filtro</strong>
-              <span>Ajuste os filtros ou habilite um novo titular.</span>
-            </div>
-          )}
+            Dashboard
+          </Link>
+          <Link className="text-btn muted-action chart-btn" to={`/${role}/habilitacao/regras`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Perfis e regras
+          </Link>
+          <Link className="btn primary" to={`/${role}/habilitacao/novo`}>
+            <Icon name="plus" /> Habilitar estocador
+          </Link>
         </div>
       </section>
-      <aside className="panel attendant-panel">
-        <div className="panel-head">
-          <div>
-            <span className="eyebrow">
-              {current.type === "PJ" ? "PESSOA JURÍDICA" : "PESSOA FÍSICA"} · PERFIL{" "}
-              {current.perfil}
-            </span>
-            <h2>{current.name}</h2>
-            <p>
-              {current.doc} · {current.city}
-            </p>
+
+      <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+        <div className="filters-header">
+          <button type="button" className="filters-toggle" onClick={() => setFiltersExpanded((v) => !v)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d={filtersExpanded ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
+            </svg>
+            <span className="filters-title">Filtros</span>
+            {activeFilterCount > 0 && <span className="filter-count-badge">{activeFilterCount}</span>}
+          </button>
+          <div className="filters-header-actions">
+            <button type="button" className="btn-search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Pesquisar
+            </button>
+            <button type="button" className="btn-clear" onClick={clearFilters}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              Limpar
+            </button>
           </div>
-          <Badge tone={current.active ? "green" : "red"}>
-            {current.active ? "Habilitado" : "Suspenso"}
-          </Badge>
         </div>
-        <div className="tag-detail-list">
-          <dl>
-            <div>
-              <dt>Perfil de estocador</dt>
-              <dd>{current.perfil}</dd>
-            </div>
-            <div>
-              <dt>Canal de operação</dt>
-              <dd>
-                <Badge tone={current.canal === "NOVO" ? "blue" : "yellow"}>
-                  {current.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
-                </Badge>
-              </dd>
-            </div>
-            <div>
-              <dt>Proveniência do cadastro</dt>
-              <dd>{current.origem}</dd>
-            </div>
-            <div>
-              <dt>Operação no novo desde</dt>
-              <dd>{current.ligadoEm ?? "—"}</dd>
-            </div>
-            {current.type === "PJ" && (
-              <div>
-                <dt>Atendentes habilitados</dt>
-                <dd>{current.atendentes}</dd>
+        {filtersExpanded && (
+          <div className="filters-body">
+            <div className="filter-row filter-row--full">
+              <div className="search-field filter-field">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  placeholder="Buscar por nome, documento ou município..."
+                  value={searchH}
+                  onChange={(e) => setSearchH(e.target.value)}
+                />
               </div>
+            </div>
+            <div className="filter-row">
+              <select className="filter-field" value={filterPerfilH} onChange={(e) => setFilterPerfilH(e.target.value)}>
+                <option>Todos os perfis</option>
+                {perfilOptions.map((p) => (
+                  <option key={p}>{p}</option>
+                ))}
+              </select>
+              <select className="filter-field" value={filterCanalH} onChange={(e) => setFilterCanalH(e.target.value)}>
+                <option>Todos os canais</option>
+                <option>Ligado no novo</option>
+                <option>Portal herdado</option>
+              </select>
+              <select className="filter-field" value={filterSituacaoH} onChange={(e) => setFilterSituacaoH(e.target.value)}>
+                <option>Todas as situações</option>
+                <option>Habilitados</option>
+                <option>Suspensos</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </form>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Estocador</th>
+              <th>Perfil</th>
+              <th>Canal de operação</th>
+              <th>Situação</th>
+              <th>Proveniência do cadastro</th>
+              <th>Município</th>
+              <th className="th-actions">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((h) => (
+              <tr key={h.name}>
+                <td className="range-cell">
+                  <strong>{h.name}</strong>
+                  <span>{h.doc}</span>
+                </td>
+                <td>
+                  <Badge tone="neutral">{h.perfil}</Badge>
+                </td>
+                <td>
+                  <Badge tone={h.canal === "NOVO" ? "blue" : "yellow"}>
+                    {h.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
+                  </Badge>
+                </td>
+                <td>
+                  <Badge tone={h.active ? "green" : "red"}>
+                    {h.active ? "Habilitado" : "Suspenso"}
+                  </Badge>
+                </td>
+                <td>{h.origem}</td>
+                <td>{h.city}</td>
+                <td className="td-actions">
+                  <div className="action-cell">
+                    {h.canal === "HERDADO" && (
+                      <button className="text-btn" onClick={() => setLigar(h)}>
+                        Ligar no novo
+                      </button>
+                    )}
+                    <button className="text-btn" onClick={() => setDetalheNome(h.name)}>
+                      Detalhes
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7}>
+                  <div className="empty">
+                    <div>
+                      <Icon name="alert" size={27} />
+                    </div>
+                    <strong>Nenhum estocador neste filtro</strong>
+                    <span>Ajuste os filtros ou habilite um novo titular.</span>
+                  </div>
+                </td>
+              </tr>
             )}
-          </dl>
-        </div>
-        {current.canal === "HERDADO" && (
-          <>
-            <div className="audit-note">
-              <Icon name="alert" />
-              <span>
-                Titular ingressado pela carga inicial e ainda operando no Portal herdado. Ao ligar
-                neste sistema, o acesso operacional no Portal herdado é bloqueado (RN-013) — o
-                estoque é o mesmo estado, nada é migrado.
-              </span>
-            </div>
-            <div className="attendant-title">
-              <div>
-                <strong>Ligação do titular</strong>
-                <span>Adoção gradual por ligação de ator — Opção 3 (ADR-025)</span>
-              </div>
-              <button className="btn primary" onClick={() => setLigar(current)}>
-                Ligar no novo
-              </button>
-            </div>
-          </>
-        )}
-        {current.type === "PJ" ? (
-          <>
-        <div className="attendant-title">
-          <div>
-            <strong>Atendentes</strong>
-            <span>Usuários autorizados a operar em nome da loja</span>
-          </div>
-          <button
-            className="btn secondary"
-            disabled={current.canal === "HERDADO"}
-            title={
-              current.canal === "HERDADO"
-                ? "Titular operando no Portal herdado — a gestão de atendentes é feita lá até a ligação neste sistema"
-                : ""
-            }
-            onClick={() => {
-              setHolderList((prev) =>
-                prev.map((x) => (x.name === current.name ? { ...x, atendentes: x.atendentes + 1 } : x)),
-              );
-              notify("Atendente habilitado e vinculado à pessoa jurídica.");
-            }}
-          >
-            <Icon name="plus" /> Habilitar atendente
-          </button>
-        </div>
-        <div className="attendants">
-          {current.name === "Agropecuária Pampa Sul Ltda." ? (
-            <>
-              <article>
-                <div className="initials">MO</div>
-                <div>
-                  <strong>Mariana Teixeira Oliveira</strong>
-                  <span>CPF 023.***.***-90</span>
-                  <small>mariana.oliveira</small>
-                </div>
-                <Badge tone="green">Ativo</Badge>
-              </article>
-              <article>
-                <div className="initials">LC</div>
-                <div>
-                  <strong>Luiz Carlos Prestes</strong>
-                  <span>CPF 591.***.***-17</span>
-                  <small>luiz.prestes</small>
-                </div>
-                <Badge tone="green">Ativo</Badge>
-              </article>
-            </>
-          ) : (
-            <div className="producer-no-results">
-              <strong>Nenhum atendente habilitado</strong>
-              <span>Habilite o primeiro atendente vinculado por CPF (RN-001).</span>
-            </div>
-          )}
-        </div>
-        <div className="audit-note">
-          <Icon name="history" />
-          <span>Última atualização em 12/06/2025 por Fiscal SEAPI</span>
-        </div>
-          </>
-        ) : (
-          <>
-        <div className="attendant-title">
-          <div>
-            <strong>Estoquista pessoa física</strong>
-            <span>Opera com o próprio usuário do sistema — PF não possui atendentes (RN-001)</span>
-          </div>
-        </div>
-          </>
-        )}
-        <div className="attendant-title">
-          <div>
-            <strong>Estado do cadastro</strong>
-            <span>A suspensão impede a operação em qualquer canal</span>
-          </div>
-          <button
-            className="btn secondary"
-            onClick={() => {
-              setHolderList((prev) =>
-                prev.map((x) => (x.name === current.name ? { ...x, active: !x.active } : x)),
-              );
-              notify(
-                current.active
-                  ? `Estoquista suspenso com sucesso.`
-                  : `Estoquista reativado com sucesso.`,
-              );
-            }}
-          >
-            {current.active ? "Suspender estoquista" : "Reativar estoquista"}
-          </button>
-        </div>
-      </aside>
+          </tbody>
+        </table>
       </div>
-      ) : (
-        <ProfilesPanel notify={notify} />
-      )}
+      <div className="panel-foot">
+        <span>Exibindo {rows.length} de {holderList.length} estocadores</span>
+      </div>
+
       {ligar && (
         <ModalShell
           title="Ligar titular no novo"
@@ -3427,93 +3367,103 @@ function EnablementPage({ notify }: { notify: (m: string) => void }) {
           </div>
         </ModalShell>
       )}
-      {showEnable && (
+      {detalheAtual && (
         <ModalShell
-          title="Habilitar estoquista"
-          subtitle="Habilitação constitutiva do cadastro (RN-001) — sem etapa adicional de aprovação."
-          onClose={() => setShowEnable(false)}
+          title="Ficha do estocador"
+          subtitle={`${detalheAtual.doc} · ${detalheAtual.city}`}
+          onClose={() => setDetalheNome(null)}
         >
           <div className="modal-body">
-            <label className="scan-input compact">
-              <span>PESSOA (BUSCA NA BASE DE CADASTRO)</span>
-              <div>
-                <Icon name="search" />
-                <input
-                  placeholder="Nome, CPF ou CNPJ..."
-                  value={enableNome}
-                  onChange={(e) => setEnableNome(e.target.value)}
-                />
-              </div>
-            </label>
-            <label className="scan-input compact">
-              <span>NATUREZA</span>
-              <select
-                value={enableNatureza}
-                onChange={(e) => setEnableNatureza(e.target.value as "PJ" | "PF")}
-              >
-                <option value="PJ">Pessoa jurídica (loja — com atendentes)</option>
-                <option value="PF">Pessoa física (sem atendentes)</option>
-              </select>
-            </label>
-            <label className="scan-input compact">
-              <span>PERFIL DE ESTOCADOR (RN-012)</span>
-              <select value={enablePerfil} onChange={(e) => setEnablePerfil(e.target.value)}>
-                {perfilOptions.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-            </label>
-            <label className="scan-input compact">
-              <span>MUNICÍPIO/UF</span>
-              <input
-                placeholder="Ex.: Bagé/RS..."
-                value={enableCidade}
-                onChange={(e) => setEnableCidade(e.target.value)}
-              />
-            </label>
-            <p className="modal-copy">
-              O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
-              intermediário. As regras de fluxo do perfil selecionado passam a valer imediatamente
-              (RN-012).
-            </p>
+            <div className="tag-detail-list">
+              <dl>
+                <div>
+                  <dt>Perfil de estocador</dt>
+                  <dd>{detalheAtual.perfil}</dd>
+                </div>
+                <div>
+                  <dt>Canal de operação</dt>
+                  <dd>
+                    <Badge tone={detalheAtual.canal === "NOVO" ? "blue" : "yellow"}>
+                      {detalheAtual.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}
+                    </Badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Proveniência do cadastro</dt>
+                  <dd>{detalheAtual.origem}</dd>
+                </div>
+                <div>
+                  <dt>Operação no novo desde</dt>
+                  <dd>{detalheAtual.ligadoEm ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Natureza</dt>
+                  <dd>{detalheAtual.type === "PJ" ? "Pessoa jurídica" : "Pessoa física"}</dd>
+                </div>
+                <div>
+                  <dt>Atendentes habilitados</dt>
+                  <dd>{detalheAtual.type === "PJ" ? detalheAtual.atendentes : "—"}</dd>
+                </div>
+              </dl>
+            </div>
+            {detalheAtual.canal === "HERDADO" && (
+              <p className="modal-copy">
+                Titular operando no Portal herdado — use <strong>Ligar no novo</strong> na listagem
+                para habilitar o acesso aqui e bloquear lá (RN-013). O estoque é o mesmo estado,
+                nada é migrado.
+              </p>
+            )}
+            {detalheAtual.type === "PJ" && detalheAtual.canal === "NOVO" && (
+              <>
+                <div className="attendant-title">
+                  <div>
+                    <strong>Atendentes</strong>
+                    <span>Usuários autorizados a operar em nome da loja (RN-001)</span>
+                  </div>
+                  <button className="btn secondary" onClick={() => addAtendente(detalheAtual)}>
+                    <Icon name="plus" /> Habilitar atendente
+                  </button>
+                </div>
+                {detalheAtual.name === "Agropecuária Pampa Sul Ltda." ? (
+                  <div className="attendants">
+                    <article>
+                      <div className="initials">MO</div>
+                      <div>
+                        <strong>Mariana Teixeira Oliveira</strong>
+                        <span>CPF 023.***.***-90</span>
+                        <small>mariana.oliveira</small>
+                      </div>
+                      <Badge tone="green">Ativo</Badge>
+                    </article>
+                    <article>
+                      <div className="initials">LC</div>
+                      <div>
+                        <strong>Luiz Carlos Prestes</strong>
+                        <span>CPF 591.***.***-17</span>
+                        <small>luiz.prestes</small>
+                      </div>
+                      <Badge tone="green">Ativo</Badge>
+                    </article>
+                  </div>
+                ) : (
+                  <p className="modal-copy">
+                    Nenhum atendente habilitado — habilite o primeiro vínculo por CPF.
+                  </p>
+                )}
+              </>
+            )}
           </div>
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => setShowEnable(false)}>
-              Cancelar
+            <button className="btn secondary" onClick={() => setDetalheNome(null)}>
+              Fechar
             </button>
-            <button
-              className="btn primary"
-              onClick={() => {
-                const hoje = new Date().toLocaleDateString("pt-BR");
-                const nome = enableNome.trim() || "Novo titular habilitado";
-                setHolderList((prev) => [
-                  {
-                    name: nome,
-                    doc: enableNatureza === "PJ" ? "CNPJ informado na busca" : "CPF informado na busca",
-                    city: enableCidade.trim() || "—",
-                    type: enableNatureza,
-                    active: true,
-                    canal: "NOVO",
-                    perfil: enablePerfil,
-                    origem: `Habilitado pela SEAPI em ${hoje}`,
-                    ligadoEm: hoje,
-                    atendentes: 0,
-                  },
-                  ...prev,
-                ]);
-                setSelectedName(nome);
-                setShowEnable(false);
-                setEnableNome("");
-                setEnableCidade("");
-                notify(`Estoquista habilitado e ligado no novo — perfil ${enablePerfil}.`);
-              }}
-            >
-              Habilitar estoquista
+            <button className="btn primary" onClick={() => toggleAtivo(detalheAtual)}>
+              {detalheAtual.active ? "Suspender estocador" : "Reativar estocador"}
             </button>
           </div>
         </ModalShell>
       )}
-    </>
+    </div>
   );
 }
 
@@ -3528,32 +3478,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1, travado: false },
     { code: "PRODUTOR", desc: "Produtor rural — só recebe venda e transferência; nunca envia (ADR-024)", holders: 0, travado: true },
   ];
-  const movements = ["Recebimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna"];
-  const cycle = ["Livre", "Bloqueio", "Escopo: Mesmo município", "Escopo: Via integradora", "Escopo: Só produtor"];
-  const [rules, setRules] = useState<
-    Record<string, Record<string, { origem: string; destino: string }>>
-  >(() => {
-    const base: Record<string, Record<string, { origem: string; destino: string }>> = {};
-    for (const profile of profiles) {
-      base[profile.code] = {};
-      for (const movement of movements) {
-        base[profile.code][movement] = { origem: "Livre", destino: "Livre" };
-      }
-    }
-    // Seed do V1 (RN-012): restrições praticadas no legado (CAND-MONO-601)
-    base["PREFEITURA"]["Transferência"] = { origem: "Livre", destino: "Escopo: Mesmo município" };
-    base["COOPERATIVA_LEITE"]["Transferência"] = {
-      origem: "Livre",
-      destino: "Escopo: Via integradora",
-    };
-    // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
-    for (const movement of movements) {
-      base["PRODUTOR"][movement] = { origem: "Bloqueio", destino: "Bloqueio" };
-    }
-    base["PRODUTOR"]["Venda"] = { origem: "Bloqueio", destino: "Livre" };
-    base["PRODUTOR"]["Transferência"] = { origem: "Bloqueio", destino: "Livre" };
-    return base;
-  });
+  const movements = perfilMovimentos;
+  const cycle = perfilCycle;
+  const [rules, setRules] = useState<Record<string, Record<string, { origem: string; destino: string }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   function cycleCell(movement: string, side: "origem" | "destino") {
     if (selected === "PRODUTOR") return;
@@ -3691,6 +3618,282 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           </span>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function EstocadoresRegrasPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Perfis e regras de fluxo</h3>
+        <div className="header-actions">
+          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+            ← Voltar
+          </Link>
+        </div>
+      </section>
+      <ProfilesPanel notify={notify} />
+    </div>
+  );
+}
+
+function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+  const [natureza, setNatureza] = useState<"PJ" | "PF">("PJ");
+  const [perfil, setPerfil] = useState("LOJA_AGROPECUARIA");
+  const [nome, setNome] = useState("");
+  const [cidade, setCidade] = useState("");
+  const navigate = useNavigate();
+  const regras = perfilRulesSeed()[perfil];
+  function badgeRegra(value: string) {
+    if (value === "Livre") return <Badge tone="green">Livre</Badge>;
+    if (value === "Bloqueio") return <Badge tone="red">Bloqueio</Badge>;
+    return <Badge tone="yellow">{value}</Badge>;
+  }
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Nova habilitação de estocador</h3>
+        <div className="header-actions">
+          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+            ← Voltar
+          </Link>
+        </div>
+      </section>
+      <div className="dash-grid">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Dados do titular</h2>
+              <p>
+                Habilitação constitutiva do cadastro (RN-001) — o titular nasce habilitado e
+                ligado neste sistema.
+              </p>
+            </div>
+          </div>
+          <div className="modal-body">
+            <label className="scan-input compact">
+              <span>PESSOA (BUSCA NA BASE DE CADASTRO)</span>
+              <div>
+                <Icon name="search" />
+                <input
+                  placeholder="Nome, CPF ou CNPJ..."
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                />
+              </div>
+            </label>
+            <label className="scan-input compact">
+              <span>NATUREZA</span>
+              <select
+                value={natureza}
+                onChange={(e) => setNatureza(e.target.value as "PJ" | "PF")}
+              >
+                <option value="PJ">Pessoa jurídica (loja — com atendentes)</option>
+                <option value="PF">Pessoa física (sem atendentes)</option>
+              </select>
+            </label>
+            <label className="scan-input compact">
+              <span>PERFIL DE ESTOCADOR (RN-012)</span>
+              <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
+                {perfilOptions.map((p) => (
+                  <option key={p}>{p}</option>
+                ))}
+              </select>
+            </label>
+            <label className="scan-input compact">
+              <span>MUNICÍPIO/UF</span>
+              <input
+                placeholder="Ex.: Bagé/RS..."
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+              />
+            </label>
+            <p className="modal-copy">
+              O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
+              intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
+              primeiro movimento (RN-012).
+            </p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => navigate(`/${role}/habilitacao`)}>
+              Cancelar
+            </button>
+            <button
+              className="btn primary"
+              onClick={() => {
+                notify(`Estocador habilitado e ligado no novo — perfil ${perfil}.`);
+                navigate(`/${role}/habilitacao`);
+              }}
+            >
+              Habilitar estocador
+            </button>
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Regras do perfil selecionado</h2>
+              <p>{perfil} — em vigor a partir do primeiro movimento (RN-012)</p>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Movimento</th>
+                  <th>Lado origem — quem envia</th>
+                  <th>Lado destino — quem recebe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perfilMovimentos.map((movement) => (
+                  <tr key={movement}>
+                    <td>
+                      <strong>{movement}</strong>
+                    </td>
+                    <td>{badgeRegra(regras[movement].origem)}</td>
+                    <td>{badgeRegra(regras[movement].destino)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="audit-note">
+            <Icon name="alert" />
+            <span>
+              Sem restrição registrada = fluxo livre (postura padrão da RN-012). Seed do V1 com as
+              restrições praticadas no sistema anterior (CAND-MONO-601).
+            </span>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function EstocadoresDashboard({ role }: { role: Role }) {
+  const carga = 387;
+  const ligados = 41;
+  const noPortal = carga - ligados;
+  const pct = Math.max(1, Math.round((ligados / carga) * 100));
+  const porPerfil = [
+    { nome: "CREDENCIADO", value: 299, color: "#4BA044" },
+    { nome: "INSPETORIA", value: 79, color: "#1565c0" },
+    { nome: "PREFEITURA", value: 5, color: "#9c27b0" },
+    { nome: "COOPERATIVA_LEITE", value: 2, color: "#e5a33d" },
+    { nome: "SEAPI", value: 1, color: "#e65100" },
+    { nome: "LOJA_AGROPECUARIA", value: 1, color: "#46a2d5" },
+  ];
+  const ligacoes = [6, 11, 14, 10];
+  const semanas = ["Sem 1", "Sem 2", "Sem 3", "Sem 4"];
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Dashboard de estocadores</h3>
+        <div className="header-actions">
+          <Link className="btn secondary" to={`/${role}/habilitacao`}>
+            ← Voltar
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        Dados demonstrativos para validação de layout — não refletem números de produção. A adoção
+        usa a carga inicial de identidade (RN-001) como base do funil de ligação.
+      </div>
+      <div className="dash-grid">
+        <article className="proj-card">
+          <div className="proj-head">
+            <h2>Progresso da adoção</h2>
+            <span className="proj-pill">{pct}% ligados</span>
+          </div>
+          <div className="proj-value">
+            {ligados} <small>de {carga}</small>
+          </div>
+          <div className="proj-sub">
+            estocadores ligados no novo — adoção gradual por ligação de ator (RN-013, ADR-025): o
+            estoque é o mesmo estado, nada é migrado.
+          </div>
+          <div className="proj-track">
+            <span className="proj-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="proj-meta">
+            Carga inicial de identidade em 01/05/2025 · fase F2 do plano de migração
+          </div>
+        </article>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Estocadores por canal</h2>
+              <p>Ligados no novo vs operando no portal herdado</p>
+            </div>
+          </div>
+          <SituacaoDonut
+            centerLabel="estocadores"
+            items={[
+              { label: "Ligado no novo", value: ligados, color: "#1565c0" },
+              { label: "Portal herdado", value: noPortal, color: "#d99a3b" },
+            ]}
+          />
+        </section>
+      </div>
+      <section className="panel dash-mt">
+        <div className="panel-head">
+          <div>
+            <h2>Ligações por semana</h2>
+            <p>Titulares ligados no novo — junho/2025</p>
+          </div>
+          <span className="head-badge">{ligados} ligações</span>
+        </div>
+        <ConsumoBarChart data={ligacoes} months={semanas} />
+      </section>
+      <div className="dash-grid dash-mt">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Estocadores por perfil</h2>
+              <p>Catálogo da carga inicial (RN-001) — 6 papéis + LOJA_AGROPECUARIA</p>
+            </div>
+            <span className="head-badge">{carga} estocadores</span>
+          </div>
+          <div className="hbar-list">
+            {porPerfil.map((p) => (
+              <div className="hbar-row creator" key={p.nome}>
+                <span className="hbar-name" title={p.nome}>{p.nome}</span>
+                <div className="hbar-track">
+                  <span
+                    className="hbar-fill"
+                    style={{ width: `${Math.round((p.value / porPerfil[0].value) * 100)}%`, background: p.color }}
+                  />
+                </div>
+                <span className="hbar-value">
+                  {p.value} · {Math.round((p.value / carga) * 100)}%
+                </span>
+              </div>
+            ))}
+            <p className="aging-note">
+              299 credenciados e 79 inspetorias dominam a carga inicial (RN-001) — perfis semeados
+              do V1 com as restrições praticadas no sistema anterior (RN-012, CAND-MONO-601).
+            </p>
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Atendentes habilitados</h2>
+              <p>Vínculos por CPF em lojas PJ (RN-001)</p>
+            </div>
+          </div>
+          <div className="proj-value">33</div>
+          <div className="proj-sub">
+            atendentes habilitados em 21 lojas — a habilitação de atendentes existe apenas para
+            pessoa jurídica do tipo loja.
+          </div>
+          <div className="proj-meta">
+            Modelo herdado do usuário atual do SDA — cada atendente vinculado a um CPF.
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -4467,7 +4670,13 @@ function OrigemStackedChart({ pnib, interna, months }: { pnib: number[]; interna
   );
 }
 
-function SituacaoDonut({ items }: { items: { label: string; value: number; color: string }[] }) {
+function SituacaoDonut({
+  items,
+  centerLabel = "numerações",
+}: {
+  items: { label: string; value: number; color: string }[];
+  centerLabel?: string;
+}) {
   const total = items.reduce((a, b) => a + b.value, 0);
   const R = 80, C = 2 * Math.PI * R;
   let acc = 0;
@@ -4495,7 +4704,7 @@ function SituacaoDonut({ items }: { items: { label: string; value: number; color
           {fmtBR(total)}
         </text>
         <text x={100} y={116} textAnchor="middle" fontSize={11} fill="#9ca3af">
-          numerações
+          {centerLabel}
         </text>
       </svg>
       <div className="donut-legend">
