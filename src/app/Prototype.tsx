@@ -3996,7 +3996,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           }
           onClose={() => setApagarAlvo(null)}
         >
-          <div className="modal-body">
+          <div className="modal-body pill-form">
             {apagarAlvo.holders > 0 ? (
               <>
                 <p className="modal-copy">
@@ -4045,7 +4045,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           subtitle="O perfil nasce com postura padrão livre — sem restrição registrada, opera com qualquer titular. Ajuste as regras na matriz depois."
           onClose={() => setNovoPerfilOpen(false)}
         >
-          <div className="modal-body">
+          <div className="modal-body pill-form">
             <label className="field">
               <span>NOME DO PERFIL</span>
               <input
@@ -4089,7 +4089,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           }`}
           onClose={() => setEditor(null)}
         >
-          <div className="modal-body">
+          <div className="modal-body pill-form">
             <div className="scope-options">
               <label className={`scope-option ${draft.alvosTipo === "LIVRE" ? "selected" : ""}`}>
                 <input

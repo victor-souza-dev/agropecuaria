@@ -4387,6 +4387,46 @@ td {
 .btn.pill.primary svg path {
   fill: #fff;
 }
+/* Inputs no padrão da Gestão de Numeração (borda neutra, fonte 14, foco verde) */
+.novo-estocador-panel .scan-input > div,
+.pill-form .scan-input > div,
+.pill-form .field select,
+.pill-form .field input {
+  height: 48px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  background: #fff;
+  color: #111827;
+  box-shadow: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.novo-estocador-panel .scan-input > div {
+  padding: 0 12px;
+}
+.novo-estocador-panel .scan-input > div:focus-within,
+.pill-form .scan-input > div:focus-within,
+.pill-form .field select:focus,
+.pill-form .field input:focus {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+.novo-estocador-panel .scan-input input,
+.novo-estocador-panel .scan-input select,
+.pill-form .scan-input input,
+.pill-form .scan-input select,
+.pill-form .field select,
+.pill-form .field input {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 400;
+}
+.novo-estocador-panel .scan-input > span,
+.pill-form .scan-input > span,
+.pill-form .field > span {
+  font-size: 10px;
+  color: #6b7280;
+  letter-spacing: 0.5px;
+}
 /* Dashboard de estocadores — abas de painéis (RN-024..RN-029) */
 .dash-tabs {
   display: flex;
