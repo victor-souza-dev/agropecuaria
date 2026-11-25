@@ -3189,7 +3189,7 @@ const movimentoDesc: Record<string, string> = {
   Abastecimento:
     "Entrada de brincos por leitura de código de barras, vinda do abastecimento oficial: a fábrica que produziu (após declarar o envio) ou o estoque central da SEAPI que atendeu um pedido. Repõe o estoque do titular.",
   Venda:
-    "Venda de brincos ao produtor rural, declarada pelo atendente da loja: o brinco é creditado imediatamente no estoque SDA do produtor no ato da declaração.",
+    "Venda de brincos ao produtor rural: o atendente da loja lê os códigos de barras dos brincos e declara a venda — no mesmo ato, o brinco passa à custódia do produtor (crédito imediato). A declaração é definitiva: o produtor pode recusar ali mesmo, e depois a saída só ocorre por devolução.",
   Transferência:
     "Mudança de custódia entre estocadores: o brinco sai do estoque do titular e entra no do alvo, sempre registrada por leitura de código de barras.",
   Devolução:
