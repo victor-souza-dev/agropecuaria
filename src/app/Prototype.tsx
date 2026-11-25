@@ -166,6 +166,30 @@ const producerStock = [
   },
 ];
 
+// Espalhamento das faixas nos titulares — pedaços de cada faixa e onde estão (Opção 3, estado único)
+const faixaPieces: Record<string, { titular: string; s1: string; s2: string; qty: number; note: string }[]> = {
+  "105430057001001": [
+    { titular: "Prefeitura Municipal de Bagé", s1: "105430057001001", s2: "105430057001400", qty: 400, note: "herdada do legado" },
+    { titular: "Antônio C. Silveira", s1: "105430057001401", s2: "105430057001500", qty: 100, note: "herdada do legado" },
+  ],
+  "076210077200001": [
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200001", s2: "076210077200240", qty: 240, note: "recebida 16/06" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200241", s2: "076210077200330", qty: 90, note: "recebida 02/06" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200331", s2: "076210077200350", qty: 20, note: "reservada (Mov. 0812)" },
+    { titular: "João Pedro Fagundes", s1: "076210077200406", s2: "076210077200417", qty: 12, note: "vendida 14/06" },
+    { titular: "Antônio C. Silveira", s1: "076210077200421", s2: "076210077200440", qty: 20, note: "transferida 12/06" },
+  ],
+  "076210077220001": [
+    { titular: "Prefeitura Municipal de Bagé", s1: "076210077220001", s2: "076210077220400", qty: 400, note: "herdada do legado" },
+    { titular: "Prefeitura Municipal de Bagé", s1: "076210077220401", s2: "076210077220560", qty: 160, note: "herdada do legado" },
+  ],
+  "105430057000001": [
+    { titular: "Depósito central SEAPI", s1: "105430057000501", s2: "105430057001100", qty: 600, note: "estoque central" },
+    { titular: "Depósito central SEAPI", s1: "105430057001101", s2: "105430057001300", qty: 200, note: "estoque central" },
+    { titular: "Depósito central SEAPI", s1: "105430057006001", s2: "105430057006400", qty: 400, note: "estoque central" },
+  ],
+};
+
 const numberingRanges = [
   { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa (herdada)", modoGeracao: "Herdada" },
   { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true, criadoPor: "Geração automática — reposição Brinco Sul", modoGeracao: "Automática" },
@@ -1430,6 +1454,52 @@ export function RangeDetailPage() {
               </div>
             </dl>
           </div>
+        </section>
+
+        <section className="panel faixa-pieces-panel">
+          <div className="panel-head">
+            <div>
+              <h2>Sub-faixas nos titulares</h2>
+              <p>Onde os brincos desta faixa estão — espalhamento por titular</p>
+            </div>
+            <Badge tone="purple">
+              {(faixaPieces[range.start] ?? []).length} pedaços
+            </Badge>
+          </div>
+          {(faixaPieces[range.start] ?? []).length > 0 ? (
+            <div className="table-wrap">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Titular</th>
+                    <th>Intervalo</th>
+                    <th>Brincos</th>
+                    <th>Origem da posse</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(faixaPieces[range.start] ?? []).map((p, i) => (
+                    <tr key={i}>
+                      <td>
+                        <strong>{p.titular}</strong>
+                      </td>
+                      <td>
+                        {formatTag(p.s1)} a {formatTag(p.s2)}
+                      </td>
+                      <td>
+                        <strong>{p.qty.toLocaleString("pt-BR")}</strong>
+                      </td>
+                      <td>{p.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="pieces-empty">
+              Faixa íntegra no estoque central — sem espalhamento entre titulares.
+            </p>
+          )}
         </section>
       </div>
 
