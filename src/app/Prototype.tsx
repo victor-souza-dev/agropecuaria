@@ -1459,8 +1459,8 @@ export function RangeDetailPage() {
         <section className="panel faixa-pieces-panel">
           <div className="panel-head">
             <div>
-              <h2>Sub-faixas nos titulares</h2>
-              <p>Onde os brincos desta faixa estão — espalhamento por titular</p>
+              <h2>Brincos por titular</h2>
+              <p>Os brincos desta faixa e o titular de cada bloco</p>
             </div>
             <Badge tone="purple">
               {(faixaPieces[range.start] ?? []).length} pedaços
@@ -1696,7 +1696,7 @@ function StockPage({
                 <Icon name="hash" />
               </div>
               <div>
-                <span>Sub-faixas (todos os titulares)</span>
+                <span>Blocos de brincos (todos os titulares)</span>
                 <strong>{subFaixasTotal}</strong>
                 <small>intervalos</small>
               </div>
@@ -1739,7 +1739,7 @@ function StockPage({
                 <Icon name="hash" />
               </div>
               <div>
-                <span>Sub-faixas</span>
+                <span>Blocos de brincos</span>
                 <strong>{stocks.length + (producerAdded.length ? 1 : 0)}</strong>
                 <small>intervalos</small>
               </div>
@@ -1779,7 +1779,7 @@ function StockPage({
                   <th>Titular</th>
                   <th>Perfil / natureza</th>
                   <th>Canal de operação</th>
-                  <th>Sub-faixas</th>
+                  <th>Blocos de brincos</th>
                   <th>Brincos</th>
                   <th></th>
                 </tr>
