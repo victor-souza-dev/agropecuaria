@@ -3178,6 +3178,47 @@ function badgeRegraFluxo(regra: RegraFluxo) {
   );
 }
 
+// Definições de negócio dos movimentos — exibidas no tooltip "i" da matriz de regras
+const movimentoDesc: Record<string, string> = {
+  Recebimento:
+    "Entrada de brincos por leitura de código de barras: o titular confirma a custódia ao receber caixas ou faixas de outro ator (fábrica, estoque central ou transferência de um colega).",
+  Venda:
+    "Venda de brincos ao produtor rural, declarada pelo atendente da loja: o brinco é creditado imediatamente no estoque SDA do produtor no ato da declaração.",
+  Transferência:
+    "Mudança de custódia entre estocadores: o brinco sai do estoque do titular e entra no do alvo, sempre registrada por leitura de código de barras.",
+  Devolução:
+    "Devolução de venda ou transferência de brinco ainda não aplicado a animal: o brinco retorna ao estoque de origem e volta a ficar disponível para venda ou transferência.",
+  Perda:
+    "Registro de brincos perdidos, extraviados ou inutilizados em posse do titular: saem de circulação com trilha de auditoria completa.",
+  "Saída interna":
+    "Saída de brincos do estoque do titular sem contraparte externa (consumo interno, amostra ou descarte administrativo), sempre documentada.",
+};
+
+function InfoTip({ texto }: { texto: string }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+  return (
+    <span className="info-tip" ref={ref}>
+      <button
+        type="button"
+        className="info-tip-btn"
+        aria-label="Entender este movimento"
+        onClick={() => setAberto((v) => !v)}
+      >
+        i
+      </button>
+      {aberto && <span className="info-tip-pop">{texto}</span>}
+    </span>
+  );
+}
+
 function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
   const [holderList, setHolderList] = useState<Estocador[]>(estocadoresBase);
   const [searchH, setSearchH] = useState("");
@@ -3684,15 +3725,18 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <thead>
               <tr>
                 <th>Movimento</th>
-                <th>Receber — de quem pode receber</th>
-                <th>Enviar — para quem pode enviar</th>
+                <th>Receber — De quem pode receber</th>
+                <th>Enviar — Quem pode enviar</th>
               </tr>
             </thead>
             <tbody>
               {movements.map((movement) => (
                 <tr key={movement}>
                   <td>
-                    <strong>{movement}</strong>
+                    <div className="movement-name">
+                      <strong>{movement}</strong>
+                      <InfoTip texto={movimentoDesc[movement] ?? ""} />
+                    </div>
                   </td>
                   <td>
                     <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
@@ -3925,15 +3969,18 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               <thead>
                 <tr>
                   <th>Movimento</th>
-                  <th>Receber — de quem pode receber</th>
-                  <th>Enviar — para quem pode enviar</th>
+                  <th>Receber — De quem pode receber</th>
+                  <th>Enviar — Quem pode enviar</th>
                 </tr>
               </thead>
               <tbody>
                 {perfilMovimentos.map((movement) => (
                   <tr key={movement}>
                     <td>
-                      <strong>{movement}</strong>
+                      <div className="movement-name">
+                        <strong>{movement}</strong>
+                        <InfoTip texto={movimentoDesc[movement] ?? ""} />
+                      </div>
                     </td>
                     <td>{badgeRegraFluxo(regras[movement].destino)}</td>
                     <td>{badgeRegraFluxo(regras[movement].origem)}</td>
