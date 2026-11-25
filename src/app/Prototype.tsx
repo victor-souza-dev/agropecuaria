@@ -3787,9 +3787,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="history" />
           <span>
-            Inativação de perfil com estocadores vinculados é bloqueada — transfira-os
-            para outro perfil antes. O V1 semeia os 6 papéis do sistema anterior +
-            LOJA_AGROPECUARIA + PRODUTOR (seed restritivo editável).
+            Perfil com estocadores vinculados não pode ser inativado — transfira-os para outro
+            perfil antes. A configuração inicial vem como ponto de partida, e tudo aqui é editável
+            pela SEAPI.
           </span>
         </div>
       </section>
@@ -3867,11 +3867,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="alert" />
           <span>
-            Coluna Receber = de quem o ator aceita receber brincos; coluna Enviar = para quem pode
-            enviar. Clique em uma célula para editar a restrição: Livre, Bloqueado ou Escopo com
-            seleção múltipla de atores oficiais. Seed do V1: PREFEITURA remete só a habilitados;
-            COOPERATIVA_LEITE só a habilitados via integradora; PRODUTOR não envia e recebe
-            venda/transferência; ESTORNO exclusivo da SEAPI — tudo editável pela SEAPI.
+            Receber mostra de quem o perfil aceita receber brincos; Enviar, para quem pode enviar.
+            Clique em qualquer célula para ajustar a regra — Livre, Bloqueado, Escopo a atores
+            específicos ou com aprovação.
           </span>
         </div>
       </aside>
