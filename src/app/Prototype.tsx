@@ -3112,6 +3112,8 @@ const perfilLabel: Record<string, string> = {
   INSPETORIA: "Inspetoria de Defesa Agropecuária (IDA)",
   POSTO: "Escritório de Defesa Agropecuária (EDA)",
   SEAPI: "SEAPI",
+  FABRICA: "Fábrica de brincos",
+  PRODUTOR: "Produtor",
 };
 function labelPerfil(code: string) {
   return perfilLabel[code] ?? code;
@@ -3143,7 +3145,7 @@ const escopoAtores: { id: string; label: string }[] = [
 // Postura padrão (RN-012): sem restrição registrada = fluxo livre com qualquer titular
 function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
   const base: Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> = {};
-  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+  for (const code of [...perfilOptions, "SEAPI", "FABRICA", "PRODUTOR"]) {
     base[code] = {};
     for (const movement of perfilMovimentos) {
       base[code][movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
@@ -3172,18 +3174,23 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   base["PREFEITURA"]["Transferência"].destino = { tipo: "ESCOPO", alvos: ["CREDENCIADO"] };
   base["COOPERATIVA_LEITE"]["Transferência"].destino = { tipo: "ESCOPO", alvos: ["CREDENCIADO"] };
   // ESTORNO (RN-005): exclusivo da SEAPI
-  for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
+  for (const code of [...perfilOptions, "SEAPI", "FABRICA", "PRODUTOR"]) {
     base[code]["Estorno"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
   base["SEAPI"]["Estorno"].destino = { tipo: "LIVRE" };
+  // FABRICA (RN-003): produz e declara o envio (a origem do abastecimento) — não movimenta brincos
+  base["FABRICA"]["Abastecimento"] = { origem: { tipo: "LIVRE" }, destino: { tipo: "BLOQUEIO" } };
+  for (const movement of ["Venda", "Transferência", "Devolução", "Perda", "Saída interna", "Estorno"]) {
+    base["FABRICA"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
+  }
   return base;
 }
 
 // Semântica da matriz (RN-012): combinações que não existem no domínio — a célula fica travada como "Não aplicável"
 function celulaNaoAplicavel(perfil: string, movement: string, side: "origem" | "destino"): string | null {
-  // ABASTECIMENTO: a origem é a fábrica de brincos (fora do catálogo de perfis) — nenhum estocador abastece
-  if (movement === "Abastecimento" && side === "origem")
-    return "A origem do abastecimento é a fábrica de brincos (fora do catálogo de perfis) — nenhum estocador abastece.";
+  // ABASTECIMENTO: a origem é a fábrica de brincos — nenhum estocador abastece (a FABRICA é a exceção: ela declara o envio)
+  if (movement === "Abastecimento" && side === "origem" && perfil !== "FABRICA")
+    return "A origem do abastecimento é a fábrica de brincos — nenhum estocador abastece.";
   // VENDA é a venda ao produtor (RN-006): o único destinatário é o produtor; quem vende é Habilitado e Loja
   if (movement === "Venda" && side === "destino" && perfil !== "PRODUTOR")
     return "A venda só tem como destinatário o produtor rural (RN-006).";
@@ -3195,6 +3202,11 @@ function celulaNaoAplicavel(perfil: string, movement: string, side: "origem" | "
   // PRODUTOR: a devolução/perda do brinco dele é declarada pela loja (RN-005)
   if (perfil === "PRODUTOR" && movement === "Devolução")
     return "A devolução do brinco do produtor é declarada pela loja (RN-005).";
+  // FABRICA (RN-003): produz e declara o envio (a origem do abastecimento) — não movimenta brincos
+  if (perfil === "FABRICA")
+    return movement === "Abastecimento" && side === "origem"
+      ? null
+      : "A fábrica produz e declara o envio (RN-003) — não movimenta brincos entre estocadores.";
   return null;
 }
 
@@ -3705,6 +3717,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0 },
     { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0 },
     { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
+    { code: "FABRICA", desc: "Fábrica de brincos — produz e declara o envio; sem estoque comercial", holders: 1 },
     { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI", holders: 1 },
   ];
   const movements = perfilMovimentos;
