@@ -57,7 +57,7 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
     { id: "estoque", label: "Estoque", icon: "box" },
     { id: "recebimento", label: "Recebimento", icon: "scan" },
     { id: "historico", label: "Movimentações", icon: "history" },
-    { id: "pedidos-sda", label: "Pedidos de brincos", icon: "request" },
+    { id: "pedidos-sda", label: "Aprovações", icon: "request" },
     { id: "habilitacao", label: "Gestão de estocadores", icon: "users" },
     { id: "numeracao", label: "Gestão de numeração", icon: "hash" },
     { id: "automacoes", label: "Automações de geração", icon: "document" },
@@ -97,8 +97,8 @@ const pageMeta: Record<Page, [string, string]> = {
     "Habilite pessoas físicas e jurídicas como estocadores, gerencie atendentes e os perfis com suas regras de fluxo.",
   ],
   "pedidos-sda": [
-    "Pedidos de brincos",
-    "Pedidos ao estoque central SDA especificando o ator solicitante — ciclo de aprovação, envio e confirmação por leitura.",
+    "Aprovações da SEAPI",
+    "Pedidos de brincos e movimentações com aprovação aguardando decisão — aprovar executa a movimentação; recusar registra o motivo.",
   ],
   numeracao: ["Gestão de numeração", "Controle as faixas emitidas pelo PNIB ou internamente."],
   automacoes: [
@@ -3118,7 +3118,7 @@ function labelPerfil(code: string) {
 }
 const perfilMovimentos = ["Abastecimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna", "Estorno"];
 
-type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
+type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO" | "APROVACAO"; alvos?: string[] };
 
 // Atores autorizáveis no escopo de uma regra (RN-012) — seleção múltipla.
 // Perfis = classes de estocadores habilitáveis; titulares fixos = atores de estado sempre existentes:
@@ -3170,6 +3170,7 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
 function badgeRegraFluxo(regra: RegraFluxo) {
   if (regra.tipo === "LIVRE") return <Badge tone="green">Livre</Badge>;
   if (regra.tipo === "BLOQUEIO") return <Badge tone="red">Bloqueio</Badge>;
+  if (regra.tipo === "APROVACAO") return <Badge tone="blue">Com aprovação</Badge>;
   const n = regra.alvos?.length ?? 0;
   const labels = (regra.alvos ?? [])
     .map((a) => escopoAtores.find((x) => x.id === a)?.label ?? a)
@@ -3842,6 +3843,21 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                   <span>
                     Permite o movimento somente com os atores selecionados abaixo: perfis e
                     titulares fixos.
+                  </span>
+                </div>
+              </label>
+              <label className={`scope-option ${draft.tipo === "APROVACAO" ? "selected" : ""}`}>
+                <input
+                  type="radio"
+                  name="regra-tipo"
+                  checked={draft.tipo === "APROVACAO"}
+                  onChange={() => setDraft((d) => ({ tipo: "APROVACAO", alvos: d.alvos }))}
+                />
+                <div>
+                  <strong>Com aprovação</strong>
+                  <span>
+                    Permitido, mas a movimentação entra na fila de aprovações da SEAPI e só executa
+                    após aprovação (o brinco fica reservado no estoque do remetente até lá).
                   </span>
                 </div>
               </label>
@@ -6631,6 +6647,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     situacao: "SOLICITADO" | "ENVIADO" | "CONCLUIDO" | "RECUSADO";
     data: string;
     mov: string | null;
+    fila: "pedido" | "movimentacao";
   };
   const [pedidos, setPedidos] = useState<PedidoSda[]>([
     {
@@ -6642,6 +6659,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       situacao: "SOLICITADO",
       data: "16/06/2025",
       mov: null,
+      fila: "pedido",
     },
     {
       id: 2,
@@ -6652,6 +6670,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       situacao: "ENVIADO",
       data: "15/06/2025",
       mov: "#MOV-2025-1847",
+      fila: "pedido",
     },
     {
       id: 3,
@@ -6662,6 +6681,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       situacao: "CONCLUIDO",
       data: "14/06/2025",
       mov: "#MOV-2025-1842",
+      fila: "pedido",
     },
     {
       id: 4,
@@ -6672,6 +6692,29 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       situacao: "RECUSADO",
       data: "13/06/2025",
       mov: null,
+      fila: "pedido",
+    },
+    {
+      id: 5,
+      ator: "Prefeitura Municipal de Bagé",
+      tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
+      qtd: 20,
+      itens: "076.21.007722000-1 · 20 brincos",
+      situacao: "SOLICITADO",
+      data: "18/06/2025",
+      mov: null,
+      fila: "movimentacao",
+    },
+    {
+      id: 6,
+      ator: "Cooperativa Agropecuária Vale do Verde",
+      tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
+      qtd: 15,
+      itens: "105.43.005700100-1 · 15 brincos",
+      situacao: "SOLICITADO",
+      data: "18/06/2025",
+      mov: null,
+      fila: "movimentacao",
     },
   ]);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -6747,8 +6790,8 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       <section className="panel">
         <div className="panel-head">
           <div>
-            <h2>Pedidos ao estoque central SDA</h2>
-            <p>O ator que está pedindo é especificado no pedido; o envio gera a transferência vinculada.</p>
+            <h2>Aprovações — pedidos e movimentações</h2>
+            <p>Pedidos de brincos e transferências com aprovação aguardando decisão da SEAPI — aprovar executa a movimentação; recusar registra o motivo.</p>
           </div>
           <Link to="novo" className="btn primary">
             <Icon name="plus" /> Novo pedido
@@ -6789,8 +6832,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                         className="movement-id"
                         onClick={() => setExpanded(expanded === p.id ? null : p.id)}
                       >
-                        #PED-SDA-{p.id} <span>{expanded === p.id ? "⌃" : "⌄"}</span>
-                      </button>
+                        {p.fila === "movimentacao" ? `#MOV-${p.id}` : `#PED-SDA-${p.id}`} <span>{expanded === p.id ? "⌃" : "⌄"}</span>                      </button>
                     </td>
                     <td>
                       <strong>{p.ator}</strong>
@@ -6805,9 +6847,27 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                       <div className="action-cell">
                         {p.situacao === "SOLICITADO" && (
                           <>
-                            <button className="text-btn" onClick={() => abrirAtendimento(p)}>
-                              Aprovar e enviar
-                            </button>
+                            {p.fila === "movimentacao" ? (
+                              <button
+                                className="text-btn"
+                                onClick={() => {
+                                  setPedidos((prev) =>
+                                    prev.map((x) =>
+                                      x.id === p.id
+                                        ? { ...x, situacao: "CONCLUIDO", mov: `#MOV-2025-${1850 + p.id}` }
+                                        : x,
+                                    ),
+                                  );
+                                  notify("Transferência aprovada e executada — custódia movida para o destinatário.");
+                                }}
+                              >
+                                Aprovar
+                              </button>
+                            ) : (
+                              <button className="text-btn" onClick={() => abrirAtendimento(p)}>
+                                Aprovar e enviar
+                              </button>
+                            )}
                             <button
                               className="text-btn danger-link"
                               onClick={() => setRecusing(p)}
