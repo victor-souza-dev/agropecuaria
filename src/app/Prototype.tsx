@@ -122,24 +122,24 @@ function pageSubtitle(role: Role, page: Page): string {
 
 const stockBase = [
   {
-    start: "105430055956039",
-    end: "105430055956278",
+    start: "076210077200001",
+    end: "076210077200240",
     qty: 240,
     status: "Disponível",
     source: "Recebido em 16/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
-    start: "105430055954801",
-    end: "105430055954920",
-    qty: 120,
+    start: "076210077200241",
+    end: "076210077200330",
+    qty: 90,
     status: "Disponível",
     source: "Recebido em 02/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
-    start: "076210077183401",
-    end: "076210077183420",
+    start: "076210077200331",
+    end: "076210077200350",
     qty: 20,
     status: "Reservado",
     source: "Mov. #MOV-2025-0812",
@@ -149,19 +149,19 @@ const stockBase = [
 
 const producerStock = [
   {
-    start: "105430055953118",
-    end: "105430055953127",
-    qty: 10,
-    status: "Disponível",
-    source: "Compra em 10/06/2025",
-    fabricante: "Identifica Brasil S.A.",
-  },
-  {
-    start: "076210077181902",
-    end: "076210077181906",
+    start: "076210077200371",
+    end: "076210077200375",
     qty: 5,
     status: "Usado",
     source: "Compra em 28/05/2025",
+    fabricante: "Identifica Brasil S.A.",
+  },
+  {
+    start: "076210077200376",
+    end: "076210077200385",
+    qty: 10,
+    status: "Disponível",
+    source: "Compra em 14/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
 ];
@@ -186,7 +186,7 @@ const initialMoves = [
     read: "2 códigos/caixa",
     state: "Concluído",
     used: false,
-    items: "105430055956039 a 105430055956278",
+    items: "076210077200001 a 076210077200240",
   },
   {
     id: 1841,
@@ -199,7 +199,7 @@ const initialMoves = [
     read: "Unitária",
     state: "Concluído",
     used: false,
-    items: "105430055955801 a 105430055955812",
+    items: "076210077200376 a 076210077200385",
   },
   {
     id: 1836,
@@ -212,7 +212,7 @@ const initialMoves = [
     read: "Faixa",
     state: "Concluído",
     used: true,
-    items: "076210077183401 a 076210077183420",
+    items: "076210077200421 a 076210077200440",
   },
   {
     id: 1829,
@@ -225,7 +225,7 @@ const initialMoves = [
     read: "Unitária",
     state: "Concluído",
     used: false,
-    items: "105430055953790, 105430055953791, 105430055953792",
+    items: "076210077200351, 076210077200352, 076210077200353",
   },
   {
     id: 1815,
@@ -238,7 +238,7 @@ const initialMoves = [
     read: "Sistema",
     state: "Concluído",
     used: false,
-    items: "105430055952714 a 105430055952718",
+    items: "076210077200366 a 076210077200370",
     link: "#MOV-2025-1810",
   },
 ];
@@ -718,7 +718,7 @@ export default function Prototype() {
                     read: "2 códigos/caixa",
                     state: "Concluído",
                     used: false,
-                    items: "105430055956039 a 105430055956278",
+                    items: "076210077200001 a 076210077200240",
                   },
                   ...prev,
                 ]);
@@ -802,7 +802,7 @@ export default function Prototype() {
                 read: "Sistema",
                 state: "Concluído",
                 used: false,
-                items: "105430055955801 a 105430055955812",
+                items: "076210077200381 a 076210077200392",
                 link: "#MOV-2025-1841",
               },
               ...prev,
@@ -907,7 +907,7 @@ export function MovementItemsPage() {
     );
   }
 
-  const firstNumber = movement.items.match(/\d{15}/)?.[0] ?? "105430055956039";
+  const firstNumber = movement.items.match(/\d{15}/)?.[0] ?? "076210077200001";
   const movementItems = Array.from({ length: movement.qty }, (_, index) => {
     const number = String(Number(firstNumber) + index).padStart(15, "0");
     const status =
@@ -1500,15 +1500,15 @@ function StockPage({
       titular: "Agropecuária Pampa Sul Ltda.",
       perfil: "PJ · LOJA_AGROPECUARIA",
       canal: "NOVO",
-      ranges: 2,
-      brincos: 360,
+      ranges: 3,
+      brincos: 350,
     },
     {
       select: "Antônio Carlos Silveira — PF",
       titular: "Antônio Carlos Silveira",
       perfil: "PF · CREDENCIADO",
       canal: "NOVO",
-      ranges: 1,
+      ranges: 2,
       brincos: 120,
     },
     {
@@ -1516,8 +1516,8 @@ function StockPage({
       titular: "João Pedro Fagundes",
       perfil: "PRODUTOR",
       canal: "NOVO",
-      ranges: 1,
-      brincos: 12,
+      ranges: 2,
+      brincos: 15,
     },
     {
       select: "Prefeitura Municipal de Bagé — Portal legado",
@@ -1549,12 +1549,12 @@ function StockPage({
   const total =
     stocks.reduce((n, s) => n + s.qty, 0) + (role === "produtor" ? producerAdded.length : 0);
   const itemRows = [
-    "105430055956039",
-    "105430055956040",
-    "105430055956041",
-    "105430055956042",
-    "105430055956043",
-    "105430055956044",
+    "076210077200301",
+    "076210077200302",
+    "076210077200303",
+    "076210077200304",
+    "076210077200305",
+    "076210077200306",
   ];
   return (
     <>
@@ -2002,7 +2002,7 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                   onChange={(event) => setStartCode(event.target.value)}
                   placeholder="Leia os 15 dígitos iniciais"
                 />
-                <button onClick={() => setStartCode("105430055956039")}>Simular</button>
+                <button onClick={() => setStartCode("076210077200001")}>Simular</button>
               </div>
             </label>
             <div className="barcode-connector">→</div>
@@ -2016,7 +2016,7 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                   onKeyDown={(event) => event.key === "Enter" && addBox()}
                   placeholder="Leia os 15 dígitos finais"
                 />
-                <button onClick={() => setEndCode("105430055956278")}>Simular</button>
+                <button onClick={() => setEndCode("076210077200240")}>Simular</button>
               </div>
             </label>
           </div>
@@ -2086,12 +2086,12 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                       <td>
                         <Badge
                           tone={
-                            box.start === "105430055956039" && box.end === "105430055956278"
+                            box.start === "076210077200001" && box.end === "076210077200240"
                               ? "green"
                               : "red"
                           }
                         >
-                          {box.start === "105430055956039" && box.end === "105430055956278"
+                          {box.start === "076210077200001" && box.end === "076210077200240"
                             ? "Conforme"
                             : "Divergente"}
                         </Badge>
@@ -2156,9 +2156,9 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
         </dl>
         <div className="expected-range">
           <span>FAIXA ESPERADA</span>
-          <strong>{formatTag("105430055956039")}</strong>
+          <strong>{formatTag("076210077200001")}</strong>
           <i>até</i>
-          <strong>{formatTag("105430055956278")}</strong>
+          <strong>{formatTag("076210077200240")}</strong>
         </div>
         <p className="info-note">
           <Icon name="alert" /> A leitura só fica completa após os códigos inicial e final da caixa.
@@ -2173,14 +2173,14 @@ function SalePage({ onConfirm }: { onConfirm: (tags: string[], producer: string)
   const stockRanges = [
     {
       id: "FX-001",
-      start: "105430055956039",
-      end: "105430055956278",
+      start: "076210077200001",
+      end: "076210077200240",
       received: "16/06/2025",
     },
     {
       id: "FX-002",
-      start: "105430055954801",
-      end: "105430055954920",
+      start: "076210077200241",
+      end: "076210077200330",
       received: "02/06/2025",
     },
     {
@@ -6076,8 +6076,8 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
   const [newActor, setNewActor] = useState("Agropecuária Pampa Sul Ltda.");
   const [newItems, setNewItems] = useState<string[]>([]);
   const centralRanges = [
-    { id: "FX-C01", start: "105430055956039", end: "105430055956278", qty: 240 },
-    { id: "FX-C02", start: "105430055954801", end: "105430055954920", qty: 120 },
+    { id: "FX-C01", start: "076210077200001", end: "076210077200240", qty: 240 },
+    { id: "FX-C02", start: "076210077200241", end: "076210077200330", qty: 120 },
     { id: "FX-C03", start: "076210077183401", end: "076210077183420", qty: 20 },
   ];
   const selectedQty = centralRanges
@@ -6196,7 +6196,7 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
 
 function FactoryPage({ notify }: { notify: (m: string) => void }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const [boxes, setBoxes] = useState([{ id: 1, start: "105430055956039", end: "105430055956278" }]);
+  const [boxes, setBoxes] = useState([{ id: 1, start: "076210077200001", end: "076210077200240" }]);
   const orders = [
     {
       id: 47,
@@ -6777,7 +6777,7 @@ function TransferModal({ close, finish }: { close: () => void; finish: (m: strin
         <div className="movement-summary">
           <span>FAIXA SELECIONADA</span>
           <strong>
-            {formatTag("105430055956039")} a {formatTag("105430055956278")}
+            {formatTag("076210077200001")} a {formatTag("076210077200240")}
           </strong>
           <small>240 brincos disponíveis</small>
         </div>
