@@ -6105,7 +6105,7 @@ td {
   margin-bottom: 14px;
 }
 .dash-grid > .panel { margin: 0; }
-.dash-mt { margin-bottom: 14px; }
+.dash-mt { margin-top: 18px; margin-bottom: 14px; }
 .chart-wrap { padding: 8px 20px 18px; }
 .chart-wrap svg { width: 100%; height: auto; display: block; }
 .chart-legend {
