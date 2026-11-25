@@ -4485,6 +4485,23 @@ td {
 .scope-target input {
   accent-color: #16a34a;
 }
+.approval-block {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 10px;
+}
+.approval-block > label { margin-bottom: 0; }
+.approval-block .scan-input { margin-top: 2px; }
+.badge-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 
 /* ===== Gestão de estocadores — tipografia ampliada (feedback operador 25/11/2026) ===== */
 .enable-layout .panel-head h2 {

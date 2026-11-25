@@ -3119,9 +3119,9 @@ function labelPerfil(code: string) {
 const perfilMovimentos = ["Abastecimento", "Venda", "Transferência", "Devolução", "Perda", "Saída interna", "Estorno"];
 
 type RegraFluxo = {
-  tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO" | "APROVACAO";
+  tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO";
   alvos?: string[];
-  aprovador?: "SEAPI" | "DESTINO";
+  aprovacao?: { aprovador: "SEAPI" | "DESTINO" } | null;
 };
 
 // Atores autorizáveis no escopo de uma regra (RN-012) — seleção múltipla.
@@ -3157,17 +3157,17 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
     origem: { tipo: "LIVRE" },
     destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
   };
-  // PRODUTOR (ADR-027/CR-014): seed restritivo — a venda ao produtor exige o aceite dele (aprovador: o próprio destinatário)
+  // PRODUTOR (CR-014): não envia (origem bloqueada); a venda e a transferência recebidas exigem o aceite do próprio produtor (aprovação complementar — aprovador: o destinatário)
   for (const movement of perfilMovimentos) {
     base["PRODUTOR"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };
   }
   base["PRODUTOR"]["Venda"] = {
     origem: { tipo: "BLOQUEIO" },
-    destino: { tipo: "APROVACAO", aprovador: "DESTINO" },
+    destino: { tipo: "LIVRE", aprovacao: { aprovador: "DESTINO" } },
   };
   base["PRODUTOR"]["Transferência"] = {
     origem: { tipo: "BLOQUEIO" },
-    destino: { tipo: "APROVACAO", aprovador: "DESTINO" },
+    destino: { tipo: "LIVRE", aprovacao: { aprovador: "DESTINO" } },
   };
   // ESTORNO (CR-013): seed — apenas o perfil SEAPI estorna (de qualquer titular); demais bloqueados
   for (const code of [...perfilOptions, "SEAPI", "PRODUTOR"]) {
@@ -3178,27 +3178,36 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
 }
 
 function badgeRegraFluxo(regra: RegraFluxo) {
-  if (regra.tipo === "LIVRE") return <Badge tone="green">Livre</Badge>;
   if (regra.tipo === "BLOQUEIO") return <Badge tone="red">Bloqueio</Badge>;
-  if (regra.tipo === "APROVACAO") {
-    const quem = regra.aprovador === "DESTINO" ? "o próprio destinatário" : "a SEAPI";
-    return (
-      <span title={`A movimentação só executa após aprovação — aprovador: ${quem}`}>
-        <Badge tone="blue">Com aprovação</Badge>
-      </span>
+  const partes: React.ReactNode[] = [];
+  if (regra.tipo === "ESCOPO") {
+    const n = regra.alvos?.length ?? 0;
+    const labels = (regra.alvos ?? [])
+      .map((a) => escopoAtores.find((x) => x.id === a)?.label ?? a)
+      .join(" · ");
+    partes.push(
+      <span key="escopo" title={`Só com: ${labels}`}>
+        <Badge tone="yellow">
+          Escopo · {n} {n === 1 ? "ator" : "atores"}
+        </Badge>
+      </span>,
+    );
+  } else {
+    partes.push(
+      <Badge key="livre" tone="green">
+        Livre
+      </Badge>,
     );
   }
-  const n = regra.alvos?.length ?? 0;
-  const labels = (regra.alvos ?? [])
-    .map((a) => escopoAtores.find((x) => x.id === a)?.label ?? a)
-    .join(" · ");
-  return (
-    <span title={labels}>
-      <Badge tone="yellow">
-        Escopo · {n} {n === 1 ? "ator" : "atores"}
-      </Badge>
-    </span>
-  );
+  if (regra.aprovacao) {
+    const quem = regra.aprovacao.aprovador === "SEAPI" ? "a SEAPI" : "o próprio destinatário";
+    partes.push(
+      <span key="aprov" title={`Exige aprovação de ${quem} antes de executar`}>
+        <Badge tone="blue">Com aprovação</Badge>
+      </span>,
+    );
+  }
+  return <span className="badge-combo">{partes}</span>;
 }
 
 // Definições de negócio dos movimentos — exibidas no tooltip "i" da matriz de regras.
@@ -3682,31 +3691,34 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
   const [draft, setDraft] = useState<{
-    tipo: RegraFluxo["tipo"];
+    alvosTipo: "LIVRE" | "BLOQUEIO" | "ESCOPO";
     alvos: string[];
+    exigeAprovacao: boolean;
     aprovador: "SEAPI" | "DESTINO";
-  }>({ tipo: "LIVRE", alvos: [], aprovador: "SEAPI" });
+  }>({ alvosTipo: "LIVRE", alvos: [], exigeAprovacao: false, aprovador: "DESTINO" });
   function abrirEditor(movement: string, side: "origem" | "destino") {
     const regra = rules[selected][movement][side];
     setDraft({
-      tipo: regra.tipo,
+      alvosTipo: regra.tipo === "BLOQUEIO" ? "BLOQUEIO" : regra.tipo === "ESCOPO" ? "ESCOPO" : "LIVRE",
       alvos: regra.alvos ? [...regra.alvos] : [],
-      aprovador: regra.aprovador ?? "SEAPI",
+      exigeAprovacao: !!regra.aprovacao,
+      aprovador: regra.aprovacao?.aprovador ?? "DESTINO",
     });
     setEditor({ movement, side });
   }
   function salvarEditor() {
     if (!editor) return;
-    if (draft.tipo === "ESCOPO" && draft.alvos.length === 0) {
-      notify("Selecione ao menos um ator para o escopo — ou use Livre/Bloqueio.");
+    if (draft.alvosTipo === "ESCOPO" && draft.alvos.length === 0) {
+      notify("Selecione ao menos um ator para o escopo — ou use Livre/Bloqueado.");
       return;
     }
+    const aprov = draft.exigeAprovacao ? { aprovador: draft.aprovador } : null;
     const nova: RegraFluxo =
-      draft.tipo === "ESCOPO"
-        ? { tipo: "ESCOPO", alvos: [...draft.alvos] }
-        : draft.tipo === "APROVACAO"
-          ? { tipo: "APROVACAO", aprovador: draft.aprovador }
-          : { tipo: draft.tipo };
+      draft.alvosTipo === "BLOQUEIO"
+        ? { tipo: "BLOQUEIO" }
+        : draft.alvosTipo === "ESCOPO"
+          ? { tipo: "ESCOPO", alvos: [...draft.alvos], aprovacao: aprov }
+          : { tipo: "LIVRE", aprovacao: aprov };
     setRules((current) => ({
       ...current,
       [selected]: {
@@ -3836,36 +3848,36 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         >
           <div className="modal-body">
             <div className="scope-options">
-              <label className={`scope-option ${draft.tipo === "LIVRE" ? "selected" : ""}`}>
+              <label className={`scope-option ${draft.alvosTipo === "LIVRE" ? "selected" : ""}`}>
                 <input
                   type="radio"
-                  name="regra-tipo"
-                  checked={draft.tipo === "LIVRE"}
-                  onChange={() => setDraft({ tipo: "LIVRE", alvos: [] })}
+                  name="alvos-tipo"
+                  checked={draft.alvosTipo === "LIVRE"}
+                  onChange={() => setDraft((d) => ({ ...d, alvosTipo: "LIVRE" }))}
                 />
                 <div>
                   <strong>Livre</strong>
                   <span>Sem restrição — o fluxo é permitido com qualquer titular (postura padrão do sistema).</span>
                 </div>
               </label>
-              <label className={`scope-option ${draft.tipo === "BLOQUEIO" ? "selected" : ""}`}>
+              <label className={`scope-option ${draft.alvosTipo === "BLOQUEIO" ? "selected" : ""}`}>
                 <input
                   type="radio"
-                  name="regra-tipo"
-                  checked={draft.tipo === "BLOQUEIO"}
-                  onChange={() => setDraft({ tipo: "BLOQUEIO", alvos: [] })}
+                  name="alvos-tipo"
+                  checked={draft.alvosTipo === "BLOQUEIO"}
+                  onChange={() => setDraft((d) => ({ ...d, alvosTipo: "BLOQUEIO" }))}
                 />
                 <div>
-                  <strong>Bloqueio</strong>
+                  <strong>Bloqueado</strong>
                   <span>Recusa o movimento neste lado, independentemente do alvo.</span>
                 </div>
               </label>
-              <label className={`scope-option ${draft.tipo === "ESCOPO" ? "selected" : ""}`}>
+              <label className={`scope-option ${draft.alvosTipo === "ESCOPO" ? "selected" : ""}`}>
                 <input
                   type="radio"
-                  name="regra-tipo"
-                  checked={draft.tipo === "ESCOPO"}
-                  onChange={() => setDraft((d) => ({ tipo: "ESCOPO", alvos: d.alvos }))}
+                  name="alvos-tipo"
+                  checked={draft.alvosTipo === "ESCOPO"}
+                  onChange={() => setDraft((d) => ({ ...d, alvosTipo: "ESCOPO", alvos: d.alvos }))}
                 />
                 <div>
                   <strong>Escopo — múltiplos atores</strong>
@@ -3875,37 +3887,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                   </span>
                 </div>
               </label>
-              <label className={`scope-option ${draft.tipo === "APROVACAO" ? "selected" : ""}`}>
-                <input
-                  type="radio"
-                  name="regra-tipo"
-                  checked={draft.tipo === "APROVACAO"}
-                  onChange={() => setDraft((d) => ({ tipo: "APROVACAO", alvos: d.alvos, aprovador: d.aprovador }))}
-                />
-                <div>
-                  <strong>Com aprovação</strong>
-                  <span>
-                    Permitido, mas a movimentação só executa após aprovação — configurável abaixo
-                    quem aprova. O brinco fica reservado no estoque do remetente até lá.
-                  </span>
-                </div>
-              </label>
             </div>
-            {draft.tipo === "APROVACAO" && (
-              <label className="scan-input compact">
-                <span>QUEM APROVA CADA MOVIMENTAÇÃO</span>
-                <select
-                  value={draft.aprovador}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, aprovador: e.target.value as "SEAPI" | "DESTINO" }))
-                  }
-                >
-                  <option value="DESTINO">O próprio destinatário da movimentação</option>
-                  <option value="SEAPI">A SEAPI (secretaria)</option>
-                </select>
-              </label>
-            )}
-            {draft.tipo === "ESCOPO" && (
+            {draft.alvosTipo === "ESCOPO" && (
               <div className="scope-targets">
                 <span className="scope-targets-title">Atores autorizados (seleção múltipla)</span>
                 {escopoAtores.map((a) => (
@@ -3927,6 +3910,44 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 ))}
               </div>
             )}
+            <div className="approval-block">
+              <label className={`scope-option ${draft.exigeAprovacao ? "selected" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={draft.exigeAprovacao}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, exigeAprovacao: e.target.checked }))
+                  }
+                />
+                <div>
+                  <strong>Exige aprovação antes de executar</strong>
+                  <span>
+                    A movimentação entra na fila de aprovações da SEAPI e o brinco fica reservado
+                    no estoque do remetente até a decisão. Complementar — combina com Livre ou
+                    Escopo.
+                  </span>
+                </div>
+              </label>
+              {draft.exigeAprovacao && (
+                <label className="scan-input compact">
+                  <span>QUEM APROVA</span>
+                  <select
+                    value={draft.aprovador}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, aprovador: e.target.value as "SEAPI" | "DESTINO" }))
+                    }
+                  >
+                    <option value="DESTINO">O próprio destinatário da movimentação</option>
+                    <option value="SEAPI">A SEAPI (secretaria)</option>
+                  </select>
+                </label>
+              )}
+            </div>
+            <p className="modal-copy">
+              A aprovação é <strong>complementar</strong> — combina com Livre ou com Escopo; a
+              exceção é o Bloqueado, que recusa sempre. O movimento aprovado executa com efeito
+              prospectivo: movimentos já registrados não são revalidados.
+            </p>
           </div>
           <div className="modal-actions">
             <button className="btn secondary" onClick={() => setEditor(null)}>
