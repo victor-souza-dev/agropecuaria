@@ -983,9 +983,17 @@ export function ModulePage({ page }: { page: Page }) {
       );
     case "habilitacao": {
       const sub = window.location.pathname.split("/").pop();
-      if (sub === "dashboard") return <EstocadoresDashboard role={context.role} />;
+      if (sub === "dashboard") return <EstocadoresDashboard role={context.role} perfis={context.perfis} />;
       if (sub === "novo") return <HabilitacaoNovoPage notify={context.notify} role={context.role} />;
-      if (sub === "regras") return <EstocadoresRegrasPage notify={context.notify} role={context.role} />;
+      if (sub === "regras")
+        return (
+          <EstocadoresRegrasPage
+            notify={context.notify}
+            role={context.role}
+            perfis={context.perfis}
+            setPerfis={context.setPerfis}
+          />
+        );
       return <EstocadoresPage notify={context.notify} role={context.role} />;
     }
     case "pedidos-sda":
@@ -3716,18 +3724,16 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
   );
 }
 
-function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
-  const [profiles, setProfiles] = useState<{ code: string; desc: string; holders: number; label?: string }[]>([
-    { code: "LOJA_AGROPECUARIA", desc: "Varejo do agro: vende brincos ao produtor rural no balcão, com leitura do código no ato da venda", holders: 2 },
-    { code: "CREDENCIADO", desc: "Estocador credenciado pela SEAPI: mantém estoque próprio e movimenta brincos com os demais titulares da cadeia", holders: 2 },
-    { code: "PREFEITURA", desc: "Estoque público municipal: brincos para programas e demandas do município", holders: 1 },
-    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite: centraliza brincos para os produtores associados da bacia leiteira", holders: 1 },
-    { code: "INSPETORIA", desc: "Unidade da Defesa Agropecuária no município-sede: serviço veterinário oficial com estoque próprio", holders: 0 },
-    { code: "POSTO", desc: "Unidade de atendimento da Defesa Agropecuária, vinculada a uma Inspetoria (IDA): atende o produtor na região e se abastece pela IDA de origem", holders: 0 },
-    { code: "SEAPI", desc: "Estoque central da Secretaria: mantém o estoque oficial e governa as regras da cadeia de custódia", holders: 1 },
-    { code: "FABRICA", desc: "Produz os brincos e declara o envio — nunca tem posse: a custódia abre direto no destinatário", holders: 1 },
-    { code: "PRODUTOR", desc: "Fim da linha da custódia: recebe os brincos para aplicar nos animais da produção rural", holders: 1 },
-  ]);
+function ProfilesPanel({
+  notify,
+  perfis,
+  setPerfis,
+}: {
+  notify: (m: string) => void;
+  perfis: PerfilCatalogo[];
+  setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
+}) {
+  const profiles = perfis;
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
@@ -3760,7 +3766,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
       notify("Já existe um perfil com esse nome — escolha outro.");
       return;
     }
-    setProfiles((ps) => [
+    setPerfis((ps) => [
       ...ps,
       { code, desc: novoDesc.trim() || "Perfil criado pela SEAPI", holders: 0, label: nome },
     ]);
@@ -3779,7 +3785,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
       notify("Escolha o perfil substituto dos estocadores vinculados.");
       return;
     }
-    setProfiles((ps) =>
+    setPerfis((ps) =>
       ps
         .filter((p) => p.code !== apagarAlvo.code)
         .map((p) =>
@@ -4230,7 +4236,17 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   );
 }
 
-function EstocadoresRegrasPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+function EstocadoresRegrasPage({
+  notify,
+  role,
+  perfis,
+  setPerfis,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  perfis: PerfilCatalogo[];
+  setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
+}) {
   return (
     <div className="page-container">
       <section className="header">
@@ -4241,10 +4257,23 @@ function EstocadoresRegrasPage({ notify, role }: { notify: (m: string) => void; 
           </Link>
         </div>
       </section>
-      <ProfilesPanel notify={notify} />
+      <ProfilesPanel notify={notify} perfis={perfis} setPerfis={setPerfis} />
     </div>
   );
 }
+
+const municipiosRS = [
+  "Aceguá", "Alegrete", "Alvorada", "Arroio Grande", "Bagé", "Bento Gonçalves",
+  "Cachoeira do Sul", "Camaquã", "Canela", "Capão da Canoa", "Carlos Barbosa",
+  "Caxias do Sul", "Cerro Grande", "Chuí", "Cruz Alta", "Dom Pedrito", "Erechim",
+  "Farroupilha", "Garibaldi", "Gramado", "Gravataí", "Guaíba", "Herval",
+  "Hulha Negra", "Ijuí", "Mostardas", "Novo Hamburgo", "Passo Fundo",
+  "Pedras Altas", "Pelotas", "Pinheiro Machado", "Piratini", "Porto Alegre",
+  "Rio Grande", "Rosário do Sul", "Santa Cruz do Sul", "Santa Maria",
+  "Santa Vitória do Palmar", "Santana do Livramento", "Santiago", "Santo Ângelo",
+  "São Borja", "São Gabriel", "São Leopoldo", "Soledade", "Taquara", "Torres",
+  "Tramandaí", "Vacaria", "Venâncio Aires",
+];
 
 function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
   const baseBusca = [
@@ -4260,6 +4289,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   const [perfil, setPerfil] = useState("LOJA_AGROPECUARIA");
   const [cidade, setCidade] = useState("");
   const [usarMesmoEndereco, setUsarMesmoEndereco] = useState(true);
+  const [municipioQuery, setMunicipioQuery] = useState("");
+  const [municipioAberto, setMunicipioAberto] = useState(false);
   const [cep, setCep] = useState("");
   const [tipoLogradouro, setTipoLogradouro] = useState("");
   const [logradouro, setLogradouro] = useState("");
@@ -4274,6 +4305,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
     : [];
   function limparEndereco() {
     setUsarMesmoEndereco(true);
+    setMunicipioQuery("");
+    setMunicipioAberto(false);
     setCep("");
     setTipoLogradouro("");
     setLogradouro("");
@@ -4284,8 +4317,10 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   function escolherTitular(p: Titular) {
     setTitular(p);
     setBusca("");
-    setCidade(p.cidade);
     limparEndereco();
+    const cidadeTitular = p.cidade.split("/")[0];
+    setCidade(cidadeTitular);
+    setMunicipioQuery(cidadeTitular);
   }
   function buscarCep() {
     const digitos = cep.replace(/\D/g, "");
@@ -4398,15 +4433,49 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               </label>
               {!usarMesmoEndereco && (
                 <div className="endereco-grade">
-                  <label className="scan-input compact">
+                  <label className="scan-input compact select-pesquisa">
                     <span>MUNICÍPIO/UF</span>
                     <div>
                       <input
-                        placeholder="Ex.: Bagé/RS..."
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
+                        placeholder="Pesquisar município..."
+                        value={municipioQuery}
+                        onFocus={() => setMunicipioAberto(true)}
+                        onBlur={() => setMunicipioAberto(false)}
+                        onChange={(e) => {
+                          setMunicipioQuery(e.target.value);
+                          setMunicipioAberto(true);
+                        }}
                       />
                     </div>
+                    {municipioAberto && (
+                      <div className="lista-municipios" onMouseDown={(e) => e.preventDefault()}>
+                        {(() => {
+                          const filtrados = municipiosRS.filter((m) =>
+                            m.toLowerCase().includes(municipioQuery.trim().toLowerCase()),
+                          );
+                          if (filtrados.length === 0)
+                            return (
+                              <span className="lista-vazia">
+                                Nenhum município encontrado para "{municipioQuery}".
+                              </span>
+                            );
+                          return filtrados.map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              className={`item-municipio ${m === cidade ? "selecionado" : ""}`}
+                              onClick={() => {
+                                setCidade(m);
+                                setMunicipioQuery(m);
+                                setMunicipioAberto(false);
+                              }}
+                            >
+                              {m}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    )}
                   </label>
                   <div className="cep-bloco">
                     <label className="scan-input compact">
@@ -4602,17 +4671,17 @@ const estocadoresDashDemo = {
     { label: "Semana 4", aprovadas: 9, recusadas: 1 },
   ],
   motivosRecusa: [
-    { label: "Brinco já aplicado a animal", value: 5 },
-    { label: "Destinatário fora do escopo do perfil", value: 3 },
-    { label: "Quantidade divergente do pedido", value: 2 },
-    { label: "Brinco reservado em outra pendência", value: 1 },
+    { label: "Brinco já aplicado a animal", value: 13 },
+    { label: "Destinatário fora do escopo do perfil", value: 9 },
+    { label: "Quantidade divergente do pedido", value: 5 },
+    { label: "Brinco reservado em outra pendência", value: 3 },
   ],
   concentracao: [
-    { label: "Comercial Rural Tradição", value: 84500 },
-    { label: "Coop. Lacteária Santa Fé", value: 61200 },
-    { label: "Agropecuária Campos Novos", value: 43700 },
-    { label: "Prefeitura de Gravataí", value: 22400 },
-    { label: "Inspetoria de Porto Alegre", value: 18900 },
+    { label: "Comercial Rural Tradição", value: 78400 },
+    { label: "Coop. Lacteária Santa Fé", value: 56300 },
+    { label: "Agropecuária Campos Novos", value: 39800 },
+    { label: "Prefeitura de Gravataí", value: 24600 },
+    { label: "Inspetoria de Porto Alegre", value: 20400 },
   ],
   envelhecimento: [
     { label: "0 a 30 dias", value: 342000, color: "#4BA044" },
@@ -4620,15 +4689,15 @@ const estocadoresDashDemo = {
     { label: "Mais de 90 dias", value: 21000, color: "#d64545" },
   ],
   perdasPerfil: [
-    { label: "Habilitado", value: 380, taxa: "0,9% do movimento" },
-    { label: "Loja Agropecuária", value: 140, taxa: "0,6% do movimento" },
-    { label: "Prefeitura", value: 45, taxa: "0,3% do movimento" },
-    { label: "Cooperativa de Leite", value: 30, taxa: "0,4% do movimento" },
+    { label: "Habilitado", value: 170, taxa: "0,9% do movimento" },
+    { label: "Loja Agropecuária", value: 140, taxa: "1,6% do movimento" },
+    { label: "Prefeitura", value: 45, taxa: "1,4% do movimento" },
+    { label: "Cooperativa de Leite", value: 30, taxa: "1,1% do movimento" },
   ],
   devolucoesLoja: [
-    { label: "Agropecuária Campos Novos", value: 38 },
-    { label: "Comercial Rural Tradição", value: 21 },
-    { label: "Agropecuária Vale Verde", value: 9 },
+    { label: "Agropecuária Vale Verde", value: 34 },
+    { label: "Loja Agro Campo Bom", value: 19 },
+    { label: "Ruralpe Comercial", value: 11 },
   ],
   estornosAtor: [
     { label: "Prefeitura de Gravataí", value: 7 },
@@ -4643,9 +4712,9 @@ const estocadoresDashDemo = {
     { label: "Loja · envio de abastecimento bloqueado", value: 3 },
   ],
   fluxoPosicao: [
-    { label: "Aplicados a animal", value: 62000, color: "#4BA044" },
-    { label: "Em estoque na rede", value: 38000, color: "#1565c0" },
-    { label: "Em fila ou trânsito", value: 5000, color: "#d99a3b" },
+    { label: "Aplicados a animal", value: 18000, color: "#4BA044" },
+    { label: "Em estoque na rede", value: 14500, color: "#1565c0" },
+    { label: "Em fila ou trânsito", value: 2500, color: "#d99a3b" },
   ],
   leadTime: [
     { label: "Fábrica → leitura no estoque", value: 6, display: "6 dias", color: "#1565c0" },
@@ -4665,8 +4734,14 @@ const estocadoresDashDemo = {
     { label: "Rede de estocadores", value: 448000 },
   ],
   rupturas: [
-    { ator: "Agropecuária Campos Novos", detalhe: "projeção esgota o estoque em ~3 semanas ao consumo atual" },
-    { ator: "Coop. Lacteária Santa Fé", detalhe: "projeção esgota o estoque em ~6 semanas ao consumo atual" },
+    {
+      ator: "Agropecuária Vale Verde",
+      detalhe: "estoque de 1.800 brincos e consumo próprio de ~2.400/mês — esgota em ~3 semanas",
+    },
+    {
+      ator: "Prefeitura de Cachoeira do Sul",
+      detalhe: "estoque de 3.200 brincos e consumo de ~1.100/mês — esgota em ~3 meses",
+    },
   ],
   auditoria: [
     { data: "25/11 09:12", usuario: "victor.souza", perfil: "Produtor", celula: "Venda · Enviar", de: "Bloqueado", para: "Livre" },
@@ -4682,18 +4757,6 @@ const PERIODOS_ESTOQUES = [
   { id: 90, label: "Últimos 90 dias", nome: "90 dias", f: 1 },
   { id: 180, label: "Últimos 6 meses", nome: "6 meses", f: 2 },
   { id: 365, label: "Últimos 12 meses", nome: "12 meses", f: 4 },
-];
-const PERFIS_FILTRO = [
-  "TODOS",
-  "CREDENCIADO",
-  "LOJA_AGROPECUARIA",
-  "PREFEITURA",
-  "COOPERATIVA_LEITE",
-  "INSPETORIA",
-  "POSTO",
-  "SEAPI",
-  "FABRICA",
-  "PRODUTOR",
 ];
 const SHARE_PERFIL: Record<string, number> = {
   TODOS: 1,
@@ -4750,7 +4813,13 @@ function MiniBars({
   );
 }
 
-function EstocadoresDashboard({ role }: { role: Role }) {
+function EstocadoresDashboard({
+  role,
+  perfis,
+}: {
+  role: Role;
+  perfis: PerfilCatalogo[];
+}) {
   const carga = 387;
   const ligados = 41;
   const noPortal = carga - ligados;
@@ -4783,14 +4852,17 @@ function EstocadoresDashboard({ role }: { role: Role }) {
   }, []);
 
   // Recálculo dos painéis para o recorte selecionado (dados demonstrativos)
+  // Recorte atual derivado do catálogo real de perfis (inclui os criados pela SEAPI)
+  const labelDeFiltro = (code: string) => perfis.find((p) => p.code === code)?.label ?? labelPerfil(code);
+  const opcoesPerfil = ["TODOS", ...perfis.map((p) => p.code)];
   const periodoSel = PERIODOS_ESTOQUES.find((p) => p.id === periodoId)!;
   const fP = periodoSel.f;
   const fR = regimeFiltro === "NOVO" ? 0.11 : regimeFiltro === "HERDADO" ? 0.89 : 1;
-  const fS = SHARE_PERFIL[perfilFiltro] ?? 1;
+  const fS = SHARE_PERFIL[perfilFiltro] ?? 0.02;
   const escSnap = (n: number) => (n > 0 ? Math.max(1, Math.round(n * fR * fS)) : 0);
   const escPeriodo = (n: number) => (n > 0 ? Math.max(1, Math.round(n * fP * fR * fS)) : 0);
   const prefixoPerfil =
-    perfilFiltro === "TODOS" ? null : PREFIXO_PERFIL[perfilFiltro] ?? labelPerfil(perfilFiltro);
+    perfilFiltro === "TODOS" ? null : PREFIXO_PERFIL[perfilFiltro] ?? labelDeFiltro(perfilFiltro);
   const filtraPerfil = (rows: { label: string }[]) =>
     prefixoPerfil ? rows.filter((r) => r.label.startsWith(prefixoPerfil)) : rows;
   const barras = (
@@ -4802,7 +4874,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
     ) : (
       <MiniBars rows={rows} unit={unit} />
     );
-  const perfilNome = perfilFiltro === "TODOS" ? "todos os perfis" : labelPerfil(perfilFiltro);
+  const perfilNome = perfilFiltro === "TODOS" ? "todos os perfis" : labelDeFiltro(perfilFiltro);
   const regimeNome = REGIMES_FILTRO.find((r) => r.id === regimeFiltro)?.label.toLowerCase() ?? "";
   const tabs: { id: typeof dashTab; label: string }[] = [
     { id: "aprovacoes", label: "Aprovações" },
@@ -4872,7 +4944,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           </button>
           {perfilAberto && (
             <div className="multiselect-dropdown">
-              {PERFIS_FILTRO.map((code) => (
+              {opcoesPerfil.map((code) => (
                 <label
                   className="ms-option"
                   key={code}
@@ -4882,7 +4954,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                   }}
                 >
                   <input type="checkbox" checked={perfilFiltro === code} readOnly />
-                  <span>{code === "TODOS" ? "Todos os perfis" : labelPerfil(code)}</span>
+                  <span>{code === "TODOS" ? "Todos os perfis" : labelDeFiltro(code)}</span>
                 </label>
               ))}
             </div>
@@ -5187,8 +5259,8 @@ function EstocadoresDashboard({ role }: { role: Role }) {
                 ))}
               </div>
               <p className="aging-note">
-                O estoque central cobre ~4,2 meses da demanda média da rede — janela para
-                solicitar faixas ou pedir produção à fábrica antes da ruptura.
+                O estoque central cobre ~10 meses da demanda média da rede (11.750 brincos/mês) —
+                janela para solicitar faixas ou pedir produção à fábrica antes da ruptura.
               </p>
             </section>
           </div>
