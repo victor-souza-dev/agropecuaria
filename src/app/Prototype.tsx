@@ -1021,7 +1021,7 @@ export function ModulePage({ page }: { page: Page }) {
             auditoriaMatriz={context.auditoriaMatriz}
           />
         );
-      if (sub === "novo") return <HabilitacaoNovoPage notify={context.notify} role={context.role} />;
+      if (sub === "novo") return <HabilitacaoNovoPage notify={context.notify} role={context.role} perfis={context.perfis} regras={context.regras} />;
       if (sub === "regras")
         return (
           <EstocadoresRegrasPage
@@ -4363,7 +4363,17 @@ const municipiosRS = [
   "Tramandaí", "Vacaria", "Venâncio Aires",
 ];
 
-function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+function HabilitacaoNovoPage({
+  notify,
+  role,
+  perfis,
+  regras,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  perfis: PerfilCatalogo[];
+  regras: Record<string, PerfilRegras>;
+}) {
   const baseBusca = [
     { nome: "Comercial Rural Tradição Ltda.", doc: "12.345.678/0001-90", natureza: "PJ", cidade: "Bagé/RS" },
     { nome: "Agropecuária Campo Bom Ltda.", doc: "98.765.432/0001-10", natureza: "PJ", cidade: "Campo Bom/RS" },
@@ -4387,7 +4397,11 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
   const [bairro, setBairro] = useState("");
   const [verRegras, setVerRegras] = useState(false);
   const navigate = useNavigate();
-  const regras = perfilRulesSeed()[perfil];
+  // Catálogo completo (9 perfis + os criados pela SEAPI na sessão) com fallback: perfil sem
+  // restrição registrada opera livre (postura padrão — RN-012)
+  const regrasPerfil =
+    regras[perfil] ??
+    (Object.fromEntries(perfilMovimentos.map((m) => [m, { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } }])) as PerfilRegras);
   const resultados = busca.trim()
     ? baseBusca.filter((p) => `${p.nome} ${p.doc}`.toLowerCase().includes(busca.trim().toLowerCase()))
     : [];
@@ -4494,8 +4508,10 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
             <span>PERFIL DE ESTOCADOR — PARA VER AS REGRAS, USE O "i"</span>
             <div className="perfil-regras-controles">
               <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
-                {perfilOptions.map((p) => (
-                  <option key={p} value={p}>{labelPerfil(p)}</option>
+                {perfis.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.label ?? labelPerfil(p.code)}
+                  </option>
                 ))}
               </select>
               <button
@@ -4706,7 +4722,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                             <Badge tone="neutral">Não aplicável</Badge>
                           </span>
                         ) : (
-                          badgeRegraFluxo(regras[movement].destino)
+                          badgeRegraFluxo(regrasPerfil[movement].destino)
                         )}
                       </td>
                       <td>
@@ -4718,7 +4734,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                             <Badge tone="neutral">Não aplicável</Badge>
                           </span>
                         ) : (
-                          badgeRegraFluxo(regras[movement].origem)
+                          badgeRegraFluxo(regrasPerfil[movement].origem)
                         )}
                       </td>
                     </tr>
