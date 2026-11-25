@@ -2591,8 +2591,8 @@ function SalePage({ onConfirm }: { onConfirm: (tags: string[], producer: string)
                 </h2>
                 <p>
                   {saleMode === "unit"
-                    ? "Composição exclusivamente por leitura de código de barras — seleção manual não é permitida (RN-015)."
-                    : "Leia o código de barras da caixa (início + fim) — a seleção manual de faixas não é permitida (RN-015)."}
+                    ? "Composição exclusivamente por leitura de código de barras — seleção manual não é permitida."
+                    : "Leia o código de barras da caixa (início + fim) — a seleção manual de faixas não é permitida."}
                 </p>
               </div>
               <div className="segmented sale-mode-toggle">
@@ -3185,6 +3185,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
   const [filterCanalH, setFilterCanalH] = useState("Todos os canais");
   const [filterSituacaoH, setFilterSituacaoH] = useState("Todas as situações");
   const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [ligar, setLigar] = useState<Estocador | null>(null);
   const [detalheNome, setDetalheNome] = useState<string | null>(null);
   const detalheAtual = detalheNome ? holderList.find((h) => h.name === detalheNome) ?? null : null;
@@ -3247,6 +3248,18 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
             </svg>
             Perfis e regras
           </Link>
+          <div className="layout-toggle">
+            <button className={`layout-btn ${viewMode === "list" ? "active" : ""}`} onClick={() => setViewMode("list")} aria-label="Visualização em lista">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </button>
+            <button className={`layout-btn ${viewMode === "grid" ? "active" : ""}`} onClick={() => setViewMode("grid")} aria-label="Visualização em grade">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+          </div>
           <Link className="btn primary" to={`/${role}/habilitacao/novo`}>
             <Icon name="plus" /> Habilitar estocador
           </Link>
@@ -3313,6 +3326,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
         )}
       </form>
 
+      {viewMode === "list" ? (
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -3378,6 +3392,49 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
           </tbody>
         </table>
       </div>
+      ) : (
+        <div className="grid-cards">
+          {rows.map((h) => (
+            <div key={h.name} className="grid-card">
+              <div className="grid-card-accent" style={{ background: h.canal === "NOVO" ? "linear-gradient(90deg, #2196f3, #64b5f6)" : "linear-gradient(90deg, #e65100, #ffb74d)" }}></div>
+              <div className="grid-card-body">
+                <div className="grid-card-header">
+                  <span className="categoria-badge" style={{ background: "#e8f5e9", color: "#2e7d32" }}>
+                    {labelPerfil(h.perfil)}
+                  </span>
+                </div>
+                <div className="grid-card-title">{h.name}</div>
+                <div className="grid-card-date">{h.doc} · {h.city}</div>
+                <div className="grid-card-divider"></div>
+                <div className="grid-card-info">
+                  <div className="grid-card-info-row">
+                    <span>Canal: <strong>{h.canal === "NOVO" ? "Ligado no novo" : "Portal herdado"}</strong></span>
+                  </div>
+                  <div className="grid-card-info-row">
+                    <span>Proveniência: <strong>{h.origem}</strong></span>
+                  </div>
+                </div>
+                <div className="grid-card-footer">
+                  <div className="grid-card-tag">
+                    <span className="tag-label">Situação</span>
+                    <span className="tag-value" style={h.active ? { color: "#2e7d32" } : { color: "#e65100" }}>{h.active ? "Ativo" : "Suspenso"}</span>
+                  </div>
+                  <div className="grid-card-tag grid-card-tag--num">
+                    {h.canal === "HERDADO" && (
+                      <button className="text-btn" onClick={() => setLigar(h)}>
+                        Ligar no novo
+                      </button>
+                    )}
+                    <button className="text-btn" onClick={() => setDetalheNome(h.name)}>
+                      Detalhes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="panel-foot">
         <span>Exibindo {rows.length} de {holderList.length} estocadores</span>
       </div>
@@ -3391,11 +3448,11 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
           <div className="modal-body">
             <p className="modal-copy">
               O titular passa a operar neste sistema e o acesso operacional no Portal herdado é
-              bloqueado no mesmo ato (RN-013 — ligação por ator). O estoque é o{" "}
+              bloqueado no mesmo ato (ligação por ator). O estoque é o{" "}
               <strong>mesmo estado</strong>: nada é migrado ou duplicado.
             </p>
             <p className="modal-copy">
-              O perfil e as regras de fluxo vinculados ao titular (RN-012) passam a valer no novo
+              O perfil e as regras de fluxo vinculados ao titular passam a valer no novo
               sem retrabalho.
             </p>
           </div>
@@ -3463,7 +3520,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
             {detalheAtual.canal === "HERDADO" && (
               <p className="modal-copy">
                 Titular operando no Portal herdado — use <strong>Ligar no novo</strong> na listagem
-                para habilitar o acesso aqui e bloquear lá (RN-013). O estoque é o mesmo estado,
+                para habilitar o acesso aqui e bloquear lá. O estoque é o mesmo estado,
                 nada é migrado.
               </p>
             )}
@@ -3472,7 +3529,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
                 <div className="attendant-title">
                   <div>
                     <strong>Atendentes</strong>
-                    <span>Usuários autorizados a operar em nome da loja (RN-001)</span>
+                    <span>Usuários autorizados a operar em nome da loja</span>
                   </div>
                   <button className="btn secondary" onClick={() => addAtendente(detalheAtual)}>
                     <Icon name="plus" /> Habilitar atendente
@@ -3530,7 +3587,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0 },
     { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0 },
     { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
-    { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI (ADR-027)", holders: 1 },
+    { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI", holders: 1 },
   ];
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
@@ -3596,16 +3653,16 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="history" />
           <span>
-            Inativação de perfil com estocadores vinculados é bloqueada (ERR-043) — transfira-os
+            Inativação de perfil com estocadores vinculados é bloqueada — transfira-os
             para outro perfil antes. O V1 semeia os 6 papéis do sistema anterior +
-            LOJA_AGROPECUARIA + PRODUTOR (seed restritivo editável — ADR-027).
+            LOJA_AGROPECUARIA + PRODUTOR (seed restritivo editável).
           </span>
         </div>
       </section>
       <aside className="panel attendant-panel">
         <div className="panel-head">
           <div>
-            <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO (RN-012)</span>
+            <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO</span>
             <h2>{labelPerfil(selected)}</h2>
             <p>
               {selectedProfile.desc} · {selectedProfile.holders} estocadores vinculados
@@ -3657,10 +3714,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           <span>
             Coluna Receber = de quem o ator aceita receber brincos; coluna Enviar = para quem pode
             enviar. Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com
-            seleção múltipla de atores oficiais (perfis e titulares fixos — RN-012). Seed do V1:
+            seleção múltipla de atores oficiais (perfis e titulares fixos). Seed do V1:
             PREFEITURA transfere só a habilitados; COOPERATIVA_LEITE só a habilitados via
             integradora; PRODUTOR não envia e só recebe venda/transferência — seed editável pela
-            SEAPI (ADR-027).
+            SEAPI.
           </span>
         </div>
       </aside>
@@ -3685,7 +3742,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 />
                 <div>
                   <strong>Livre</strong>
-                  <span>Sem restrição — o fluxo é permitido com qualquer titular (postura padrão da RN-012).</span>
+                  <span>Sem restrição — o fluxo é permitido com qualquer titular (postura padrão do sistema).</span>
                 </div>
               </label>
               <label className={`scope-option ${draft.tipo === "BLOQUEIO" ? "selected" : ""}`}>
@@ -3792,7 +3849,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
             <div>
               <h2>Dados do titular</h2>
               <p>
-                Habilitação constitutiva do cadastro (RN-001) — o titular nasce habilitado e
+                Habilitação constitutiva do cadastro — o titular nasce habilitado e
                 ligado neste sistema.
               </p>
             </div>
@@ -3820,7 +3877,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               </select>
             </label>
             <label className="scan-input compact">
-              <span>PERFIL DE ESTOCADOR (RN-012)</span>
+              <span>PERFIL DE ESTOCADOR</span>
               <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
                 {perfilOptions.map((p) => (
                   <option key={p} value={p}>{labelPerfil(p)}</option>
@@ -3838,7 +3895,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
             <p className="modal-copy">
               O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
               intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
-              primeiro movimento (RN-012).
+              primeiro movimento.
             </p>
           </div>
           <div className="modal-actions">
@@ -3860,7 +3917,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
           <div className="panel-head">
             <div>
               <h2>Regras do perfil selecionado</h2>
-              <p>{labelPerfil(perfil)} — em vigor a partir do primeiro movimento (RN-012)</p>
+              <p>{labelPerfil(perfil)} — em vigor a partir do primeiro movimento</p>
             </div>
           </div>
           <div className="table-wrap">
@@ -3888,8 +3945,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
           <div className="audit-note">
             <Icon name="alert" />
             <span>
-              Sem restrição registrada = fluxo livre (postura padrão da RN-012). Seed do V1 com as
-              restrições praticadas no sistema anterior (CAND-MONO-601).
+              Sem restrição registrada = fluxo livre. Seed do V1 com as
+              restrições praticadas no sistema anterior.
             </span>
           </div>
         </section>
@@ -3925,7 +3982,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
       </section>
       <div className="dash-note">
         Dados demonstrativos para validação de layout — não refletem números de produção. A adoção
-        usa a carga inicial de identidade (RN-001) como base do funil de ligação.
+        usa a carga inicial de identidade como base do funil de ligação.
       </div>
       <div className="dash-grid">
         <article className="proj-card">
@@ -3937,7 +3994,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
             {ligados} <small>de {carga}</small>
           </div>
           <div className="proj-sub">
-            estocadores ligados no novo — adoção gradual por ligação de ator (RN-013, ADR-025): o
+            estocadores ligados no novo — adoção gradual por ligação de ator: o
             estoque é o mesmo estado, nada é migrado.
           </div>
           <div className="proj-track">
@@ -3978,7 +4035,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           <div className="panel-head">
             <div>
               <h2>Estocadores por perfil</h2>
-              <p>Catálogo da carga inicial (RN-001) — 6 papéis + LOJA_AGROPECUARIA</p>
+              <p>Catálogo da carga inicial — 6 papéis + Loja Agropecuária</p>
             </div>
             <span className="head-badge">{carga} estocadores</span>
           </div>
@@ -3998,8 +4055,8 @@ function EstocadoresDashboard({ role }: { role: Role }) {
               </div>
             ))}
             <p className="aging-note">
-              299 estocadores habilitados e 79 inspetorias dominam a carga inicial (RN-001) — perfis semeados
-              do V1 com as restrições praticadas no sistema anterior (RN-012, CAND-MONO-601).
+              299 estocadores habilitados e 79 inspetorias dominam a carga inicial — perfis semeados
+              do V1 com as restrições praticadas no sistema anterior.
             </p>
           </div>
         </section>
@@ -4007,7 +4064,7 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           <div className="panel-head">
             <div>
               <h2>Atendentes habilitados</h2>
-              <p>Vínculos por CPF em lojas PJ (RN-001)</p>
+              <p>Vínculos por CPF em lojas PJ</p>
             </div>
           </div>
           <div className="proj-value">33</div>
@@ -4389,7 +4446,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
       {dialog === "interna" && (
         <ModalShell
           title="Gerar faixa interna"
-          subtitle="O sistema aloca o próximo intervalo livre do pool sequencial — sem digitação de números (RN-008)."
+          subtitle="O sistema aloca o próximo intervalo livre do pool sequencial — sem digitação de números."
           onClose={() => setDialog(null)}
         >
           <div className="modal-body form-grid">
@@ -6697,7 +6754,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                       <td colSpan={6}>
                         <div>
                           <section>
-                            <span>CICLO DO PEDIDO (RN-014)</span>
+                            <span>CICLO DO PEDIDO</span>
                             <strong>
                               {p.situacao === "SOLICITADO"
                                 ? "Solicitado — aguardando aprovação da SEAPI"
@@ -6738,7 +6795,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       {atending && (
         <ModalShell
           title={`Atender pedido #PED-SDA-${atending.id}`}
-          subtitle={`${atending.ator} · ${atending.qtd} brincos — escolha a rota de atendimento (RN-014 · RN-017).`}
+          subtitle={`${atending.ator} · ${atending.qtd} brincos — escolha a rota de atendimento.`}
           onClose={() => setAtending(null)}
         >
           <div className="modal-body">
@@ -6759,8 +6816,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
             {atendMode === "estoque" ? (
               <p className="modal-copy">
                 A transferência <strong>ESTOQUE SDA → {atending.ator}</strong> será registrada
-                e vinculada ao pedido — o destino confirma pela leitura do código de barras
-                (RN-014).
+                e vinculada ao pedido — o destino confirma pela leitura do código de barras.
               </p>
             ) : (
               <>
@@ -6847,12 +6903,12 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                 <p className="modal-copy">
                   A faixa dedicada ao pedido nasce{" "}
                   {atendOrigem === "Interna"
-                    ? "automaticamente do pool interno, do tipo escolhido (RN-008)"
+                    ? "automaticamente do pool interno, do tipo escolhido"
                     : "da faixa PNIB vinculada ao pedido (076)"}
                   .{" "}
                   {atendDestino === "sede"
                     ? "Os brincos fabricados entram no estoque central e o pedido segue o ciclo padrão."
-                    : `A fábrica envia os brincos direto a ${atending.ator} — o estoque central não entra no caminho (RN-017).`}
+                    : `A fábrica envia os brincos direto a ${atending.ator} — o estoque central não entra no caminho.`}
                 </p>
               </>
             )}
@@ -6943,7 +6999,7 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
             <h2>Novo pedido de brincos</h2>
             <p>
               Componha o pedido selecionando as faixas do estoque central — o ator que está pedindo
-              é especificado e a quantidade é derivada da composição (RN-014 · CR-008).
+              é especificado e a quantidade é derivada da composição.
             </p>
           </div>
         </div>
@@ -7523,7 +7579,7 @@ function RequestPage({
               <Icon name="factory" size={15} />
               <p>
                 <strong>
-                  Você pode pedir brincos diretamente à SEAPI (RN-017).</strong> Ao atender,
+                  Você pode pedir brincos diretamente à SEAPI.</strong> Ao atender,
                   a SEAPI decide o tipo de brinco, escolhe a fábrica e o sistema gera
                   automaticamente uma <strong>faixa dedicada ao seu pedido</strong> — os
                   brincos fabricados chegam direto ao seu estoque, com confirmação pela
