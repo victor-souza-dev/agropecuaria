@@ -647,7 +647,10 @@ export default function Prototype() {
   const isEstocadoresSubPage =
     page === "habilitacao" &&
     pathSegments.length === 3 &&
-    (pathSegments[2] === "dashboard" || pathSegments[2] === "novo" || pathSegments[2] === "regras");
+    (pathSegments[2] === "dashboard" ||
+      pathSegments[2] === "novo" ||
+      pathSegments[2] === "regras" ||
+      pathSegments[2] === "auditoria");
   const headingTitle = isMovementItemsPage
     ? "Itens da movimentação"
     : isTagDetailPage
@@ -1013,6 +1016,8 @@ export function ModulePage({ page }: { page: Page }) {
       );
     case "habilitacao": {
       const sub = window.location.pathname.split("/").pop();
+      if (sub === "auditoria")
+        return <AuditoriaRegrasPage role={context.role} auditoriaMatriz={context.auditoriaMatriz} />;
       if (sub === "dashboard")
         return (
           <EstocadoresDashboard
@@ -4333,6 +4338,9 @@ function EstocadoresRegrasPage({
       <section className="header">
         <h3>Perfis e regras de fluxo</h3>
         <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao/auditoria`}>
+            <Icon name="history" size={15} /> Auditoria das regras
+          </Link>
           <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao`}>
             ← Voltar
           </Link>
@@ -4346,6 +4354,149 @@ function EstocadoresRegrasPage({
         setRegras={setRegras}
         registraAuditoria={registraAuditoria}
       />
+    </div>
+  );
+}
+
+// Página dedicada de auditoria da matriz (RN-029) — filtros derivados dos próprios registros
+function AuditoriaRegrasPage({
+  role,
+  auditoriaMatriz,
+}: {
+  role: Role;
+  auditoriaMatriz: AuditoriaMatrizRow[];
+}) {
+  const [perfilFiltro, setPerfilFiltro] = useState("TODOS");
+  const [movimentoFiltro, setMovimentoFiltro] = useState("TODOS");
+  const [perfilAberto, setPerfilAberto] = useState(false);
+  const perfilRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
+        setPerfilAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+
+  const perfisDistintos = [...new Set(auditoriaMatriz.map((a) => a.perfil))];
+  const movimentosDistintos = [
+    ...new Set(auditoriaMatriz.map((a) => a.celula.split(" · ")[0] ?? "")),
+  ].filter(Boolean);
+  const filtrada = auditoriaMatriz.filter(
+    (a) =>
+      (perfilFiltro === "TODOS" || a.perfil === perfilFiltro) &&
+      (movimentoFiltro === "TODOS" || (a.celula.split(" · ")[0] ?? "") === movimentoFiltro),
+  );
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Auditoria das regras</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao/regras`}>
+            ← Voltar às regras
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        <span>
+          Cada edição de restrição da matriz registra um rastro imutável: quem alterou, quando,
+          qual célula e o que mudou. O efeito é sempre prospectivo — movimentos já registrados
+          não são revalidados. Editar novamente cria um novo registro; nenhum é apagado.
+        </span>
+      </div>
+      <div className="dash-filters">
+        <div className="filter-group">
+          <span className="filter-label">Movimento</span>
+          <div className="chip-set">
+            <button
+              className={`chip ${movimentoFiltro === "TODOS" ? "active" : ""}`}
+              onClick={() => setMovimentoFiltro("TODOS")}
+            >
+              Todos
+            </button>
+            {movimentosDistintos.map((m) => (
+              <button
+                key={m}
+                className={`chip ${movimentoFiltro === m ? "active" : ""}`}
+                onClick={() => setMovimentoFiltro(m)}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group multiselect" ref={perfilRef}>
+          <span className="filter-label">Perfil</span>
+          <button
+            type="button"
+            className={`filter-select ${perfilFiltro === "TODOS" ? "" : "ativo"}`}
+            onClick={() => setPerfilAberto(!perfilAberto)}
+          >
+            {perfilFiltro === "TODOS" ? "Todos os perfis" : perfilFiltro}
+            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+          {perfilAberto && (
+            <div className="multiselect-dropdown">
+              {["TODOS", ...perfisDistintos].map((p) => (
+                <label
+                  className="ms-option"
+                  key={p}
+                  onClick={() => {
+                    setPerfilFiltro(p);
+                    setPerfilAberto(false);
+                  }}
+                >
+                  <input type="checkbox" checked={perfilFiltro === p} readOnly />
+                  <span>{p === "TODOS" ? "Todos os perfis" : p}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Histórico de edições da matriz</h2>
+            <p>Do registro mais recente para o mais antigo</p>
+          </div>
+          <span className="head-badge">{filtrada.length} registros</span>
+        </div>
+        {filtrada.length === 0 ? (
+          <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+            Nenhuma edição registrada para este recorte — ajuste os filtros de movimento ou perfil.
+          </p>
+        ) : (
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Quando</th>
+                <th>Usuário</th>
+                <th>Perfil</th>
+                <th>Célula da matriz</th>
+                <th>Mudança</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrada.map((a, i) => (
+                <tr key={`${a.data}-${i}`}>
+                  <td>{a.data}</td>
+                  <td>{a.usuario}</td>
+                  <td>{a.perfil}</td>
+                  <td>{a.celula}</td>
+                  <td>
+                    <span className="audit-change">
+                      {a.de} <Icon name="chevron" size={12} /> {a.para}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </div>
   );
 }
@@ -7888,6 +8039,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
   type PedidoSda = {
     id: number;
     ator: string;
+    municipio: string;
     tipo: string;
     qtd: number;
     itens: string;
@@ -7902,6 +8054,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 1,
       ator: "Agropecuária Pampa Sul Ltda.",
+      municipio: "Pelotas",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 480,
       itens: "FX-C01 · 240 brincos · FX-C02 · 240 brincos",
@@ -7915,6 +8068,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 2,
       ator: "Prefeitura Municipal de Bagé",
+      municipio: "Bagé",
       tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
       qtd: 960,
       itens: "FX-C01 · 240 · FX-C02 · 120 · FX-C03 · 600 (faixas complementares)",
@@ -7928,6 +8082,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 3,
       ator: "João Pedro Fagundes",
+      municipio: "Dom Pedrito",
       tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
       itens: "FX-C02 · 60 brincos",
@@ -7941,6 +8096,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 4,
       ator: "Comercial Rural Tradição Ltda.",
+      municipio: "Santa Maria",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
       itens: "FX-C01 · 240 brincos",
@@ -7954,6 +8110,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 5,
       ator: "Prefeitura Municipal de Bagé",
+      municipio: "Bagé",
       tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
       qtd: 20,
       itens: "076.21.007722000-1 · 20 brincos",
@@ -7967,6 +8124,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     {
       id: 6,
       ator: "Cooperativa Agropecuária Vale do Verde",
+      municipio: "Lajeado",
       tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
       qtd: 15,
       itens: "105.43.005700100-1 · 15 brincos",
@@ -8078,8 +8236,8 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
           <table className="history-table">
             <thead>
               <tr>
-                <th>Pedido</th>
                 <th>Ator que está pedindo</th>
+                <th>Município</th>
                 <th>Quantidade</th>
                 <th>Situação</th>
                 <th>Data</th>
@@ -8091,16 +8249,10 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                 <Fragment key={p.id}>
                   <tr className={expanded === p.id ? "expanded-row" : ""}>
                     <td>
-                      <button
-                        className="movement-id"
-                        onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                      >
-                        {p.fila === "movimentacao" ? `#MOV-${p.id}` : `#PED-SDA-${p.id}`} <span>{expanded === p.id ? "⌃" : "⌄"}</span>                      </button>
-                    </td>
-                    <td>
                       <strong>{p.ator}</strong>
                       <small>{p.tipo}</small>
                     </td>
+                    <td>{p.municipio}</td>
                     <td>
                       <strong>{p.qtd}</strong>
                     </td>

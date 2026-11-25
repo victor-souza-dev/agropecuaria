@@ -65,6 +65,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="habilitacao" />,
       },
       {
+        path: "habilitacao/auditoria",
+        element: <ModulePage page="habilitacao" />,
+      },
+      {
         path: "pedidos-sda",
         element: <ModulePage page="pedidos-sda" />,
       },
