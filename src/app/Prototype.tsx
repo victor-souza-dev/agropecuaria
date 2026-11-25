@@ -3929,8 +3929,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <thead>
               <tr>
                 <th>Movimento</th>
-                <th>Receber — De quem pode receber</th>
-                <th>Enviar — Quem pode enviar</th>
+                <th>Receber</th>
+                <th>Enviar</th>
               </tr>
             </thead>
             <tbody>
@@ -4325,8 +4325,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               <thead>
                 <tr>
                   <th>Movimento</th>
-                  <th>Receber — De quem pode receber</th>
-                  <th>Enviar — Quem pode enviar</th>
+                  <th>Receber</th>
+                  <th>Enviar</th>
                 </tr>
               </thead>
               <tbody>
