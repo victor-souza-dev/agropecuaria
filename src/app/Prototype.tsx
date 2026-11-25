@@ -35,6 +35,10 @@ type PrototypeContext = {
   createRequest: (quantity: number, factory: string) => void;
   perfis: PerfilCatalogo[];
   setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
+  regras: Record<string, PerfilRegras>;
+  setRegras: React.Dispatch<React.SetStateAction<Record<string, PerfilRegras>>>;
+  auditoriaMatriz: AuditoriaMatrizRow[];
+  registraAuditoria: (entry: AuditoriaMatrizRow) => void;
 };
 
 type RequestRecord = {
@@ -47,6 +51,25 @@ type RequestRecord = {
 };
 
 type PerfilCatalogo = { code: string; desc: string; holders: number; label?: string };
+
+type PerfilRegras = Record<string, { origem: RegraFluxo; destino: RegraFluxo }>;
+
+type AuditoriaMatrizRow = {
+  data: string;
+  usuario: string;
+  perfil: string;
+  celula: string;
+  de: string;
+  para: string;
+};
+
+// Histórico inicial da auditoria da matriz (RN-029) — rastro imutável, mais recente primeiro
+const AUDITORIA_SEED: AuditoriaMatrizRow[] = [
+  { data: "25/11 09:12", usuario: "victor.souza", perfil: "Produtor", celula: "Venda · Enviar", de: "Bloqueado", para: "Livre" },
+  { data: "25/11 08:47", usuario: "seapi.fiscal", perfil: "Cooperativa de Leite", celula: "Transferência · Enviar", de: "Livre", para: "Escopo · 1 ator" },
+  { data: "24/11 16:05", usuario: "victor.souza", perfil: "Habilitado", celula: "Venda · Receber", de: "Livre", para: "Com aprovação · destinatário" },
+  { data: "24/11 15:58", usuario: "seapi.fiscal", perfil: "Fábrica de brincos", celula: "Abastecimento · Enviar", de: "Bloqueado", para: "Livre" },
+];
 
 // Catálogo inicial de perfis de estocador — fonte única para a tela de regras e os filtros do dashboard
 const PERFIS_INICIAIS: PerfilCatalogo[] = [
@@ -650,6 +673,8 @@ export default function Prototype() {
   const [pendingProducer, setPendingProducer] = useState("");
   const [saleReset, setSaleReset] = useState(0);
   const [perfis, setPerfis] = useState<PerfilCatalogo[]>(PERFIS_INICIAIS);
+  const [regras, setRegras] = useState(perfilRulesSeed);
+  const [auditoriaMatriz, setAuditoriaMatriz] = useState<AuditoriaMatrizRow[]>(AUDITORIA_SEED);
   const [moves, setMoves] = useState(initialMoves);
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -859,6 +884,11 @@ export default function Prototype() {
               requests,
               perfis,
               setPerfis,
+              regras,
+              setRegras,
+              auditoriaMatriz,
+              registraAuditoria: (entry: AuditoriaMatrizRow) =>
+                setAuditoriaMatriz((current) => [entry, ...current]),
               createRequest: (quantity: number, factory: string) => {
                 setRequests((current) => {
                   const nextId = String(
@@ -983,7 +1013,14 @@ export function ModulePage({ page }: { page: Page }) {
       );
     case "habilitacao": {
       const sub = window.location.pathname.split("/").pop();
-      if (sub === "dashboard") return <EstocadoresDashboard role={context.role} perfis={context.perfis} />;
+      if (sub === "dashboard")
+        return (
+          <EstocadoresDashboard
+            role={context.role}
+            perfis={context.perfis}
+            auditoriaMatriz={context.auditoriaMatriz}
+          />
+        );
       if (sub === "novo") return <HabilitacaoNovoPage notify={context.notify} role={context.role} />;
       if (sub === "regras")
         return (
@@ -992,6 +1029,9 @@ export function ModulePage({ page }: { page: Page }) {
             role={context.role}
             perfis={context.perfis}
             setPerfis={context.setPerfis}
+            regras={context.regras}
+            setRegras={context.setRegras}
+            registraAuditoria={context.registraAuditoria}
           />
         );
       return <EstocadoresPage notify={context.notify} role={context.role} />;
@@ -3728,12 +3768,19 @@ function ProfilesPanel({
   notify,
   perfis,
   setPerfis,
+  regras,
+  setRegras,
+  registraAuditoria,
 }: {
   notify: (m: string) => void;
   perfis: PerfilCatalogo[];
   setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
+  regras: Record<string, PerfilRegras>;
+  setRegras: React.Dispatch<React.SetStateAction<Record<string, PerfilRegras>>>;
+  registraAuditoria: (entry: AuditoriaMatrizRow) => void;
 }) {
   const profiles = perfis;
+  const rules = regras;
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
@@ -4241,11 +4288,17 @@ function EstocadoresRegrasPage({
   role,
   perfis,
   setPerfis,
+  regras,
+  setRegras,
+  registraAuditoria,
 }: {
   notify: (m: string) => void;
   role: Role;
   perfis: PerfilCatalogo[];
   setPerfis: React.Dispatch<React.SetStateAction<PerfilCatalogo[]>>;
+  regras: Record<string, PerfilRegras>;
+  setRegras: React.Dispatch<React.SetStateAction<Record<string, PerfilRegras>>>;
+  registraAuditoria: (entry: AuditoriaMatrizRow) => void;
 }) {
   return (
     <div className="page-container">
@@ -4257,7 +4310,14 @@ function EstocadoresRegrasPage({
           </Link>
         </div>
       </section>
-      <ProfilesPanel notify={notify} perfis={perfis} setPerfis={setPerfis} />
+      <ProfilesPanel
+        notify={notify}
+        perfis={perfis}
+        setPerfis={setPerfis}
+        regras={regras}
+        setRegras={setRegras}
+        registraAuditoria={registraAuditoria}
+      />
     </div>
   );
 }
@@ -7785,51 +7845,61 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     data: string;
     mov: string | null;
     fila: "pedido" | "movimentacao";
+    aprovador: "SEAPI" | "DESTINO";
+    motivo: string | null;
   };
   const [pedidos, setPedidos] = useState<PedidoSda[]>([
     {
       id: 1,
       ator: "Agropecuária Pampa Sul Ltda.",
-      tipo: "ESTOQUISTA · PJ (Regime NOVO)",
+      tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 480,
       itens: "FX-C01 · 240 brincos · FX-C02 · 240 brincos",
       situacao: "SOLICITADO",
       data: "16/06/2025",
       mov: null,
       fila: "pedido",
+      aprovador: "SEAPI",
+      motivo: null,
     },
     {
       id: 2,
       ator: "Prefeitura Municipal de Bagé",
-      tipo: "ESTOQUISTA · PREFEITURA (Regime NOVO)",
+      tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
       qtd: 960,
       itens: "FX-C01 · 240 · FX-C02 · 120 · FX-C03 · 600 (faixas complementares)",
       situacao: "ENVIADO",
       data: "15/06/2025",
       mov: "#MOV-2025-1847",
       fila: "pedido",
+      aprovador: "SEAPI",
+      motivo: null,
     },
     {
       id: 3,
       ator: "João Pedro Fagundes",
-      tipo: "PRODUTOR",
+      tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
       itens: "FX-C02 · 60 brincos",
       situacao: "CONCLUIDO",
       data: "14/06/2025",
       mov: "#MOV-2025-1842",
       fila: "pedido",
+      aprovador: "SEAPI",
+      motivo: null,
     },
     {
       id: 4,
       ator: "Comercial Rural Tradição Ltda.",
-      tipo: "ESTOQUISTA · PJ (Regime LEGADO)",
+      tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
       itens: "FX-C01 · 240 brincos",
       situacao: "RECUSADO",
       data: "13/06/2025",
       mov: null,
       fila: "pedido",
+      aprovador: "SEAPI",
+      motivo: "Estoque central sem posição para o tipo solicitado — recomendação: agendar para o próximo atendimento semanal.",
     },
     {
       id: 5,
@@ -7841,6 +7911,8 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       data: "18/06/2025",
       mov: null,
       fila: "movimentacao",
+      aprovador: "SEAPI",
+      motivo: null,
     },
     {
       id: 6,
@@ -7852,6 +7924,8 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       data: "18/06/2025",
       mov: null,
       fila: "movimentacao",
+      aprovador: "SEAPI",
+      motivo: null,
     },
   ]);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -7914,7 +7988,9 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     if (recusing && reason.trim()) {
       setPedidos((current) =>
         current.map((item) =>
-          item.id === recusing.id ? { ...item, situacao: "RECUSADO" } : item,
+          item.id === recusing.id
+            ? { ...item, situacao: "RECUSADO", motivo: reason.trim() }
+            : item,
         ),
       );
       notify("Pedido recusado com motivo registrado na trilha de auditoria.");
@@ -8030,7 +8106,9 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                             <span>CICLO DO PEDIDO</span>
                             <strong>
                               {p.situacao === "SOLICITADO"
-                                ? "Solicitado — aguardando aprovação da SEAPI"
+                                ? p.fila === "movimentacao"
+                                  ? "Solicitado — aguardando decisão da SEAPI"
+                                  : "Solicitado — aguardando aprovação e atendimento da SEAPI"
                                 : p.situacao === "ENVIADO"
                                   ? "Enviado — aguardando confirmação por leitura no destino"
                                   : p.situacao === "CONCLUIDO"
@@ -8038,6 +8116,35 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                                     : "Recusado"}
                             </strong>
                           </section>
+                          {p.situacao === "SOLICITADO" && p.fila === "movimentacao" && (
+                            <>
+                              <section>
+                                <span>APROVADOR</span>
+                                <strong>
+                                  {p.aprovador === "SEAPI"
+                                    ? "A SEAPI — política de aprovação ligada na matriz de regras deste perfil"
+                                    : "O próprio destinatário — pendência exibida no acesso dele"}
+                                </strong>
+                              </section>
+                              <section>
+                                <span>RESERVA DURANTE A PENDÊNCIA</span>
+                                <strong>Brincos reservados no estoque do remetente até a decisão.</strong>
+                              </section>
+                              <section>
+                                <span>ACEITE TÁCITO</span>
+                                <strong>
+                                  O uso de um brinco pelo destinatário durante a pendência consolida
+                                  o aceite — a reversão posterior só ocorre por estorno.
+                                </strong>
+                              </section>
+                            </>
+                          )}
+                          {p.situacao === "RECUSADO" && p.motivo && (
+                            <section>
+                              <span>MOTIVO DA RECUSA (TRILHA DE AUDITORIA)</span>
+                              <strong>{p.motivo}</strong>
+                            </section>
+                          )}
                           {p.itens && (
                             <section>
                               <span>ITENS DO PEDIDO (brincos específicos)</span>
