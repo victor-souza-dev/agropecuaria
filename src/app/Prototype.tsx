@@ -3656,10 +3656,25 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                 <option>Herdadas</option>
                 <option>Geradas no novo</option>
               </select>
-            </div>
-            <div className="filter-row">
-              <input type="date" className="filter-field" title="Data de criação — de" value={filterDataDe} onChange={(e) => setFilterDataDe(e.target.value)} />
-              <input type="date" className="filter-field" title="Data de criação — até" value={filterDataAte} onChange={(e) => setFilterDataAte(e.target.value)} />
+              <div
+                className="filter-field period-field"
+                title="Filtrar faixas criadas dentro deste período"
+              >
+                <span className="period-label">Criação</span>
+                <input
+                  type="date"
+                  aria-label="Data de criação — início do período"
+                  value={filterDataDe}
+                  onChange={(e) => setFilterDataDe(e.target.value)}
+                />
+                <span className="period-sep">até</span>
+                <input
+                  type="date"
+                  aria-label="Data de criação — fim do período"
+                  value={filterDataAte}
+                  onChange={(e) => setFilterDataAte(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         )}
