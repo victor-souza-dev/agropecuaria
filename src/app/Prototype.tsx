@@ -3698,15 +3698,15 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const [profiles, setProfiles] = useState<{ code: string; desc: string; holders: number; label?: string }[]>([
-    { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2 },
-    { code: "CREDENCIADO", desc: "Estocador habilitado pela SEAPI", holders: 2 },
-    { code: "PREFEITURA", desc: "Estocador municipal", holders: 1 },
-    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1 },
-    { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0 },
-    { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0 },
-    { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
-    { code: "FABRICA", desc: "Fábrica de brincos — produz e declara o envio; sem estoque comercial", holders: 1 },
-    { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI", holders: 1 },
+    { code: "LOJA_AGROPECUARIA", desc: "Varejo do agro: vende brincos ao produtor rural no balcão, com leitura do código no ato da venda", holders: 2 },
+    { code: "CREDENCIADO", desc: "Estocador credenciado pela SEAPI: mantém estoque próprio e movimenta brincos com os demais titulares da cadeia", holders: 2 },
+    { code: "PREFEITURA", desc: "Estoque público municipal: brincos para programas e demandas do município", holders: 1 },
+    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite: centraliza brincos para os produtores associados da bacia leiteira", holders: 1 },
+    { code: "INSPETORIA", desc: "Unidade da Defesa Agropecuária no município-sede: serviço veterinário oficial com estoque próprio", holders: 0 },
+    { code: "POSTO", desc: "Unidade de atendimento da Defesa Agropecuária, vinculada a uma Inspetoria (IDA): atende o produtor na região e se abastece pela IDA de origem", holders: 0 },
+    { code: "SEAPI", desc: "Estoque central da Secretaria: mantém o estoque oficial e governa as regras da cadeia de custódia", holders: 1 },
+    { code: "FABRICA", desc: "Produz os brincos e declara o envio — nunca tem posse: a custódia abre direto no destinatário", holders: 1 },
+    { code: "PRODUTOR", desc: "Fim da linha da custódia: recebe os brincos para aplicar nos animais da produção rural", holders: 1 },
   ]);
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
