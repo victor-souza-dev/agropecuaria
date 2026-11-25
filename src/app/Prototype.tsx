@@ -4227,12 +4227,29 @@ function EstocadoresRegrasPage({ notify, role }: { notify: (m: string) => void; 
 }
 
 function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
-  const [natureza, setNatureza] = useState<"PJ" | "PF">("PJ");
+  const baseBusca = [
+    { nome: "Comercial Rural Tradição Ltda.", doc: "12.345.678/0001-90", natureza: "PJ", cidade: "Bagé/RS" },
+    { nome: "Agropecuária Campo Bom Ltda.", doc: "98.765.432/0001-10", natureza: "PJ", cidade: "Campo Bom/RS" },
+    { nome: "Prefeitura Municipal de Dom Pedrito", doc: "87.123.456/0001-81", natureza: "PJ", cidade: "Dom Pedrito/RS" },
+    { nome: "Antônio Carlos Silveira", doc: "123.456.789-00", natureza: "PF", cidade: "Alegrete/RS" },
+    { nome: "Maria Inês Ferreira", doc: "987.654.321-00", natureza: "PF", cidade: "Bagé/RS" },
+  ];
+  type Titular = (typeof baseBusca)[number];
+  const [busca, setBusca] = useState("");
+  const [titular, setTitular] = useState<Titular | null>(null);
   const [perfil, setPerfil] = useState("LOJA_AGROPECUARIA");
-  const [nome, setNome] = useState("");
   const [cidade, setCidade] = useState("");
+  const [verRegras, setVerRegras] = useState(false);
   const navigate = useNavigate();
   const regras = perfilRulesSeed()[perfil];
+  const resultados = busca.trim()
+    ? baseBusca.filter((p) => `${p.nome} ${p.doc}`.toLowerCase().includes(busca.trim().toLowerCase()))
+    : [];
+  function escolherTitular(p: Titular) {
+    setTitular(p);
+    setBusca("");
+    setCidade(p.cidade);
+  }
   return (
     <div className="page-container">
       <section className="header">
@@ -4243,139 +4260,179 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
           </Link>
         </div>
       </section>
-      <div className="dash-grid">
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Dados do titular</h2>
-              <p>
-                Habilitação constitutiva do cadastro — o titular nasce habilitado e
-                ligado neste sistema.
-              </p>
-            </div>
+      <section className="panel novo-estocador-panel">
+        <div className="panel-head">
+          <div>
+            <h2>Dados do titular</h2>
+            <p>
+              Habilitação constitutiva do cadastro — o titular nasce habilitado e
+              ligado neste sistema.
+            </p>
           </div>
-          <div className="modal-body">
+        </div>
+        <div className="modal-body">
+          {!titular ? (
             <label className="scan-input compact">
-              <span>PESSOA (BUSCA NA BASE DE CADASTRO)</span>
+              <span>BUSCAR NA BASE DE CADASTRO — NOME, CPF OU CNPJ</span>
               <div>
                 <Icon name="search" />
                 <input
-                  placeholder="Nome, CPF ou CNPJ..."
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Digite para buscar o titular..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
                 />
               </div>
             </label>
-            <label className="scan-input compact">
-              <span>NATUREZA</span>
-              <select
-                value={natureza}
-                onChange={(e) => setNatureza(e.target.value as "PJ" | "PF")}
+          ) : (
+            <div className="titular-ficha">
+              <div className="company-icon">{titular.natureza}</div>
+              <div>
+                <strong>{titular.nome}</strong>
+                <span>
+                  {titular.doc} · {titular.natureza === "PJ" ? "Pessoa jurídica — com atendentes" : "Pessoa física — sem atendentes"}
+                </span>
+              </div>
+              <button
+                className="text-btn"
+                onClick={() => {
+                  setTitular(null);
+                  setCidade("");
+                }}
               >
-                <option value="PJ">Pessoa jurídica (loja — com atendentes)</option>
-                <option value="PF">Pessoa física (sem atendentes)</option>
-              </select>
-            </label>
-            <label className="scan-input compact">
-              <span>PERFIL DE ESTOCADOR</span>
+                trocar titular
+              </button>
+            </div>
+          )}
+          {busca.trim() && !titular && (
+            <div className="busca-resultados">
+              {resultados.length === 0 && (
+                <span className="busca-vazia">Nenhum cadastro encontrado para "{busca}".</span>
+              )}
+              {resultados.map((p) => (
+                <button key={p.doc} className="resultado-item" onClick={() => escolherTitular(p)}>
+                  <strong>{p.nome}</strong>
+                  <span>
+                    {p.doc} · {p.cidade} · {p.natureza === "PJ" ? "Pessoa jurídica" : "Pessoa física"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="scan-input compact">
+            <span>PERFIL DE ESTOCADOR — PARA VER AS REGRAS, USE O "i"</span>
+            <div className="perfil-regras-controles">
               <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
                 {perfilOptions.map((p) => (
                   <option key={p} value={p}>{labelPerfil(p)}</option>
                 ))}
               </select>
-            </label>
-            <label className="scan-input compact">
-              <span>MUNICÍPIO/UF</span>
-              <input
-                placeholder="Ex.: Bagé/RS..."
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-              />
-            </label>
+              <button
+                type="button"
+                className="info-regras-btn"
+                title="Ver as regras de fluxo deste perfil"
+                onClick={() => setVerRegras(true)}
+              >
+                <span className="i-glyph">i</span> ver regras
+              </button>
+            </div>
+          </label>
+          <label className="scan-input compact">
+            <span>MUNICÍPIO/UF</span>
+            <input
+              placeholder="Ex.: Bagé/RS..."
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+            />
+          </label>
+          <p className="modal-copy">
+            O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
+            intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
+            primeiro movimento.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button className="btn secondary" onClick={() => navigate(`/${role}/habilitacao`)}>
+            Cancelar
+          </button>
+          <button
+            className="btn primary"
+            disabled={!titular}
+            onClick={() => {
+              notify(
+                `Estocador habilitado e ligado no novo — ${titular?.nome}, perfil ${labelPerfil(perfil)}.`,
+              );
+              navigate(`/${role}/habilitacao`);
+            }}
+          >
+            Habilitar estocador
+          </button>
+        </div>
+      </section>
+      {verRegras && (
+        <ModalShell
+          title="Regras de fluxo do perfil"
+          subtitle={`${labelPerfil(perfil)} — em vigor a partir do primeiro movimento`}
+          onClose={() => setVerRegras(false)}
+        >
+          <div className="modal-body">
+            <div className="table-wrap">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Movimento</th>
+                    <th>Receber</th>
+                    <th>Enviar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perfilMovimentos.map((movement) => (
+                    <tr key={movement}>
+                      <td>
+                        <div className="movement-name">
+                          <strong>{movement}</strong>
+                          <InfoTip texto={movimentoDesc[movement] ?? ""} />
+                        </div>
+                      </td>
+                      <td>
+                        {celulaNaoAplicavel(perfil, movement, "destino") ? (
+                          <span
+                            className="celula-na-aplicavel"
+                            title={celulaNaoAplicavel(perfil, movement, "destino") ?? undefined}
+                          >
+                            <Badge tone="neutral">Não aplicável</Badge>
+                          </span>
+                        ) : (
+                          badgeRegraFluxo(regras[movement].destino)
+                        )}
+                      </td>
+                      <td>
+                        {celulaNaoAplicavel(perfil, movement, "origem") ? (
+                          <span
+                            className="celula-na-aplicavel"
+                            title={celulaNaoAplicavel(perfil, movement, "origem") ?? undefined}
+                          >
+                            <Badge tone="neutral">Não aplicável</Badge>
+                          </span>
+                        ) : (
+                          badgeRegraFluxo(regras[movement].origem)
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <p className="modal-copy">
-              O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
-              intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
-              primeiro movimento.
+              Configuração inicial do perfil — ajustável pela SEAPI em Perfis e regras de fluxo.
             </p>
           </div>
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => navigate(`/${role}/habilitacao`)}>
-              Cancelar
-            </button>
-            <button
-              className="btn primary"
-              onClick={() => {
-                notify(`Estocador habilitado e ligado no novo — perfil ${perfil}.`);
-                navigate(`/${role}/habilitacao`);
-              }}
-            >
-              Habilitar estocador
+            <button className="btn primary" onClick={() => setVerRegras(false)}>
+              Entendi
             </button>
           </div>
-        </section>
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Regras do perfil selecionado</h2>
-              <p>{labelPerfil(perfil)} — em vigor a partir do primeiro movimento</p>
-            </div>
-          </div>
-          <div className="table-wrap">
-            <table className="history-table">
-              <thead>
-                <tr>
-                  <th>Movimento</th>
-                  <th>Receber</th>
-                  <th>Enviar</th>
-                </tr>
-              </thead>
-              <tbody>
-                {perfilMovimentos.map((movement) => (
-                  <tr key={movement}>
-                    <td>
-                      <div className="movement-name">
-                        <strong>{movement}</strong>
-                        <InfoTip texto={movimentoDesc[movement] ?? ""} />
-                      </div>
-                    </td>
-                    <td>
-                      {celulaNaoAplicavel(perfil, movement, "destino") ? (
-                        <span
-                          className="celula-na-aplicavel"
-                          title={celulaNaoAplicavel(perfil, movement, "destino") ?? undefined}
-                        >
-                          <Badge tone="neutral">Não aplicável</Badge>
-                        </span>
-                      ) : (
-                        badgeRegraFluxo(regras[movement].destino)
-                      )}
-                    </td>
-                    <td>
-                      {celulaNaoAplicavel(perfil, movement, "origem") ? (
-                        <span
-                          className="celula-na-aplicavel"
-                          title={celulaNaoAplicavel(perfil, movement, "origem") ?? undefined}
-                        >
-                          <Badge tone="neutral">Não aplicável</Badge>
-                        </span>
-                      ) : (
-                        badgeRegraFluxo(regras[movement].origem)
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="audit-note">
-            <Icon name="alert" />
-            <span>
-              Sem restrição registrada = fluxo livre. Seed do V1 com as
-              restrições praticadas no sistema anterior.
-            </span>
-          </div>
-        </section>
-      </div>
+        </ModalShell>
+      )}
     </div>
   );
 }
