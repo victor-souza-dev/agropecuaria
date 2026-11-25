@@ -3715,7 +3715,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novoDesc, setNovoDesc] = useState("");
+  const [apagarAlvo, setApagarAlvo] = useState<{ code: string; label: string; holders: number } | null>(null);
+  const [substituto, setSubstituto] = useState("");
   const labelDe = (code: string) => profiles.find((p) => p.code === code)?.label ?? labelPerfil(code);
+  // Atores de estado (titulares fixos do sistema) não são apagáveis — só perfis configuráveis
+  const atoresEstado = ["SEAPI", "FABRICA", "PRODUTOR"];
   function criarPerfil() {
     const nome = novoNome.trim();
     if (!nome) {
@@ -3747,6 +3751,35 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     setSelected(code);
     setNovoPerfilOpen(false);
     notify(`Perfil "${nome}" criado — postura padrão livre; ajuste as regras na matriz.`);
+  }
+  function confirmarApagar() {
+    if (!apagarAlvo) return;
+    const destino = substituto ? profiles.find((p) => p.code === substituto) : null;
+    if (apagarAlvo.holders > 0 && !destino) {
+      notify("Escolha o perfil substituto dos estocadores vinculados.");
+      return;
+    }
+    setProfiles((ps) =>
+      ps
+        .filter((p) => p.code !== apagarAlvo.code)
+        .map((p) =>
+          destino && p.code === destino.code ? { ...p, holders: p.holders + apagarAlvo.holders } : p,
+        ),
+    );
+    setRules((current) => {
+      const next = { ...current };
+      delete next[apagarAlvo.code];
+      return next;
+    });
+    if (selected === apagarAlvo.code) setSelected(destino ? destino.code : "LOJA_AGROPECUARIA");
+    setApagarAlvo(null);
+    notify(
+      destino
+        ? `Perfil "${apagarAlvo.label}" apagado — ${apagarAlvo.holders} ${
+            apagarAlvo.holders === 1 ? "estocador transferido" : "estocadores transferidos"
+          } para "${labelDe(destino.code)}".`
+        : `Perfil "${apagarAlvo.label}" apagado.`,
+    );
   }
   const [draft, setDraft] = useState<{
     alvosTipo: "LIVRE" | "BLOQUEIO" | "ESCOPO";
@@ -3808,21 +3841,58 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           </button>
         </div>
         <div className="holder-list">
-          {profiles.map((profile) => (
-            <button
-              key={profile.code}
-              className={selected === profile.code ? "selected" : ""}
-              onClick={() => setSelected(profile.code)}
-            >
-              <div className="company-icon">{profile.code.slice(0, 2)}</div>
-              <div>
-                <strong>{labelDe(profile.code)}</strong>
-                <span>{profile.desc}</span>
+          {profiles.map((profile) => {
+            const fixo = atoresEstado.includes(profile.code);
+            return (
+              <div
+                key={profile.code}
+                role="button"
+                tabIndex={0}
+                className={`holder-row ${selected === profile.code ? "selected" : ""}`}
+                onClick={() => setSelected(profile.code)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setSelected(profile.code);
+                }}
+              >
+                <div className="company-icon">{profile.code.slice(0, 2)}</div>
+                <div>
+                  <strong>{labelDe(profile.code)}</strong>
+                  <span>{profile.desc}</span>
+                </div>
+                <span className="holder-count">
+                  {profile.holders} {profile.holders === 1 ? "estocador" : "estocadores"}
+                </span>
+                <Icon name="chevron" size={15} />
+                <button
+                  className="del-btn"
+                  title={
+                    fixo
+                      ? "Ator de estado do sistema — não pode ser apagado"
+                      : "Apagar perfil"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (fixo) {
+                      notify(
+                        `${labelDe(profile.code)} é um ator de estado do sistema e não pode ser apagado.`,
+                      );
+                      return;
+                    }
+                    setSubstituto(
+                      profiles.find((p) => p.code !== profile.code)?.code ?? "",
+                    );
+                    setApagarAlvo({
+                      code: profile.code,
+                      label: labelDe(profile.code),
+                      holders: profile.holders,
+                    });
+                  }}
+                >
+                  <Icon name="trash" size={14} />
+                </button>
               </div>
-              {profile.holders} {profile.holders === 1 ? "estocador" : "estocadores"}
-              <Icon name="chevron" size={15} />
-            </button>
-          ))}
+            );
+          })}
         </div>
         <div className="audit-note">
           <Icon name="history" />
@@ -3914,6 +3984,61 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           </span>
         </div>
       </aside>
+      {apagarAlvo && (
+        <ModalShell
+          title="Apagar perfil"
+          subtitle={
+            apagarAlvo.holders > 0
+              ? `${apagarAlvo.label} · ${apagarAlvo.holders} ${
+                  apagarAlvo.holders === 1 ? "estocador vinculado" : "estocadores vinculados"
+                }`
+              : `${apagarAlvo.label} · sem estocadores vinculados`
+          }
+          onClose={() => setApagarAlvo(null)}
+        >
+          <div className="modal-body">
+            {apagarAlvo.holders > 0 ? (
+              <>
+                <p className="modal-copy">
+                  Este perfil tem estocadores vinculados. Escolha para qual perfil de habilitação
+                  eles passam a pertencer — nenhum estocador pode ficar sem perfil.
+                </p>
+                <label className="field">
+                  <span>PERFIL SUBSTITUTO DOS ESTOCADORES</span>
+                  <select value={substituto} onChange={(e) => setSubstituto(e.target.value)}>
+                    <option value="">Selecione o perfil substituto...</option>
+                    {profiles
+                      .filter((p) => p.code !== apagarAlvo.code)
+                      .map((p) => (
+                        <option key={p.code} value={p.code}>
+                          {labelDe(p.code)} ({p.holders}{" "}
+                          {p.holders === 1 ? "estocador" : "estocadores"})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <p className="modal-copy">
+                Este perfil não tem estocadores vinculados — pode ser apagado sem transferência.
+                As regras de fluxo dele também serão removidas.
+              </p>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setApagarAlvo(null)}>
+              Cancelar
+            </button>
+            <button
+              className="btn primary"
+              disabled={apagarAlvo.holders > 0 && !substituto}
+              onClick={confirmarApagar}
+            >
+              {apagarAlvo.holders > 0 ? "Apagar e transferir" : "Apagar perfil"}
+            </button>
+          </div>
+        </ModalShell>
+      )}
       {novoPerfilOpen && (
         <ModalShell
           title="Novo perfil de estocador"
