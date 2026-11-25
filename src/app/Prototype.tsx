@@ -3818,9 +3818,18 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     </div>
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
-                      {badgeRegraFluxo(rules[selected][movement].destino)}
-                    </button>
+                    {movement === "Perda" ? (
+                      <span
+                        className="celula-na-aplicavel"
+                        title="Perda não tem destinatário — os brincos saem de circulação na posse do titular que os perdeu. Não existe 'receber' perda."
+                      >
+                        <Badge tone="neutral">Não aplicável</Badge>
+                      </span>
+                    ) : (
+                      <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
+                        {badgeRegraFluxo(rules[selected][movement].destino)}
+                      </button>
+                    )}
                   </td>
                   <td>
                     <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
@@ -4102,7 +4111,18 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                         <InfoTip texto={movimentoDesc[movement] ?? ""} />
                       </div>
                     </td>
-                    <td>{badgeRegraFluxo(regras[movement].destino)}</td>
+                    <td>
+                      {movement === "Perda" ? (
+                        <span
+                          className="celula-na-aplicavel"
+                          title="Perda não tem destinatário — os brincos saem de circulação. Não existe 'receber' perda."
+                        >
+                          <Badge tone="neutral">Não aplicável</Badge>
+                        </span>
+                      ) : (
+                        badgeRegraFluxo(regras[movement].destino)
+                      )}
+                    </td>
                     <td>{badgeRegraFluxo(regras[movement].origem)}</td>
                   </tr>
                 ))}

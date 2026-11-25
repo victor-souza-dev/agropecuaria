@@ -4502,6 +4502,11 @@ td {
   align-items: center;
   gap: 5px;
 }
+.celula-na-aplicavel {
+  display: inline-flex;
+  opacity: 0.72;
+  cursor: default;
+}
 
 /* ===== Gestão de estocadores — tipografia ampliada (feedback operador 25/11/2026) ===== */
 .enable-layout .panel-head h2 {
