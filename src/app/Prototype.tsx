@@ -167,7 +167,7 @@ const producerStock = [
 ];
 
 const numberingRanges = [
-  { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa — herdada do sistema anterior", modoGeracao: "Legado" },
+  { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa (herdada)", modoGeracao: "Legado" },
   { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true, criadoPor: "Geração automática — reposição Brinco Sul", modoGeracao: "Automática" },
   { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true, criadoPor: "Ana R. Farias — SEAPI", modoGeracao: "Manual" },
   { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false, criadoPor: "Geração automática — PNIB", modoGeracao: "Automática" },
