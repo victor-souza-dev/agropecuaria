@@ -3116,20 +3116,20 @@ const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução
 
 type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
 
-// Atores autorizáveis no escopo de uma regra (RN-012): outros perfis e titulares fixos — seleção múltipla.
-// Escopos dinâmicos (mesmo município, via integradora) existem como valores de enum no banco (ADR-013),
-// mas não são ofertados na UI — só os atores oficiais.
+// Atores autorizáveis no escopo de uma regra (RN-012) — seleção múltipla.
+// Perfis = classes de estocadores habilitáveis; titulares fixos = atores de estado sempre existentes:
+// produtores entram pela compra (RN-001/ADR-012), fábricas atendem produção (RN-003), estoque central
+// SDA é a origem única dos pedidos (RN-014 — equivale ao estoque SEAPA do legado, PEND-MONO-560).
 const escopoAtores: { id: string; label: string }[] = [
-  { id: "CREDENCIADO", label: "Habilitado (perfil)" },
-  { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias (perfil)" },
-  { id: "PREFEITURA", label: "Prefeituras (perfil)" },
-  { id: "COOPERATIVA_LEITE", label: "Cooperativas de leite (perfil)" },
-  { id: "INSPETORIA", label: "Inspetoria de Defesa Agropecuária (perfil)" },
-  { id: "POSTO", label: "Escritório de Defesa Agropecuária (perfil)" },
-  { id: "SEAPI", label: "Estoque central SEAPI (titular fixo)" },
-  { id: "PRODUTOR", label: "Produtores rurais (titular fixo)" },
-  { id: "FABRICA", label: "Fábricas de brincos (titular fixo)" },
-  { id: "ESTOQUE_SDA", label: "Estoque SDA (titular fixo)" },
+  { id: "CREDENCIADO", label: "Habilitado" },
+  { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias" },
+  { id: "PREFEITURA", label: "Prefeituras" },
+  { id: "COOPERATIVA_LEITE", label: "Cooperativas de leite" },
+  { id: "INSPETORIA", label: "Inspetoria de Defesa Agropecuária (IDA)" },
+  { id: "POSTO", label: "Escritório de Defesa Agropecuária (EDA)" },
+  { id: "PRODUTOR", label: "Produtores rurais" },
+  { id: "FABRICA", label: "Fábricas de brincos" },
+  { id: "ESTOQUE_SDA", label: "Estoque SDA (estoque central)" },
 ];
 
 function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
@@ -3623,8 +3623,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <thead>
               <tr>
                 <th>Movimento</th>
-                <th>Lado origem — quem envia</th>
-                <th>Lado destino — quem recebe</th>
+                <th>Receber — de quem pode receber</th>
+                <th>Enviar — para quem pode enviar</th>
               </tr>
             </thead>
             <tbody>
@@ -3634,13 +3634,13 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     <strong>{movement}</strong>
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
-                      {badgeRegraFluxo(rules[selected][movement].origem)}
+                    <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
+                      {badgeRegraFluxo(rules[selected][movement].destino)}
                     </button>
                   </td>
                   <td>
-                    <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
-                      {badgeRegraFluxo(rules[selected][movement].destino)}
+                    <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
+                      {badgeRegraFluxo(rules[selected][movement].origem)}
                     </button>
                   </td>
                 </tr>
@@ -3651,8 +3651,9 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="alert" />
           <span>
-            Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com seleção
-            múltipla de atores oficiais (perfis e titulares fixos — RN-012). Seed do V1:
+            Coluna Receber = de quem o ator aceita receber brincos; coluna Enviar = para quem pode
+            enviar. Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com
+            seleção múltipla de atores oficiais (perfis e titulares fixos — RN-012). Seed do V1:
             PREFEITURA transfere só a habilitados; COOPERATIVA_LEITE só a habilitados via
             integradora; PRODUTOR não envia e só recebe venda/transferência — seed editável pela
             SEAPI (ADR-027).
@@ -3662,7 +3663,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
       {editor && (
         <ModalShell
           title="Editar restrição de fluxo"
-          subtitle={`${labelPerfil(selected)} · ${editor.movement} · lado ${editor.side === "origem" ? "origem — quem envia" : "destino — quem recebe"}`}
+          subtitle={`${labelPerfil(selected)} · ${editor.movement} · ${
+            editor.side === "origem"
+              ? "Envio — para quem este ator pode enviar"
+              : "Recebimento — de quem este ator pode receber"
+          }`}
           onClose={() => setEditor(null)}
         >
           <div className="modal-body">
@@ -3859,8 +3864,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
               <thead>
                 <tr>
                   <th>Movimento</th>
-                  <th>Lado origem — quem envia</th>
-                  <th>Lado destino — quem recebe</th>
+                  <th>Receber — de quem pode receber</th>
+                  <th>Enviar — para quem pode enviar</th>
                 </tr>
               </thead>
               <tbody>
@@ -3869,8 +3874,8 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
                     <td>
                       <strong>{movement}</strong>
                     </td>
-                    <td>{badgeRegraFluxo(regras[movement].origem)}</td>
                     <td>{badgeRegraFluxo(regras[movement].destino)}</td>
+                    <td>{badgeRegraFluxo(regras[movement].origem)}</td>
                   </tr>
                 ))}
               </tbody>
