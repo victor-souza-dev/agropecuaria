@@ -3830,7 +3830,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <p>Tipos extensíveis por configuração — sem restrição registrada, o perfil opera livre.</p>
           </div>
           <button
-            className="btn primary"
+            className="btn primary pill"
             onClick={() => {
               setNovoNome("");
               setNovoDesc("");
@@ -4026,11 +4026,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             )}
           </div>
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => setApagarAlvo(null)}>
+            <button className="btn secondary pill" onClick={() => setApagarAlvo(null)}>
               Cancelar
             </button>
             <button
-              className="btn primary"
+              className="btn primary pill"
               disabled={apagarAlvo.holders > 0 && !substituto}
               onClick={confirmarApagar}
             >
@@ -4070,10 +4070,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             </p>
           </div>
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => setNovoPerfilOpen(false)}>
+            <button className="btn secondary pill" onClick={() => setNovoPerfilOpen(false)}>
               Cancelar
             </button>
-            <button className="btn primary" onClick={criarPerfil}>
+            <button className="btn primary pill" onClick={criarPerfil}>
               Criar perfil
             </button>
           </div>
@@ -4351,11 +4351,11 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
           </p>
         </div>
         <div className="modal-actions">
-          <button className="btn secondary" onClick={() => navigate(`/${role}/habilitacao`)}>
+          <button className="btn secondary pill" onClick={() => navigate(`/${role}/habilitacao`)}>
             Cancelar
           </button>
           <button
-            className="btn primary"
+            className="btn primary pill"
             disabled={!titular}
             onClick={() => {
               notify(
@@ -4427,7 +4427,7 @@ function HabilitacaoNovoPage({ notify, role }: { notify: (m: string) => void; ro
             </p>
           </div>
           <div className="modal-actions">
-            <button className="btn primary" onClick={() => setVerRegras(false)}>
+            <button className="btn primary pill" onClick={() => setVerRegras(false)}>
               Entendi
             </button>
           </div>

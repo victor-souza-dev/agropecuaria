@@ -4366,6 +4366,27 @@ td {
 .attendant-panel .panel-head .btn.primary svg path {
   fill: #fff;
 }
+/* Geometria pill da numeração para ações fora do header-actions */
+.btn.pill {
+  height: 45px;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 400;
+  gap: 10px;
+  white-space: nowrap;
+}
+.btn.pill.primary {
+  border: none;
+  background: #4BA044;
+  color: #fff;
+}
+.btn.pill.primary:hover {
+  background: #4BA044;
+}
+.btn.pill.primary svg path {
+  fill: #fff;
+}
 /* Dashboard de estocadores — abas de painéis (RN-024..RN-029) */
 .dash-tabs {
   display: flex;
