@@ -3106,6 +3106,8 @@ const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPER
 // (tabela SDA_CREDENCIADO do legado) permanece CREDENCIADO; a UI mostra "Habilitado".
 const perfilLabel: Record<string, string> = {
   CREDENCIADO: "Habilitado",
+  INSPETORIA: "Inspetoria de Defesa Agropecuária (IDA)",
+  POSTO: "Escritório de Defesa Agropecuária (EDA)",
 };
 function labelPerfil(code: string) {
   return perfilLabel[code] ?? code;
@@ -3120,8 +3122,8 @@ const escopoAtores: { id: string; label: string }[] = [
   { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias (perfil)" },
   { id: "PREFEITURA", label: "Prefeituras (perfil)" },
   { id: "COOPERATIVA_LEITE", label: "Cooperativas de leite (perfil)" },
-  { id: "INSPETORIA", label: "Inspetorias veterinárias (perfil)" },
-  { id: "POSTO", label: "Postos de defesa sanitária (perfil)" },
+  { id: "INSPETORIA", label: "Inspetoria de Defesa Agropecuária (perfil)" },
+  { id: "POSTO", label: "Escritório de Defesa Agropecuária (perfil)" },
   { id: "SEAPI", label: "Estoque central SEAPI (titular fixo)" },
   { id: "PRODUTOR", label: "Produtores rurais (titular fixo)" },
   { id: "FABRICA", label: "Fábricas de brincos (titular fixo)" },
@@ -3521,8 +3523,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "HABILITADO", desc: "Estocador habilitado pela SEAPI", holders: 2, travado: false },
     { code: "PREFEITURA", desc: "Estocador municipal", holders: 1, travado: false },
     { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1, travado: false },
-    { code: "INSPETORIA", desc: "Inspetoria veterinária", holders: 0, travado: false },
-    { code: "POSTO", desc: "Posto de defesa sanitária", holders: 0, travado: false },
+    { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0, travado: false },
+    { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0, travado: false },
     { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1, travado: false },
     { code: "PRODUTOR", desc: "Produtor rural — só recebe venda e transferência; nunca envia (ADR-024)", holders: 0, travado: true },
   ];
