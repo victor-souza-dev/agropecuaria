@@ -3106,8 +3106,12 @@ const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPER
 // (tabela SDA_CREDENCIADO do legado) permanece CREDENCIADO; a UI mostra "Habilitado".
 const perfilLabel: Record<string, string> = {
   CREDENCIADO: "Habilitado",
+  LOJA_AGROPECUARIA: "Loja Agropecuária",
+  PREFEITURA: "Prefeitura",
+  COOPERATIVA_LEITE: "Cooperativa de Leite",
   INSPETORIA: "Inspetoria de Defesa Agropecuária (IDA)",
   POSTO: "Escritório de Defesa Agropecuária (EDA)",
+  SEAPI: "SEAPI",
 };
 function labelPerfil(code: string) {
   return perfilLabel[code] ?? code;
