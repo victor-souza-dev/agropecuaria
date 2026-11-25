@@ -4738,6 +4738,17 @@ function EstocadoresDashboard({ role }: { role: Role }) {
   const [periodoId, setPeriodoId] = useState(90);
   const [perfilFiltro, setPerfilFiltro] = useState("TODOS");
   const [regimeFiltro, setRegimeFiltro] = useState<"TODOS" | "NOVO" | "HERDADO">("TODOS");
+  const [perfilAberto, setPerfilAberto] = useState(false);
+  const perfilRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
+        setPerfilAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
 
   // Recálculo dos painéis para o recorte selecionado (dados demonstrativos)
   const periodoSel = PERIODOS_ESTOQUES.find((p) => p.id === periodoId)!;
@@ -4804,20 +4815,6 @@ function EstocadoresDashboard({ role }: { role: Role }) {
           </div>
         </div>
         <div className="filter-group">
-          <span className="filter-label">Perfil</span>
-          <div className="chip-set">
-            {PERFIS_FILTRO.map((code) => (
-              <button
-                key={code}
-                className={`chip ${perfilFiltro === code ? "active" : ""}`}
-                onClick={() => setPerfilFiltro(code)}
-              >
-                {code === "TODOS" ? "Todos os perfis" : labelPerfil(code)}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="filter-group">
           <span className="filter-label">Regime</span>
           <div className="chip-set">
             {REGIMES_FILTRO.map((r) => (
@@ -4830,6 +4827,34 @@ function EstocadoresDashboard({ role }: { role: Role }) {
               </button>
             ))}
           </div>
+        </div>
+        <div className="filter-group multiselect" ref={perfilRef}>
+          <span className="filter-label">Perfil</span>
+          <button
+            type="button"
+            className={`filter-select ${perfilFiltro === "TODOS" ? "" : "ativo"}`}
+            onClick={() => setPerfilAberto(!perfilAberto)}
+          >
+            {perfilFiltro === "TODOS" ? "Todos os perfis" : labelPerfil(perfilFiltro)}
+            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+          {perfilAberto && (
+            <div className="multiselect-dropdown">
+              {PERFIS_FILTRO.map((code) => (
+                <label
+                  className="ms-option"
+                  key={code}
+                  onClick={() => {
+                    setPerfilFiltro(code);
+                    setPerfilAberto(false);
+                  }}
+                >
+                  <input type="checkbox" checked={perfilFiltro === code} readOnly />
+                  <span>{code === "TODOS" ? "Todos os perfis" : labelPerfil(code)}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <div className="dash-grid">
