@@ -3116,7 +3116,9 @@ const perfilMovimentos = ["Recebimento", "Venda", "Transferência", "Devolução
 
 type RegraFluxo = { tipo: "LIVRE" | "BLOQUEIO" | "ESCOPO"; alvos?: string[] };
 
-// Atores autorizáveis no escopo de uma regra (RN-012): outros perfis, titulares fixos e escopos dinâmicos — seleção múltipla.
+// Atores autorizáveis no escopo de uma regra (RN-012): outros perfis e titulares fixos — seleção múltipla.
+// Escopos dinâmicos (mesmo município, via integradora) existem como valores de enum no banco (ADR-013),
+// mas não são ofertados na UI — só os atores oficiais.
 const escopoAtores: { id: string; label: string }[] = [
   { id: "CREDENCIADO", label: "Habilitado (perfil)" },
   { id: "LOJA_AGROPECUARIA", label: "Lojas agropecuárias (perfil)" },
@@ -3128,8 +3130,6 @@ const escopoAtores: { id: string; label: string }[] = [
   { id: "PRODUTOR", label: "Produtores rurais (titular fixo)" },
   { id: "FABRICA", label: "Fábricas de brincos (titular fixo)" },
   { id: "ESTOQUE_SDA", label: "Estoque SDA (titular fixo)" },
-  { id: "DIN_MUNICIPIO", label: "Dinâmico: mesmo município do titular" },
-  { id: "DIN_INTEGRADORA", label: "Dinâmico: via integradora do titular" },
 ];
 
 function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>> {
@@ -3143,11 +3143,11 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   // Seed do V1 (RN-012): restrições praticadas no sistema anterior (CAND-MONO-601) — agora com escopo multi-ator
   base["PREFEITURA"]["Transferência"] = {
     origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO", "DIN_MUNICIPIO"] },
+    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
   };
   base["COOPERATIVA_LEITE"]["Transferência"] = {
     origem: { tipo: "LIVRE" },
-    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO", "DIN_INTEGRADORA"] },
+    destino: { tipo: "ESCOPO", alvos: ["CREDENCIADO"] },
   };
   // Perfil travado (ADR-024): o produtor só recebe (venda/transferência) — nunca envia
   for (const movement of perfilMovimentos) {
@@ -3519,14 +3519,14 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const profiles = [
-    { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2, travado: false },
-    { code: "HABILITADO", desc: "Estocador habilitado pela SEAPI", holders: 2, travado: false },
-    { code: "PREFEITURA", desc: "Estocador municipal", holders: 1, travado: false },
-    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1, travado: false },
-    { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0, travado: false },
-    { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0, travado: false },
-    { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1, travado: false },
-    { code: "PRODUTOR", desc: "Produtor rural — só recebe venda e transferência; nunca envia (ADR-024)", holders: 0, travado: true },
+    { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2 },
+    { code: "HABILITADO", desc: "Estocador habilitado pela SEAPI", holders: 2 },
+    { code: "PREFEITURA", desc: "Estocador municipal", holders: 1 },
+    { code: "COOPERATIVA_LEITE", desc: "Integradora de cooperativa de leite", holders: 1 },
+    { code: "INSPETORIA", desc: "Inspetoria de Defesa Agropecuária — unidade em município-sede com Fiscal Estadual Agropecuário (Médico Veterinário)", holders: 0 },
+    { code: "POSTO", desc: "Escritório de Defesa Agropecuária — unidade de atendimento vinculada a uma IDA (SEAPI ou convênio)", holders: 0 },
+    { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
+    { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI (ADR-027)", holders: 1 },
   ];
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
@@ -3534,7 +3534,6 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
   const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
   const [draft, setDraft] = useState<{ tipo: RegraFluxo["tipo"]; alvos: string[] }>({ tipo: "LIVRE", alvos: [] });
   function abrirEditor(movement: string, side: "origem" | "destino") {
-    if (selected === "PRODUTOR") return;
     const regra = rules[selected][movement][side];
     setDraft({ tipo: regra.tipo, alvos: regra.alvos ? [...regra.alvos] : [] });
     setEditor({ movement, side });
@@ -3585,11 +3584,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 <strong>{labelPerfil(profile.code)}</strong>
                 <span>{profile.desc}</span>
               </div>
-              {profile.travado ? (
-                <Badge tone="yellow">Travado · nativo</Badge>
-              ) : (
-                <Badge tone="green">{profile.holders} estocadores</Badge>
-              )}
+              {profile.holders} estocadores
               <Icon name="chevron" size={15} />
             </button>
           ))}
@@ -3599,7 +3594,7 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           <span>
             Inativação de perfil com estocadores vinculados é bloqueada (ERR-043) — transfira-os
             para outro perfil antes. O V1 semeia os 6 papéis do sistema anterior +
-            LOJA_AGROPECUARIA + PRODUTOR travado.
+            LOJA_AGROPECUARIA + PRODUTOR (seed restritivo editável — ADR-027).
           </span>
         </div>
       </section>
@@ -3609,15 +3604,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO (RN-012)</span>
             <h2>{labelPerfil(selected)}</h2>
             <p>
-              {selectedProfile.desc} ·{" "}
-              {selectedProfile.travado
-                ? "perfil nativo travado — não editável"
-                : `${selectedProfile.holders} estocadores vinculados`}
+              {selectedProfile.desc} · {selectedProfile.holders} estocadores vinculados
             </p>
           </div>
           <button
             className="btn secondary"
-            disabled={selected === "PRODUTOR"}
             onClick={() =>
               notify(
                 "Regras do perfil salvas — efeito prospectivo: movimentos já registrados não são revalidados.",
@@ -3643,22 +3634,14 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                     <strong>{movement}</strong>
                   </td>
                   <td>
-                    {selected === "PRODUTOR" ? (
-                      badgeRegraFluxo(rules[selected][movement].origem)
-                    ) : (
-                      <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
-                        {badgeRegraFluxo(rules[selected][movement].origem)}
-                      </button>
-                    )}
+                    <button className="text-btn" onClick={() => abrirEditor(movement, "origem")}>
+                      {badgeRegraFluxo(rules[selected][movement].origem)}
+                    </button>
                   </td>
                   <td>
-                    {selected === "PRODUTOR" ? (
-                      badgeRegraFluxo(rules[selected][movement].destino)
-                    ) : (
-                      <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
-                        {badgeRegraFluxo(rules[selected][movement].destino)}
-                      </button>
-                    )}
+                    <button className="text-btn" onClick={() => abrirEditor(movement, "destino")}>
+                      {badgeRegraFluxo(rules[selected][movement].destino)}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -3668,9 +3651,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="audit-note">
           <Icon name="alert" />
           <span>
-            {selected === "PRODUTOR"
-              ? "Perfil travado (ADR-024): o produtor só recebe venda e transferência — nunca envia brincos. A restrição já vem do modelo, não é configurável."
-              : "Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com seleção múltipla de atores (perfis, titulares fixos e escopos dinâmicos — RN-012). Seed do V1: PREFEITURA transfere só a habilitados do mesmo município; COOPERATIVA_LEITE só a habilitados via integradora (CAND-MONO-601)."}
+            Clique em uma célula para editar a restrição: Livre, Bloqueio ou Escopo com seleção
+            múltipla de atores oficiais (perfis e titulares fixos — RN-012). Seed do V1:
+            PREFEITURA transfere só a habilitados; COOPERATIVA_LEITE só a habilitados via
+            integradora; PRODUTOR não envia e só recebe venda/transferência — seed editável pela
+            SEAPI (ADR-027).
           </span>
         </div>
       </aside>
@@ -3716,8 +3701,8 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
                 <div>
                   <strong>Escopo — múltiplos atores</strong>
                   <span>
-                    Permite o movimento somente com os atores selecionados abaixo: perfis, titulares
-                    fixos ou escopos dinâmicos.
+                    Permite o movimento somente com os atores selecionados abaixo: perfis e
+                    titulares fixos.
                   </span>
                 </div>
               </label>
