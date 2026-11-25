@@ -194,7 +194,7 @@ const numberingRanges = [
   { start: "105430057001001", end: "105430057001500", qty: 500, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "18/01/2024", fonteInterna: true, criadoPor: "Régua do programa (herdada)", modoGeracao: "Herdada" },
   { start: "076210077200001", end: "076210077210000", qty: 10000, tipo: "SISBOV", origem: "Interna", situacao: "Distribuída", destino: "Brinco Sul Indústria", dataCadastro: "02/03/2025", fonteInterna: true, criadoPor: "Geração automática — reposição Brinco Sul", modoGeracao: "Automática" },
   { start: "076210077220001", end: "076210077226000", qty: 6000, tipo: "SISBOV", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "05/05/2025", fonteInterna: true, criadoPor: "Ana R. Farias — SEAPI", modoGeracao: "Manual" },
-  { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Distribuída", destino: "Identifica Brasil S.A.", dataCadastro: "01/06/2025", fonteInterna: false, criadoPor: "Geração automática — PNIB", modoGeracao: "Automática" },
+  { start: "105430057000001", end: "105430057006000", qty: 6000, tipo: "INTERNACIONAL", origem: "PNIB", situacao: "Em distribuição", destino: "Depósito central SEAPI", dataCadastro: "01/06/2025", fonteInterna: false, criadoPor: "Geração automática — PNIB", modoGeracao: "Automática" },
   { start: "105430057010001", end: "105430057014000", qty: 4000, tipo: "INTERNACIONAL", origem: "Interna", situacao: "Disponível", destino: null, dataCadastro: "12/06/2025", fonteInterna: true, criadoPor: "Carlos M. Duarte — SEAPI", modoGeracao: "Manual" },
 ];
 
@@ -1441,6 +1441,15 @@ export function RangeDetailPage() {
                 </dd>
               </div>
               <div>
+                <dt>Brincos distribuídos</dt>
+                <dd>
+                  {(faixaPieces[range.start] ?? [])
+                    .reduce((n, p) => n + p.qty, 0)
+                    .toLocaleString("pt-BR")}{" "}
+                  de {range.qty.toLocaleString("pt-BR")}
+                </dd>
+              </div>
+              <div>
                 <dt>Destinatário</dt>
                 <dd>{range.destino ?? "Estoque central SDA"}</dd>
               </div>
@@ -1456,7 +1465,9 @@ export function RangeDetailPage() {
           </div>
         </section>
 
-        <section className="panel faixa-pieces-panel">
+      </div>
+
+      <section className="panel faixa-pieces-panel">
           <div className="panel-head">
             <div>
               <h2>Brincos por titular</h2>
@@ -1501,7 +1512,6 @@ export function RangeDetailPage() {
             </p>
           )}
         </section>
-      </div>
 
       <section className="panel tag-timeline-panel">
         <div className="panel-head">
@@ -3378,6 +3388,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
 function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
   const [ranges, setRanges] = useState(numberingRanges);
   const [dialog, setDialog] = useState<"pnib" | "interna" | "distribute" | null>(null);
+  const [distribuir, setDistribuir] = useState<(typeof numberingRanges)[number] | null>(null);
+  const [distQty, setDistQty] = useState("");
+  const [distErro, setDistErro] = useState("");
+  const [distDestino, setDistDestino] = useState("Identifica Brasil S.A. — Fábrica");
   const [internaTipo, setInternaTipo] = useState<"SISBOV" | "INTERNACIONAL">("SISBOV");
   const [internaQtd, setInternaQtd] = useState(1000);
   const [searchNum, setSearchNum] = useState("");
@@ -3407,6 +3421,11 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
     setFilterFonte("Todas as proveniências");
     setFilterDataDe("");
     setFilterDataAte("");
+  }
+
+  function disponivelFaixa(r: { start: string; qty: number }) {
+    const distribuidos = (faixaPieces[r.start] ?? []).reduce((n, p) => n + p.qty, 0);
+    return r.qty - distribuidos;
   }
 
   function gerarFaixaInterna() {
@@ -3554,6 +3573,7 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
               <select className="filter-field" value={filterSituacao} onChange={(e) => setFilterSituacao(e.target.value)}>
                 <option>Todas as situações</option>
                 <option>Disponível</option>
+                <option>Em distribuição</option>
                 <option>Distribuída</option>
               </select>
               <select className="filter-field" value={filterFonte} onChange={(e) => setFilterFonte(e.target.value)}>
@@ -3611,8 +3631,8 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                   <td>{r.dataCadastro}</td>
                   <td className="td-actions">
                     <div className="action-cell">
-                      {r.situacao === "Disponível" ? (
-                        <button className="text-btn" onClick={() => setDialog("distribute")}>
+                      {disponivelFaixa(r) > 0 ? (
+                        <button className="text-btn" onClick={() => setDistribuir(r)}>
                           Distribuir
                         </button>
                       ) : null}
@@ -3671,9 +3691,9 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                     <span className="tag-label">Situação</span>
                     <span className="tag-value" style={r.situacao === "Disponível" ? { color: "#2e7d32" } : { color: "#e65100" }}>{r.situacao}</span>
                   </div>
-                  {r.situacao === "Disponível" ? (
+                  {disponivelFaixa(r) > 0 ? (
                     <div className="grid-card-tag grid-card-tag--num">
-                      <button className="text-btn" onClick={() => setDialog("distribute")}>
+                      <button className="text-btn" onClick={() => setDistribuir(r)}>
                         Distribuir
                       </button>
                     </div>
@@ -3750,19 +3770,55 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
           </div>
         </ModalShell>
       )}
-      {dialog === "distribute" && (
+      {distribuir && (
         <ModalShell
           title="Distribuir faixa"
-          subtitle="A operação ficará registrada na trilha de auditoria."
-          onClose={() => setDialog(null)}
+          subtitle={`${formatTag(distribuir.start)} a ${formatTag(distribuir.end)} — trilha registrada na auditoria.`}
+          onClose={() => {
+            setDistribuir(null);
+            setDistErro("");
+          }}
         >
           <div className="modal-body form-grid">
+            <div className="wide disponivel-box">
+              <div className="disponivel-row">
+                <span>Total da faixa</span>
+                <strong>{distribuir.qty.toLocaleString("pt-BR")} brincos</strong>
+              </div>
+              <div className="disponivel-row">
+                <span>Já distribuídos</span>
+                <strong>
+                  {(distribuir.qty - disponivelFaixa(distribuir)).toLocaleString("pt-BR")} brincos
+                </strong>
+              </div>
+              <div className="disponivel-row disponivel-destaque">
+                <span>Disponível agora</span>
+                <strong>{disponivelFaixa(distribuir).toLocaleString("pt-BR")} brincos</strong>
+              </div>
+            </div>
             <label className="wide">
-              <span>Destino</span>
-              <select>
+              <span>Quantidade a distribuir *</span>
+              <input
+                type="number"
+                min={1}
+                value={distQty}
+                placeholder="Quantidade de brincos..."
+                onChange={(e) => {
+                  setDistQty(e.target.value);
+                  setDistErro("");
+                }}
+              />
+              {distErro && <span className="field-error">{distErro}</span>}
+            </label>
+            <label className="wide">
+              <span>Destino *</span>
+              <select value={distDestino} onChange={(e) => setDistDestino(e.target.value)}>
                 <option>Identifica Brasil S.A. — Fábrica</option>
                 <option>Brinco Sul Indústria — Fábrica</option>
                 <option>Depósito central SEAPI — Estoque</option>
+                <option>Agropecuária Pampa Sul Ltda. — Estoquista</option>
+                <option>Antônio C. Silveira — Estoquista</option>
+                <option>Prefeitura Municipal de Bagé — Estoquista</option>
               </select>
             </label>
             <label className="wide">
@@ -3771,17 +3827,61 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
             </label>
           </div>
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => setDialog(null)}>
+            <button
+              className="btn secondary"
+              onClick={() => {
+                setDistribuir(null);
+                setDistErro("");
+              }}
+            >
               Cancelar
             </button>
             <button
               className="btn primary"
               onClick={() => {
-                setDialog(null);
-                notify("Faixa distribuída ao destinatário.");
+                const q = Number(distQty);
+                const disp = disponivelFaixa(distribuir);
+                if (!q || q < 1) {
+                  setDistErro("Informe a quantidade (mínimo 1 brinco).");
+                  return;
+                }
+                if (q > disp) {
+                  setDistErro(
+                    `Quantidade excede o disponível — restam ${disp.toLocaleString("pt-BR")} brincos nesta faixa.`,
+                  );
+                  return;
+                }
+                // Pedaço contíguo após o último distribuído (demo — distribuição sequencial)
+                const pieces = faixaPieces[distribuir.start] ?? [];
+                const maxEnd = pieces.length
+                  ? Math.max(...pieces.map((p) => parseInt(p.s2.slice(-6), 10)))
+                  : parseInt(distribuir.start.slice(-6), 10) - 1;
+                const prefixo = distribuir.start.slice(0, 9);
+                const s1 = prefixo + String(maxEnd + 1).padStart(6, "0");
+                const s2 = prefixo + String(maxEnd + q).padStart(6, "0");
+                const titular = distDestino.split(" — ")[0];
+                (faixaPieces[distribuir.start] ??= []).push({
+                  titular,
+                  s1,
+                  s2,
+                  qty: q,
+                  note: `distribuída em ${new Date().toLocaleDateString("pt-BR")}`,
+                });
+                const completa = disp - q <= 0;
+                setRanges((prev) =>
+                  prev.map((x) =>
+                    x.start === distribuir.start
+                      ? { ...x, situacao: completa ? "Distribuída" : "Em distribuição" }
+                      : x,
+                  ),
+                );
+                setDistribuir(null);
+                notify(
+                  `Faixa distribuída: ${q.toLocaleString("pt-BR")} brincos (${formatTag(s1)} a ${formatTag(s2)}) → ${titular}.`,
+                );
               }}
             >
-              Confirmar operação
+              Confirmar distribuição
             </button>
           </div>
         </ModalShell>
