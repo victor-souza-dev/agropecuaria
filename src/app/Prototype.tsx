@@ -3697,7 +3697,7 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
 }
 
 function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
-  const profiles = [
+  const [profiles, setProfiles] = useState<{ code: string; desc: string; holders: number; label?: string }[]>([
     { code: "LOJA_AGROPECUARIA", desc: "Loja agropecuária vendedora de brincos", holders: 2 },
     { code: "CREDENCIADO", desc: "Estocador habilitado pela SEAPI", holders: 2 },
     { code: "PREFEITURA", desc: "Estocador municipal", holders: 1 },
@@ -3707,11 +3707,47 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
     { code: "SEAPI", desc: "Estoque central da Secretaria", holders: 1 },
     { code: "FABRICA", desc: "Fábrica de brincos — produz e declara o envio; sem estoque comercial", holders: 1 },
     { code: "PRODUTOR", desc: "Produtor rural — seed restritivo (recebe venda e transferência; não envia), editável pela SEAPI", holders: 1 },
-  ];
+  ]);
   const movements = perfilMovimentos;
   const [rules, setRules] = useState<Record<string, Record<string, { origem: RegraFluxo; destino: RegraFluxo }>>>(perfilRulesSeed);
   const [selected, setSelected] = useState("LOJA_AGROPECUARIA");
   const [editor, setEditor] = useState<{ movement: string; side: "origem" | "destino" } | null>(null);
+  const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoDesc, setNovoDesc] = useState("");
+  const labelDe = (code: string) => profiles.find((p) => p.code === code)?.label ?? labelPerfil(code);
+  function criarPerfil() {
+    const nome = novoNome.trim();
+    if (!nome) {
+      notify("Informe o nome do novo perfil.");
+      return;
+    }
+    const code = nome
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .toUpperCase();
+    if (!code) {
+      notify("O nome precisa ter letras ou números.");
+      return;
+    }
+    if (profiles.some((p) => p.code === code)) {
+      notify("Já existe um perfil com esse nome — escolha outro.");
+      return;
+    }
+    setProfiles((ps) => [
+      ...ps,
+      { code, desc: novoDesc.trim() || "Perfil criado pela SEAPI", holders: 0, label: nome },
+    ]);
+    const regrasNovas: Record<string, { origem: RegraFluxo; destino: RegraFluxo }> = {};
+    for (const movement of perfilMovimentos)
+      regrasNovas[movement] = { origem: { tipo: "LIVRE" }, destino: { tipo: "LIVRE" } };
+    setRules((current) => ({ ...current, [code]: regrasNovas }));
+    setSelected(code);
+    setNovoPerfilOpen(false);
+    notify(`Perfil "${nome}" criado — postura padrão livre; ajuste as regras na matriz.`);
+  }
   const [draft, setDraft] = useState<{
     alvosTipo: "LIVRE" | "BLOQUEIO" | "ESCOPO";
     alvos: string[];
@@ -3762,7 +3798,11 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           </div>
           <button
             className="btn primary"
-            onClick={() => notify("Perfil criado — disponível para habilitação de estoquistas.")}
+            onClick={() => {
+              setNovoNome("");
+              setNovoDesc("");
+              setNovoPerfilOpen(true);
+            }}
           >
             <Icon name="plus" /> Novo perfil
           </button>
@@ -3776,10 +3816,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
             >
               <div className="company-icon">{profile.code.slice(0, 2)}</div>
               <div>
-                <strong>{labelPerfil(profile.code)}</strong>
+                <strong>{labelDe(profile.code)}</strong>
                 <span>{profile.desc}</span>
               </div>
-              {profile.holders} estocadores
+              {profile.holders} {profile.holders === 1 ? "estocador" : "estocadores"}
               <Icon name="chevron" size={15} />
             </button>
           ))}
@@ -3797,9 +3837,10 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
         <div className="panel-head">
           <div>
             <span className="eyebrow">MATRIZ DE REGRAS DE FLUXO</span>
-            <h2>{labelPerfil(selected)}</h2>
+            <h2>{labelDe(selected)}</h2>
             <p>
-              {selectedProfile.desc} · {selectedProfile.holders} estocadores vinculados
+              {selectedProfile.desc} · {selectedProfile.holders}{" "}
+              {selectedProfile.holders === 1 ? "estocador vinculado" : "estocadores vinculados"}
             </p>
           </div>
           <button
@@ -3873,10 +3914,50 @@ function ProfilesPanel({ notify }: { notify: (m: string) => void }) {
           </span>
         </div>
       </aside>
+      {novoPerfilOpen && (
+        <ModalShell
+          title="Novo perfil de estocador"
+          subtitle="O perfil nasce com postura padrão livre — sem restrição registrada, opera com qualquer titular. Ajuste as regras na matriz depois."
+          onClose={() => setNovoPerfilOpen(false)}
+        >
+          <div className="modal-body">
+            <label className="field">
+              <span>NOME DO PERFIL</span>
+              <input
+                type="text"
+                value={novoNome}
+                placeholder="Ex.: Cooperativa de apicultores"
+                onChange={(e) => setNovoNome(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>DESCRIÇÃO (OPCIONAL)</span>
+              <input
+                type="text"
+                value={novoDesc}
+                placeholder="Uma linha que explique o papel deste perfil na cadeia"
+                onChange={(e) => setNovoDesc(e.target.value)}
+              />
+            </label>
+            <p className="modal-copy">
+              O perfil aparece na lista e fica disponível para habilitação de estocadores. As
+              regras de fluxo dele começam livres — restrinja o que precisar na matriz de regras.
+            </p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setNovoPerfilOpen(false)}>
+              Cancelar
+            </button>
+            <button className="btn primary" onClick={criarPerfil}>
+              Criar perfil
+            </button>
+          </div>
+        </ModalShell>
+      )}
       {editor && (
         <ModalShell
           title="Editar restrição de fluxo"
-          subtitle={`${labelPerfil(selected)} · ${editor.movement} · ${
+          subtitle={`${labelDe(selected)} · ${editor.movement} · ${
             editor.side === "origem"
               ? "Envio — para quem este ator pode enviar"
               : "Recebimento — de quem este ator pode receber"
