@@ -3320,6 +3320,19 @@ kbd {
   color: #354b63;
   line-height: 1.45;
 }
+.atendente-linha {
+  color: #7a8796;
+}
+.ator-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.ator-cell .atendente-linha {
+  display: block;
+  margin-top: 1px;
+}
 .modal-actions {
   padding: 14px 20px;
 }

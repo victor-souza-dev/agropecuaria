@@ -9073,7 +9073,7 @@ function PedidosSdaPage({
               )}
               {rows.map((p) => (
                 <tr key={p.id}>
-                  <td>
+                  <td className="ator-cell">
                     <strong>{p.ator}</strong>
                     <small>{p.tipo}</small>
                     {p.atendente && (
