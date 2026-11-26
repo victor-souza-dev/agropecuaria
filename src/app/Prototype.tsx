@@ -1244,7 +1244,14 @@ export function ModulePage({ page }: { page: Page }) {
         />
       );
     case "pedidos-sda-novo":
-      return <PedidoSdaFormPage notify={context.notify} role={context.role} />;
+      return (
+        <PedidoSdaFormPage
+          notify={context.notify}
+          role={context.role}
+          pedidos={context.pedidosSda}
+          setPedidos={context.setPedidosSda}
+        />
+      );
     case "numeracao":
       if (isNumeracaoDashboard) {
         return <NumberingDashboard role={context.role} />;
@@ -3152,16 +3159,23 @@ function HistoryPage({
 }) {
   const [buscaMov, setBuscaMov] = useState("");
   const [tipoMov, setTipoMov] = useState("Todos os tipos");
-  const [periodoMov, setPeriodoMov] = useState("TODOS");
+  const [periodoDe, setPeriodoDe] = useState("");
+  const [periodoAte, setPeriodoAte] = useState("");
   const tiposDistintos = [...new Set(moves.map((m) => m.type))];
-  const referenciaDemo = new Date(2025, 5, 18);
+  const mesAnoDe = (data: string) => {
+    const [dd, mm, aa] = data.split("/").map(Number);
+    return `${aa}-${String(mm).padStart(2, "0")}`;
+  };
+  const validaMesAno = (texto: string) => {
+    const m = texto.match(/^(\d{2})\/(\d{4})$/);
+    return m ? `${m[2]}-${m[1]}` : null;
+  };
+  const deValido = validaMesAno(periodoDe);
+  const ateValido = validaMesAno(periodoAte);
   const rows = moves.filter((m) => {
     if (tipoMov !== "Todos os tipos" && m.type !== tipoMov) return false;
-    if (periodoMov !== "TODOS") {
-      const [dd, mm, aa] = m.date.split("/").map(Number);
-      const diff = Math.round((referenciaDemo.getTime() - new Date(aa, mm - 1, dd).getTime()) / 86400000);
-      if (diff > Number(periodoMov)) return false;
-    }
+    if (deValido && mesAnoDe(m.date) < deValido) return false;
+    if (ateValido && mesAnoDe(m.date) > ateValido) return false;
     const q = buscaMov.trim().toLowerCase();
     if (q && !`${m.from} ${m.to} ${m.type} ${m.items ?? ""}`.toLowerCase().includes(q)) return false;
     return true;
@@ -3192,11 +3206,30 @@ function HistoryPage({
                 <option key={t}>{t}</option>
               ))}
             </select>
-            <select className="filter-field" value={periodoMov} onChange={(e) => setPeriodoMov(e.target.value)}>
-              <option value="TODOS">Todo o período</option>
-              <option value="30">Últimos 30 dias</option>
-              <option value="90">Últimos 90 dias</option>
-            </select>
+            <div className="custom-range">
+              <label>
+                De
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  placeholder="MM/yyyy"
+                  value={periodoDe}
+                  onChange={(e) => setPeriodoDe(e.target.value)}
+                />
+              </label>
+              <label>
+                Até
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  placeholder="MM/yyyy"
+                  value={periodoAte}
+                  onChange={(e) => setPeriodoAte(e.target.value)}
+                />
+              </label>
+            </div>
           </div>
         </div>
       </form>
@@ -8823,6 +8856,8 @@ function PedidosSdaPage({
     setFilaFiltro("Todas as filas");
     setAprovadorFiltro("Todos os aprovadores");
     setMunicipioFiltro("Todos os municípios");
+    setPeriodoDe("");
+    setPeriodoAte("");
   }
   const [reason, setReason] = useState("");
   const [atending, setAtending] = useState<PedidoSda | null>(null);
