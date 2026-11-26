@@ -2444,8 +2444,8 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
           )}
           <div className="confirm-bar">
             <span>
-              <Icon name="alert" /> Ao confirmar, a faixa inteira será expandida e creditada no
-              estoque. Cada caixa gera exatamente uma faixa.
+              <Icon name="alert" /> Ao confirmar, os brincos das caixas lidas serão creditados no
+              seu estoque, com o vínculo da faixa e da fábrica de origem.
             </span>
             <button
               className="btn primary"
@@ -2465,7 +2465,7 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
           <span>Pedido esperado</span>
           <Badge tone="yellow">Pendente</Badge>
         </div>
-        <strong>#PED-2025-0047</strong>
+        <strong>Identifica Brasil S.A.</strong>
         <dl>
           <div>
             <dt>Fábrica</dt>
