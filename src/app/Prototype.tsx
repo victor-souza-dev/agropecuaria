@@ -840,13 +840,6 @@ export default function Prototype() {
               <h1>{headingTitle}</h1>
               <p>{headingDescription}</p>
             </div>
-            {page !== "numeracao" && (
-              <div className="page-date">
-                Dados atualizados em
-                <br />
-                <strong>18/06/2025, 15:42</strong>
-              </div>
-            )}
           </div>
         )}
         <Outlet
@@ -1467,6 +1460,72 @@ export function TagDetailPage() {
   );
 }
 
+type RegistroAuditoria = {
+  quando: string;
+  usuario: string;
+  evento: string;
+  detalhe?: string;
+};
+
+const agoraAuditoria = () =>
+  new Date().toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const dataDe = (texto: string) => texto.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] ?? "—";
+
+// Bloco de auditoria reutilizável — histórico imutável de uma entidade (estocador, faixa, automação)
+function BlocoAuditoria({
+  registros,
+  titulo = "Auditoria",
+  subtitulo = "Do evento mais recente para o mais antigo",
+}: {
+  registros: RegistroAuditoria[];
+  titulo?: string;
+  subtitulo?: string;
+}) {
+  return (
+    <section className="panel audit-block-panel">
+      <div className="panel-head">
+        <div>
+          <h2>{titulo}</h2>
+          <p>{subtitulo}</p>
+        </div>
+        <span className="head-badge">{registros.length} registros</span>
+      </div>
+      {registros.length === 0 ? (
+        <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+          Nenhum evento registrado.
+        </p>
+      ) : (
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Usuário</th>
+              <th>Evento</th>
+              <th>Detalhe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {registros.map((r, i) => (
+              <tr key={i}>
+                <td>{r.quando}</td>
+                <td>{r.usuario}</td>
+                <td>{r.evento}</td>
+                <td>{r.detalhe ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
 export function RangeDetailPage() {
   const { rangeId } = useParams();
   const context = useOutletContext<PrototypeContext>();
@@ -1500,6 +1559,32 @@ export function RangeDetailPage() {
       </section>
     );
   }
+
+  // Auditoria da faixa — derivada do rastro do próprio registro (RN-018: gerado por / modo)
+  const auditoriaFaixa: RegistroAuditoria[] = [];
+  const pecasFaixa = faixaPieces[range.start] ?? [];
+  if (range.situacao !== "Disponível" && range.destino) {
+    auditoriaFaixa.push({
+      quando: range.dataCadastro,
+      usuario: "seapi.fiscal",
+      evento: "Faixa distribuída",
+      detalhe: `Destinatário: ${range.destino}`,
+    });
+  }
+  if (pecasFaixa.length > 0) {
+    auditoriaFaixa.push({
+      quando: range.dataCadastro,
+      usuario: "seapi.fiscal",
+      evento: "Brincos vinculados a titulares",
+      detalhe: `${pecasFaixa.reduce((n, p) => n + p.qty, 0).toLocaleString("pt-BR")} brincos em ${pecasFaixa.length} blocos`,
+    });
+  }
+  auditoriaFaixa.push({
+    quando: range.dataCadastro,
+    usuario: String(range.criadoPor ?? "seapi.fiscal"),
+    evento: "Faixa gerada",
+    detalhe: `Modo: ${range.modoGeracao}`,
+  });
 
   return (
     <>
@@ -1625,6 +1710,12 @@ export function RangeDetailPage() {
         </section>
 
       </div>
+
+      <BlocoAuditoria
+        registros={auditoriaFaixa}
+        titulo="Auditoria da faixa"
+        subtitulo="Geração e alocação da numeração — rastro do registro"
+      />
 
       <section className="panel faixa-pieces-panel">
           <div className="panel-head">
@@ -3173,6 +3264,49 @@ const estocadoresBase: Estocador[] = [
   },
 ];
 
+// Auditoria por estocador — seed derivado do cadastro; eventos ao vivo entram quando a SEAPI age
+const auditoriaEstocadoresSeed: Record<string, RegistroAuditoria[]> = {};
+for (const est of estocadoresBase) {
+  const eventos: RegistroAuditoria[] = [];
+  if (!est.active) {
+    eventos.unshift({
+      quando: "—",
+      usuario: "seapi.fiscal",
+      evento: "Suspenso",
+      detalhe: "situação atual do titular",
+    });
+  }
+  if (est.name === "Agropecuária Pampa Sul Ltda.") {
+    eventos.unshift({
+      quando: "—",
+      usuario: "seapi.fiscal",
+      evento: "Atendente habilitado",
+      detalhe: "Luiz Carlos Prestes — vínculo por CPF",
+    });
+    eventos.unshift({
+      quando: "—",
+      usuario: "seapi.fiscal",
+      evento: "Atendente habilitado",
+      detalhe: "Mariana Teixeira Oliveira — vínculo por CPF",
+    });
+  }
+  if (est.canal === "NOVO") {
+    eventos.unshift({
+      quando: est.ligadoEm ?? "—",
+      usuario: "seapi.fiscal",
+      evento: "Ligado no novo",
+      detalhe: "acesso no Portal herdado bloqueado",
+    });
+  }
+  eventos.unshift({
+    quando: dataDe(est.origem),
+    usuario: "seapi.fiscal",
+    evento: "Habilitado no cadastro",
+    detalhe: est.origem,
+  });
+  auditoriaEstocadoresSeed[est.name] = eventos;
+}
+
 const perfilOptions = ["LOJA_AGROPECUARIA", "CREDENCIADO", "PREFEITURA", "COOPERATIVA_LEITE", "INSPETORIA", "POSTO"];
 
 // Rótulos de exibição por perfil (decisão do operador 25/11/2026 — ADR-026): o código canônico do banco
@@ -3383,6 +3517,7 @@ function InfoTip({ texto }: { texto: string }) {
 
 function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
   const [holderList, setHolderList] = useState<Estocador[]>(estocadoresBase);
+  const [auditoriaEstocadores, setAuditoriaEstocadores] = useState(auditoriaEstocadoresSeed);
   const [searchH, setSearchH] = useState("");
   const [filterPerfilH, setFilterPerfilH] = useState("Todos os perfis");
   const [filterCanalH, setFilterCanalH] = useState("Todos os canais");
@@ -3414,11 +3549,18 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
     setFilterCanalH("Todos os canais");
     setFilterSituacaoH("Todas as situações");
   }
+  function registraEventoEstocador(nome: string, evento: string, detalhe?: string) {
+    setAuditoriaEstocadores((prev) => ({
+      ...prev,
+      [nome]: [{ quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe }, ...(prev[nome] ?? [])],
+    }));
+  }
   function ligarNoNovo(est: Estocador) {
     const hoje = new Date().toLocaleDateString("pt-BR");
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, canal: "NOVO", ligadoEm: hoje } : x)),
     );
+    registraEventoEstocador(est.name, "Ligado no novo", "acesso no Portal herdado bloqueado");
     setLigar(null);
     notify(`${est.name} ligado no novo — acesso no Portal herdado bloqueado.`);
   }
@@ -3426,12 +3568,14 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, active: !x.active } : x)),
     );
+    registraEventoEstocador(est.name, est.active ? "Suspenso" : "Reativado");
     notify(est.active ? "Estocador suspenso com sucesso." : "Estocador reativado com sucesso.");
   }
   function addAtendente(est: Estocador) {
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, atendentes: x.atendentes + 1 } : x)),
     );
+    registraEventoEstocador(est.name, "Atendente habilitado", "vínculo por CPF");
     notify("Atendente habilitado e vinculado à pessoa jurídica.");
   }
   return (
@@ -3766,6 +3910,11 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
                 )}
               </>
             )}
+            <BlocoAuditoria
+              registros={auditoriaEstocadores[detalheAtual.name] ?? []}
+              titulo="Auditoria do estocador"
+              subtitulo="Habilitação, ligação, atendentes e situação — do mais recente para o mais antigo"
+            />
           </div>
           <div className="modal-actions">
             <button className="btn secondary" onClick={() => setDetalheNome(null)}>
@@ -7446,6 +7595,37 @@ const formNova: FormAutomacao = {
 
 function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
   const [automacoes, setAutomacoes] = useState(automacoesIniciais);
+  const [auditoriaAutomacoes, setAuditoriaAutomacoes] = useState(() => {
+    const seed: Record<number, RegistroAuditoria[]> = {};
+    for (const a of automacoesIniciais) {
+      const eventos: RegistroAuditoria[] = [];
+      if (!a.ativa) {
+        eventos.unshift({ quando: "—", usuario: "seapi.fiscal", evento: "Desativada" });
+      }
+      if (a.ultimaGeracao !== "—") {
+        eventos.unshift({
+          quando: a.ultimaGeracao,
+          usuario: "sistema (gatilho da automação)",
+          evento: "Execução automática — faixas geradas",
+          detalhe: `${fmtBR(a.ultimaQtd ?? 0)} numerações`,
+        });
+      }
+      eventos.unshift({
+        quando: "—",
+        usuario: "seapi.fiscal",
+        evento: a.padrao ? "Automação padrão do sistema semeada" : "Automação criada",
+        detalhe: `${a.origem} · ${a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}`,
+      });
+      seed[a.id] = eventos;
+    }
+    return seed;
+  });
+  const registraEventoAutomacao = (id: number, evento: string, detalhe?: string) => {
+    setAuditoriaAutomacoes((prev) => ({
+      ...prev,
+      [id]: [{ quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe }, ...(prev[id] ?? [])],
+    }));
+  };
   const [form, setForm] = useState<FormAutomacao | null>(null);
   const [buscaAtor, setBuscaAtor] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "lista">("cards");
@@ -7493,6 +7673,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
     setAutomacoes((prev) =>
       prev.map((a) => (a.id === id ? { ...a, ativa: !a.ativa } : a))
     );
+    registraEventoAutomacao(id, alvo.ativa ? "Desativada" : "Ativada");
     notify(`Automação "${nomeAutomacao(alvo)}" ${alvo.ativa ? "desativada" : "ativada"}.`);
   };
 
@@ -7510,6 +7691,9 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
         return { ...a, ultimaGeracao: "18/06/2025", ultimaQtd: qtd };
       })
     );
+    const qtdGerada =
+      alvo ? (alvo.quantidadeModo === "pedido" ? Math.min(alvo.qtdMax ?? 1500, Math.max(alvo.qtdMin ?? 0, 1500)) : alvo.lote) : 0;
+    registraEventoAutomacao(id, "Execução manual — faixas geradas", `${fmtBR(qtdGerada)} numerações`);
     notify("Geração manual executada — faixas criadas conforme a automação.");
   };
 
@@ -7524,12 +7708,15 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
       setAutomacoes((prev) =>
         prev.map((a) => (a.id === form.id ? { ...a, ...form } : a))
       );
+      registraEventoAutomacao(form.id, "Automação editada", "configuração vale para as próximas gerações");
       notify("Automação atualizada — vale para as próximas gerações.");
     } else {
+      const novoId = Date.now();
       setAutomacoes((prev) => [
         ...prev,
-        { ...form, id: Date.now(), ultimaGeracao: "—", ultimaQtd: null },
+        { ...form, id: novoId, ultimaGeracao: "—", ultimaQtd: null },
       ]);
+      registraEventoAutomacao(novoId, "Automação criada", "a geração seguirá a configuração definida");
       notify("Automação criada — a geração seguirá a configuração definida.");
     }
     setForm(null);
@@ -7709,6 +7896,19 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
                     )}
                   </div>
                 </div>
+                {(auditoriaAutomacoes[a.id] ?? []).length > 0 && (
+                  <div className="auto-auditoria">
+                    {(auditoriaAutomacoes[a.id] ?? []).slice(0, 3).map((r, i) => (
+                      <small key={i}>
+                        <b>{r.quando}</b> · {r.evento}
+                        {r.detalhe ? ` — ${r.detalhe}` : ""}
+                      </small>
+                    ))}
+                    {(auditoriaAutomacoes[a.id] ?? []).length > 3 && (
+                      <small>… {(auditoriaAutomacoes[a.id] ?? []).length - 3} eventos anteriores</small>
+                    )}
+                  </div>
+                )}
               </article>
             ))}
           </div>

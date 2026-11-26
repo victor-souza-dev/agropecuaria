@@ -972,22 +972,6 @@ tbody tr:hover:not(.detail-row) {
   font-size: 8px;
   margin-top: 5px;
 }
-.scan-input > div.textarea-box {
-  height: auto;
-  padding: 0;
-}
-.scan-input textarea {
-  flex: 1;
-  border: 0;
-  outline: 0;
-  padding: 12px;
-  font-size: 12px;
-  letter-spacing: 0.4px;
-  min-height: 88px;
-  resize: vertical;
-  font-family: inherit;
-  color: #2a3b4d;
-}
 .keyboard-tip {
   font-size: 8px;
   color: #84909e;
@@ -6702,6 +6686,22 @@ button.filter-select .chev {
 .auto-acoes button.danger:hover {
   border-color: #d64545;
   color: #b03434;
+}
+.auto-auditoria {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px dashed #e7ebef;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.auto-auditoria small {
+  color: #8a94a0;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.auto-auditoria small b {
+  color: #5f6b76;
 }
 .switch {
   position: relative;
