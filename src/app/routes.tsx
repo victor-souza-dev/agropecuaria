@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import Prototype, {
   ModulePage,
   MovementItemsPage,
+  AprovacaoDetalhePage,
   RequestDetailPage,
   TagDetailPage,
   RangeDetailPage,
@@ -80,6 +81,10 @@ export const router = createBrowserRouter([
       {
         path: "pedidos-sda/novo",
         element: <ModulePage page="pedidos-sda-novo" />,
+      },
+      {
+        path: "pedidos-sda/:pedidoId",
+        element: <AprovacaoDetalhePage />,
       },
       {
         path: "numeracao",

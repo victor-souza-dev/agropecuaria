@@ -3293,6 +3293,33 @@ kbd {
   opacity: 0.55;
   cursor: not-allowed;
 }
+.aprov-detalhe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 28px;
+  padding: 18px 20px 22px;
+}
+.aprov-detalhe-grid section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.aprov-detalhe-grid section.span-all {
+  grid-column: 1 / -1;
+}
+.aprov-detalhe-grid section span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #8793a1;
+  text-transform: uppercase;
+}
+.aprov-detalhe-grid section strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #354b63;
+  line-height: 1.45;
+}
 .modal-actions {
   padding: 14px 20px;
 }
