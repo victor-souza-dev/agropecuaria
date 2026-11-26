@@ -60,6 +60,7 @@ type PedidoSda = {
   id: number;
   ator: string;
   municipio: string;
+  atendente: string | null;
   tipo: string;
   qtd: number;
   itens: string;
@@ -77,6 +78,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 1,
       ator: "Agropecuária Pampa Sul Ltda.",
       municipio: "Pelotas",
+      atendente: "Marina Duarte",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 480,
       itens: "FX-C01 · 240 brincos · FX-C02 · 240 brincos",
@@ -91,6 +93,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 2,
       ator: "Prefeitura Municipal de Bagé",
       municipio: "Bagé",
+      atendente: null,
       tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
       qtd: 960,
       itens: "FX-C01 · 240 · FX-C02 · 120 · FX-C03 · 600 (faixas complementares)",
@@ -105,6 +108,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 3,
       ator: "João Pedro Fagundes",
       municipio: "Dom Pedrito",
+      atendente: null,
       tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
       itens: "FX-C02 · 60 brincos",
@@ -119,6 +123,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 4,
       ator: "Comercial Rural Tradição Ltda.",
       municipio: "Santa Maria",
+      atendente: "Carlos Menezes",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
       itens: "FX-C01 · 240 brincos",
@@ -134,6 +139,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 5,
       ator: "Prefeitura Municipal de Bagé",
       municipio: "Bagé",
+      atendente: null,
       tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
       qtd: 20,
       itens: "076.21.007722000-1 · 20 brincos",
@@ -148,6 +154,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       id: 6,
       ator: "Cooperativa Agropecuária Vale do Verde",
       municipio: "Lajeado",
+      atendente: null,
       tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
       qtd: 15,
       itens: "105.43.005700100-1 · 15 brincos",
@@ -1989,6 +1996,8 @@ function StockPage({
   onModal: (m: Modal) => void;
 }) {
   const [mode, setMode] = useState<"range" | "item">("range");
+  const [buscaEstoque, setBuscaEstoque] = useState("");
+  const [situacaoEstoque, setSituacaoEstoque] = useState("Todas as situações");
   const [holder, setHolder] = useState("Agropecuária Pampa Sul Ltda.");
   const isLegado = role === "seapi" && holder.startsWith("Prefeitura Municipal de Bagé");
   const [view, setView] = useState<"titulares" | "detalhe">("titulares");
@@ -2045,6 +2054,12 @@ function StockPage({
     .reduce((n, h) => n + h.brincos, 0);
   const subFaixasTotal = holderStocks.reduce((n, h) => n + h.ranges, 0);
   const stocks = role === "produtor" ? producerStock : stockBase;
+  const stocksFiltrados = stocks.filter((s) => {
+    if (situacaoEstoque !== "Todas as situações" && s.status !== situacaoEstoque) return false;
+    const q = buscaEstoque.trim().toLowerCase();
+    if (q && !`${s.start} ${s.end} ${s.fabricante}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
   const total =
     stocks.reduce((n, s) => n + s.qty, 0) + (role === "produtor" ? producerAdded.length : 0);
   const itemRows = [
@@ -2055,6 +2070,9 @@ function StockPage({
     "076210077200305",
     "076210077200306",
   ];
+  const itensFiltrados = itemRows.filter((c) =>
+    c.toLowerCase().includes(buscaEstoque.trim().toLowerCase()),
+  );
   return (
     <>
       {role === "seapi" && view === "detalhe" && (
@@ -2280,19 +2298,26 @@ function StockPage({
         <div className="filters">
           <div className="search-field">
             <Icon name="search" />
-            <input placeholder="Buscar numeração..." />
+            <input
+              placeholder="Buscar numeração ou fabricante..."
+              value={buscaEstoque}
+              onChange={(e) => setBuscaEstoque(e.target.value)}
+            />
           </div>
-          <select>
+          <select value={situacaoEstoque} onChange={(e) => setSituacaoEstoque(e.target.value)}>
             <option>Todas as situações</option>
             <option>Disponível</option>
-            <option>Reservado</option>
             <option>Usado</option>
           </select>
-          <span className="result-count">{mode === "range" ? stocks.length : total} registros</span>
+          <span className="result-count">
+            {mode === "range"
+              ? `${stocksFiltrados.length} de ${stocks.length} faixas`
+              : `${itensFiltrados.length} de ${itemRows.length} brincos`}
+          </span>
         </div>
         {mode === "range" ? (
           <div className="range-list">
-            {stocks.map((s, i) => (
+            {stocksFiltrados.map((s, i) => (
               <article className="range-card" key={s.start}>
                 <div className="range-stripe"></div>
                 <div className="range-main">
@@ -2366,7 +2391,7 @@ function StockPage({
                 </tr>
               </thead>
               <tbody>
-                {itemRows.map((tag) => (
+                {itensFiltrados.map((tag) => (
                   <tr key={tag}>
                     <td className="tag-number">
                       <Link to={`/${role}/estoque/brinco/${tag}`}>{formatTag(tag)}</Link>
@@ -3192,30 +3217,58 @@ function HistoryPage({
   setExpanded: (n: number | null) => void;
   onModal: (m: Modal) => void;
 }) {
+  const [buscaMov, setBuscaMov] = useState("");
+  const [tipoMov, setTipoMov] = useState("Todos os tipos");
+  const [periodoMov, setPeriodoMov] = useState("TODOS");
+  const tiposDistintos = [...new Set(moves.map((m) => m.type))];
+  const referenciaDemo = new Date(2025, 5, 18);
+  const rows = moves.filter((m) => {
+    if (tipoMov !== "Todos os tipos" && m.type !== tipoMov) return false;
+    if (periodoMov !== "TODOS") {
+      const [dd, mm, aa] = m.date.split("/").map(Number);
+      const diff = Math.round((referenciaDemo.getTime() - new Date(aa, mm - 1, dd).getTime()) / 86400000);
+      if (diff > Number(periodoMov)) return false;
+    }
+    const q = buscaMov.trim().toLowerCase();
+    if (q && !`${m.from} ${m.to} ${m.type} ${m.items ?? ""}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
   return (
-    <section className="panel">
-      <div className="filters history-filters">
-        <div className="search-field">
-          <Icon name="search" />
-          <input placeholder="Buscar origem, destino ou movimento..." />
+    <div className="page-container">
+      <section className="header">
+        <h3>Movimentações de custódia</h3>
+      </section>
+      <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+        <div className="filters-body">
+          <div className="filter-row filter-row--full">
+            <div className="search-field filter-field">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                placeholder="Buscar por origem, destino, movimento ou numeração..."
+                value={buscaMov}
+                onChange={(e) => setBuscaMov(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="filter-row">
+            <select className="filter-field" value={tipoMov} onChange={(e) => setTipoMov(e.target.value)}>
+              <option>Todos os tipos</option>
+              {tiposDistintos.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+            <select className="filter-field" value={periodoMov} onChange={(e) => setPeriodoMov(e.target.value)}>
+              <option value="TODOS">Todo o período</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+          </div>
         </div>
-        <select>
-          <option>Todos os tipos</option>
-          <option>Venda</option>
-          <option>Recebimento</option>
-          <option>Transferência</option>
-          <option>Devolução</option>
-          <option>Perda</option>
-          <option>Estorno</option>
-        </select>
-        <select>
-          <option>Últimos 30 dias</option>
-          <option>Últimos 90 dias</option>
-        </select>
-        <button className="btn secondary">Filtrar</button>
-      </div>
-      <div className="table-wrap">
-        <table className="history-table">
+      </form>
+      <div className="table-container">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Movimento</th>
@@ -3229,7 +3282,16 @@ function HistoryPage({
             </tr>
           </thead>
           <tbody>
-            {moves.map((m) => (
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={8}>
+                  <span className="aging-note" style={{ display: "block", padding: "12px 16px" }}>
+                    Nenhuma movimentação para o recorte selecionado — ajuste os filtros ou limpe a busca.
+                  </span>
+                </td>
+              </tr>
+            )}
+            {rows.map((m) => (
               <Fragment key={m.id}>
                 <tr className={expanded === m.id ? "expanded-row" : ""}>
                   <td>
@@ -3331,7 +3393,7 @@ function HistoryPage({
         </table>
       </div>
       <div className="panel-foot">
-        <span>Exibindo {moves.length} movimentações</span>
+        <span>Exibindo {rows.length} de {moves.length} movimentações</span>
         <div className="pagination">
           <button disabled>‹</button>
           <button className="current">1</button>
@@ -3339,7 +3401,7 @@ function HistoryPage({
           <button>›</button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -9014,6 +9076,9 @@ function PedidosSdaPage({
                   <td>
                     <strong>{p.ator}</strong>
                     <small>{p.tipo}</small>
+                    {p.atendente && (
+                      <small className="atendente-linha">Solicitado pelo atendente: {p.atendente}</small>
+                    )}
                   </td>
                   <td>{p.municipio}</td>
                   <td>
@@ -9468,6 +9533,14 @@ export function AprovacaoDetalhePage() {
             <span>DATA DA SOLICITAÇÃO</span>
             <strong>{pedido.data}</strong>
           </section>
+          {pedido.atendente && (
+            <section>
+              <span>ATENDENTE SOLICITANTE</span>
+              <strong>
+                {pedido.atendente} — operou o pedido na PJ {pedido.ator}
+              </strong>
+            </section>
+          )}
           {pedido.situacao === "SOLICITADO" && pedido.fila === "movimentacao" && (
             <>
               <section>
