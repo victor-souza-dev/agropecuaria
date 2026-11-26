@@ -10942,7 +10942,7 @@ function FactoryPage({
   setEstoqueInterno: React.Dispatch<React.SetStateAction<number>>;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const orders = [
+  const [orders, setOrders] = useState([
     {
       id: 47,
       store: "Agropecuária Pampa Sul Ltda.",
@@ -10987,7 +10987,7 @@ function FactoryPage({
       status: "Enviado",
       destinoSede: false,
     },
-  ];
+  ]);
   const selectedOrder = orders.find((order) => order.id === selected);
   const estoqueCobre = !!selectedOrder && estoqueInterno >= selectedOrder.qty;
   const faltam = selectedOrder ? Math.max(0, selectedOrder.qty - estoqueInterno) : 0;
@@ -10997,6 +10997,9 @@ function FactoryPage({
   function declararDoEstoque() {
     if (!selectedOrder) return;
     setEstoqueInterno((e) => e - selectedOrder.qty);
+    setOrders((current) =>
+      current.map((o) => (o.id === selectedOrder.id ? { ...o, status: "Enviado" } : o)),
+    );
     notify(
       selectedOrder.destinoSede
         ? "Envio declarado. As caixas seguem para o estoque central SDA — a SEAPI confirma pela leitura."
@@ -11104,18 +11107,38 @@ function FactoryPage({
                     </Badge>
                   </td>
                   <td>
-                    {o.status !== "Enviado" ? (
-                      <button
-                        className="btn small primary"
-                        onClick={() => {
-                          setSelected(o.id);
-                        }}
-                      >
-                        Declarar envio
-                      </button>
-                    ) : (
-                      <button className="text-btn">Ver envio</button>
-                    )}
+                    <div className="action-cell">
+                      {o.status === "Pendente" && (
+                        <button
+                          className="text-btn"
+                          onClick={() => {
+                            setOrders((current) =>
+                              current.map((x) =>
+                                x.id === o.id ? { ...x, status: "Em produção" } : x,
+                              ),
+                            );
+                            notify(
+                              `Pedido em produção — os brincos de ${o.store} serão fabricados com a numeração concedida.`,
+                            );
+                          }}
+                        >
+                          Iniciar produção
+                        </button>
+                      )}
+                      {o.status !== "Enviado" && (
+                        <button
+                          className="btn small primary"
+                          onClick={() => {
+                            setSelected(o.id);
+                          }}
+                        >
+                          Declarar envio
+                        </button>
+                      )}
+                      {o.status === "Enviado" && (
+                        <button className="text-btn">Ver envio</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
