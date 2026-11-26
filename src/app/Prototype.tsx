@@ -2660,6 +2660,31 @@ function StockPage({
 const MAX_BRINCOS_POR_CAIXA = 1000;
 // RN-021 (teto oficial confirmado pelo cliente): Internacional (076) tem 15 dígitos; Nacional · SISBOV (105) tem 14
 const DIGITOS_POR_PREFIXO: Record<string, number> = { "076": 15, "105": 14 };
+// Pedido esperado do card lateral — a conferência compara cada caixa lida com este pedido (PEND-004: a regra
+// para divergência ainda aguarda decisão do cliente; hoje a tela destaca e registra, sem bloquear)
+const PEDIDO_ESPERADO = {
+  fabrica: "Identifica Brasil S.A.",
+  inicio: "076210077200001",
+  fim: "076210077200240",
+  quantidade: 240,
+};
+
+function divergenciasDaCaixa(box: { start: string; end: string; quantity: number }): string[] {
+  const d: string[] = [];
+  const s = Number(box.start);
+  const e = Number(box.end);
+  const es = Number(PEDIDO_ESPERADO.inicio);
+  const ef = Number(PEDIDO_ESPERADO.fim);
+  if (s < es || e > ef) {
+    d.push("Faixa fora do intervalo esperado pelo pedido");
+  }
+  if (box.quantity !== PEDIDO_ESPERADO.quantidade) {
+    d.push(
+      `Quantidade lida (${box.quantity}) difere da esperada (${PEDIDO_ESPERADO.quantidade})`,
+    );
+  }
+  return d;
+}
 
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");
@@ -2917,17 +2942,22 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                         <strong>{box.quantity}</strong>
                       </td>
                       <td>
-                        <Badge
-                          tone={
-                            box.start === "076210077200001" && box.end === "076210077200240"
-                              ? "green"
-                              : "red"
-                          }
-                        >
-                          {box.start === "076210077200001" && box.end === "076210077200240"
-                            ? "Conforme"
-                            : "Divergente"}
-                        </Badge>
+                        {(() => {
+                          const divs = divergenciasDaCaixa(box);
+                          return (
+                            <span
+                              title={
+                                divs.length > 0
+                                  ? divs.join(" · ")
+                                  : "Bate com o pedido esperado — faixa e quantidade dentro do combinado."
+                              }
+                            >
+                              <Badge tone={divs.length > 0 ? "red" : "green"}>
+                                {divs.length > 0 ? "Divergente" : "Conforme"}
+                              </Badge>
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
                         <button
@@ -2968,15 +2998,15 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
           <span>Pedido esperado</span>
           <Badge tone="yellow">Pendente</Badge>
         </div>
-        <strong>Identifica Brasil S.A.</strong>
+        <strong>{PEDIDO_ESPERADO.fabrica}</strong>
         <dl>
           <div>
             <dt>Fábrica</dt>
-            <dd>Identifica Brasil S.A.</dd>
+            <dd>{PEDIDO_ESPERADO.fabrica}</dd>
           </div>
           <div>
             <dt>Quantidade</dt>
-            <dd>240 brincos</dd>
+            <dd>{PEDIDO_ESPERADO.quantidade} brincos</dd>
           </div>
           <div>
             <dt>Caixas esperadas</dt>
@@ -2989,9 +3019,9 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
         </dl>
         <div className="expected-range">
           <span>FAIXA ESPERADA</span>
-          <strong>{formatTag("076210077200001")}</strong>
+          <strong>{formatTag(PEDIDO_ESPERADO.inicio)}</strong>
           <i>até</i>
-          <strong>{formatTag("076210077200240")}</strong>
+          <strong>{formatTag(PEDIDO_ESPERADO.fim)}</strong>
         </div>
         <p className="info-note">
           <Icon name="alert" /> A leitura só fica completa após os códigos inicial e final da caixa.
@@ -3526,6 +3556,19 @@ function HistoryPage({
   const [tipoMov, setTipoMov] = useState("Todos os tipos");
   const [periodoDe, setPeriodoDe] = useState("");
   const [periodoAte, setPeriodoAte] = useState("");
+  const [pickerAberto, setPickerAberto] = useState<"de" | "ate" | null>(null);
+  const [anoPicker, setAnoPicker] = useState(2025);
+  const periodoRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (periodoRef.current && !periodoRef.current.contains(e.target as Node)) {
+        setPickerAberto(null);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+  const mesesCurto = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const tiposDistintos = [...new Set(moves.map((m) => m.type))];
   const mesAnoDe = (data: string) => {
     const [dd, mm, aa] = data.split("/").map(Number);
@@ -3573,28 +3616,123 @@ function HistoryPage({
             </select>
             <div
               className="filter-field period-field"
+              ref={periodoRef}
               title="Filtrar movimentações deste período (formato MM/yyyy)"
             >
               <span className="period-label">Período</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={7}
-                placeholder="MM/yyyy"
-                aria-label="Período — mês inicial (MM/yyyy)"
-                value={periodoDe}
-                onChange={(e) => setPeriodoDe(e.target.value)}
-              />
+              <div className="period-input-wrap">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  placeholder="MM/yyyy"
+                  aria-label="Período — mês inicial (MM/yyyy)"
+                  value={periodoDe}
+                  onChange={(e) => setPeriodoDe(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="period-calendar"
+                  aria-label="Selecionar mês inicial"
+                  onClick={() => {
+                    setPickerAberto(pickerAberto === "de" ? null : "de");
+                    setAnoPicker(Number(periodoDe.split("/")[1] ?? periodoDe) || 2025);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </button>
+                {pickerAberto === "de" && (
+                  <div className="month-picker">
+                    <div className="mp-years">
+                      {[2024, 2025, 2026].map((aa) => (
+                        <button
+                          key={aa}
+                          type="button"
+                          className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
+                          onClick={() => setAnoPicker(aa)}
+                        >
+                          {aa}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mp-months">
+                      {mesesCurto.map((mes, idx) => {
+                        const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                        return (
+                          <button
+                            key={mes}
+                            type="button"
+                            className={`mp-month ${periodoDe === valor ? "selected" : ""}`}
+                            onClick={() => {
+                              setPeriodoDe(valor);
+                              setPickerAberto(null);
+                            }}
+                          >
+                            {mes}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
               <span className="period-sep">até</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={7}
-                placeholder="MM/yyyy"
-                aria-label="Período — mês final (MM/yyyy)"
-                value={periodoAte}
-                onChange={(e) => setPeriodoAte(e.target.value)}
-              />
+              <div className="period-input-wrap">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={7}
+                  placeholder="MM/yyyy"
+                  aria-label="Período — mês final (MM/yyyy)"
+                  value={periodoAte}
+                  onChange={(e) => setPeriodoAte(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="period-calendar"
+                  aria-label="Selecionar mês final"
+                  onClick={() => {
+                    setPickerAberto(pickerAberto === "ate" ? null : "ate");
+                    setAnoPicker(Number(periodoAte.split("/")[1] ?? periodoAte) || 2025);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </button>
+                {pickerAberto === "ate" && (
+                  <div className="month-picker">
+                    <div className="mp-years">
+                      {[2024, 2025, 2026].map((aa) => (
+                        <button
+                          key={aa}
+                          type="button"
+                          className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
+                          onClick={() => setAnoPicker(aa)}
+                        >
+                          {aa}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mp-months">
+                      {mesesCurto.map((mes, idx) => {
+                        const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                        return (
+                          <button
+                            key={mes}
+                            type="button"
+                            className={`mp-month ${periodoAte === valor ? "selected" : ""}`}
+                            onClick={() => {
+                              setPeriodoAte(valor);
+                              setPickerAberto(null);
+                            }}
+                          >
+                            {mes}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -4941,6 +4941,92 @@ td {
   font-size: 13px;
   min-width: 0;
 }
+.period-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.period-input-wrap input {
+  width: 100%;
+  padding-right: 26px;
+}
+.period-calendar {
+  position: absolute;
+  right: 6px;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+}
+.period-calendar:hover {
+  color: #2e7d32;
+}
+.month-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 10px;
+  width: 232px;
+}
+.mp-years {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.mp-year {
+  flex: 1;
+  padding: 6px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+}
+.mp-year:hover {
+  border-color: #4BA044;
+  color: #2e7d32;
+}
+.mp-year.selected {
+  background: #4BA044;
+  border-color: #4BA044;
+  color: #fff;
+}
+.mp-months {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.mp-month {
+  padding: 6px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  color: #4b5563;
+  cursor: pointer;
+}
+.mp-month:hover {
+  border-color: #4BA044;
+  color: #2e7d32;
+}
+.mp-month.selected {
+  background: #4BA044;
+  border-color: #4BA044;
+  color: #fff;
+  font-weight: 600;
+}
 .scope-options {
   display: flex;
   flex-direction: column;
