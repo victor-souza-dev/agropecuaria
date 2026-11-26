@@ -2008,10 +2008,6 @@ export function TagDetailPage() {
                 <dt>Fábrica</dt>
                 <dd>Identifica Brasil S.A.</dd>
               </div>
-              <div>
-                <dt>Caixa</dt>
-                <dd>Caixa 01 · 2 códigos de barras</dd>
-              </div>
             </dl>
           </div>
         </section>
@@ -10426,10 +10422,46 @@ function NumeracoesSolicitadasPage({
     );
     notify("Solicitação de numeração cancelada.");
   }
+  const [novaAberta, setNovaAberta] = useState(false);
+  const [novaTipo, setNovaTipo] = useState<"INTERNACIONAL" | "SISBOV">("INTERNACIONAL");
+  const [novaQtd, setNovaQtd] = useState("");
+  function criarSolicitacao() {
+    const qtd = Number(novaQtd);
+    if (!Number.isFinite(qtd) || qtd <= 0) {
+      notify("Informe a quantidade de brincos (maior que zero).");
+      return;
+    }
+    setNumSolicitacoes((current) => [
+      {
+        id: Math.max(0, ...current.map((s) => s.id)) + 1,
+        qty: qtd,
+        tipo: novaTipo,
+        status: "AGUARDANDO",
+        data: "19/06/2025",
+      },
+      ...current,
+    ]);
+    notify(
+      `Solicitação enviada à SEAPI — a faixa para produzir ${qtd.toLocaleString("pt-BR")} brincos será concedida pela integração.`,
+    );
+    setNovaAberta(false);
+  }
   return (
     <div className="page-container">
       <section className="header">
         <h3>Numerações solicitadas à SEAPI</h3>
+        <div className="header-actions">
+          <button
+            className="btn primary"
+            onClick={() => {
+              setNovaTipo("INTERNACIONAL");
+              setNovaQtd("");
+              setNovaAberta(true);
+            }}
+          >
+            <Icon name="plus" size={15} /> Nova solicitação
+          </button>
+        </div>
       </section>
       <div className="dash-note">
         <span>
@@ -10519,6 +10551,57 @@ function NumeracoesSolicitadasPage({
           </table>
         </div>
       </section>
+      {novaAberta && (
+        <ModalShell
+          title="Nova solicitação de numeração"
+          subtitle="A SEAPI gera ou usa uma faixa para a quantidade e a devolve para produção."
+          onClose={() => setNovaAberta(false)}
+        >
+          <div className="modal-body atend-modal">
+            <label className="scan-input">
+              <span>TIPO DO BRINCO</span>
+              <div>
+                <select
+                  value={novaTipo}
+                  onChange={(e) => setNovoTipo(e.target.value as "INTERNACIONAL" | "SISBOV")}
+                >
+                  <option value="INTERNACIONAL">Internacional (076)</option>
+                  <option value="SISBOV">Nacional · SISBOV (105)</option>
+                </select>
+              </div>
+            </label>
+            <label className="scan-input">
+              <span>QUANTIDADE DE BRINCOS</span>
+              <div>
+                <input
+                  type="number"
+                  min={1}
+                  value={novaQtd}
+                  placeholder="Ex.: 200"
+                  onChange={(e) => setNovaQtd(e.target.value)}
+                />
+              </div>
+            </label>
+            <p className="modal-copy">
+              Use para repor o estoque interno ou atender um pedido maior. A faixa concedida
+              chega como numeração disponível para produção — os brincos fabricados com ela
+              entram no estoque ao concluir a produção.
+            </p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setNovaAberta(false)}>
+              Cancelar
+            </button>
+            <button
+              className="btn primary"
+              disabled={!(Number(novaQtd) > 0)}
+              onClick={criarSolicitacao}
+            >
+              Enviar solicitação
+            </button>
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 }
