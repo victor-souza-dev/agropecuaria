@@ -8505,18 +8505,24 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       )}
       {recusing && (
         <ModalShell
-          title={`Recusar pedido #PED-SDA-${recusing.id}`}
+          title={
+            recusing.fila === "movimentacao"
+              ? `Recusar movimentação de ${recusing.ator}`
+              : `Recusar pedido de ${recusing.ator}`
+          }
           subtitle="O motivo é obrigatório e fica registrado na trilha de auditoria."
           onClose={() => setRecusing(null)}
         >
           <div className="modal-body">
-            <label className={`scan-input compact ${reason.trim() ? "" : "has-error"}`}>
+            <label className="scan-input">
               <span>MOTIVO DA RECUSA</span>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ex.: estoque central sem posição para o tipo solicitado"
-              />
+              <div className="textarea-box">
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Ex.: estoque central sem posição para o tipo solicitado"
+                />
+              </div>
             </label>
           </div>
           <div className="modal-actions">
