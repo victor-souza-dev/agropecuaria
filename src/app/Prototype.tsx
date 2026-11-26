@@ -8884,19 +8884,74 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
             <Icon name="plus" /> Novo pedido
           </Link>
         </div>
-        <div className="filters">
-          <div className="search-field">
-            <Icon name="search" />
-            <input placeholder="Buscar ator solicitante..." />
+        <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+          <div className="filters-header">
+            <button type="button" className="filters-toggle" onClick={() => setFiltersExpanded((v) => !v)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d={filtersExpanded ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
+              </svg>
+              <span className="filters-title">Filtros</span>
+              {activeFilterCount > 0 && <span className="filter-count-badge">{activeFilterCount}</span>}
+            </button>
+            <div className="filters-header-actions">
+              <button type="button" className="btn-search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Pesquisar
+              </button>
+              <button type="button" className="btn-clear" onClick={clearFilters}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Limpar
+              </button>
+            </div>
           </div>
-          <select>
-            <option>Todas as situações</option>
-            <option>Solicitado</option>
-            <option>Enviado</option>
-            <option>Concluído</option>
-            <option>Recusado</option>
-          </select>
-          <span className="result-count">{pedidos.length} pedidos</span>
+          {filtersExpanded && (
+            <div className="filters-body">
+              <div className="filter-row filter-row--full">
+                <div className="search-field filter-field">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    placeholder="Buscar por ator, município ou tipo..."
+                    value={buscaPedido}
+                    onChange={(e) => setBuscaPedido(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="filter-row">
+                <select className="filter-field" value={situacaoFiltro} onChange={(e) => setSituacaoFiltro(e.target.value)}>
+                  <option>Todas as situações</option>
+                  <option>Solicitado</option>
+                  <option>Enviado</option>
+                  <option>Concluído</option>
+                  <option>Recusado</option>
+                </select>
+                <select className="filter-field" value={filaFiltro} onChange={(e) => setFilaFiltro(e.target.value)}>
+                  <option>Todas as filas</option>
+                  <option>Pedidos de brincos</option>
+                  <option>Movimentações</option>
+                </select>
+                <select className="filter-field" value={aprovadorFiltro} onChange={(e) => setAprovadorFiltro(e.target.value)}>
+                  <option>Todos os aprovadores</option>
+                  <option>SEAPI</option>
+                  <option>Destinatário</option>
+                </select>
+                <select className="filter-field" value={municipioFiltro} onChange={(e) => setMunicipioFiltro(e.target.value)}>
+                  <option>Todos os municípios</option>
+                  {municipiosDistintos.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </form>
+        <div className="panel-foot">
+          <span>Exibindo {rows.length} de {pedidos.length} registros</span>
         </div>
         <div className="table-wrap">
           <table className="history-table">
@@ -8911,7 +8966,16 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
               </tr>
             </thead>
             <tbody>
-              {pedidos.map((p) => (
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6}>
+                    <span className="aging-note" style={{ display: "block", padding: "12px 16px" }}>
+                      Nenhum registro para o recorte selecionado — ajuste os filtros ou limpe a busca.
+                    </span>
+                  </td>
+                </tr>
+              )}
+              {rows.map((p) => (
                 <Fragment key={p.id}>
                   <tr className={expanded === p.id ? "expanded-row" : ""}>
                     <td>
