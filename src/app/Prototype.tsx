@@ -804,6 +804,12 @@ export default function Prototype() {
       pathSegments[2] === "estocador-auditoria");
   const isFaixaAuditoriaPage =
     page === "numeracao" && pathSegments.length === 4 && pathSegments[3] === "auditoria";
+  const isHistoricoDetailPage =
+    page === "historico" && pathSegments.length === 3 && pathSegments[2] !== undefined;
+  const isHistoricoAuditoriaPage =
+    page === "historico" &&
+    pathSegments.length === 4 &&
+    pathSegments[3] === "auditoria";
   const isAutomacoesAuditoriaPage =
     page === "automacoes" && pathSegments.length === 3 && pathSegments[2] === "auditoria";
   const headingTitle = isMovementItemsPage
@@ -1515,6 +1521,216 @@ export function MovementItemsPage() {
         </div>
       </section>
     </>
+  );
+}
+
+// Página dedicada de detalhes da movimentação — padrão dos detalhes (hero + painéis)
+export function MovementDetailPage() {
+  const { movementId } = useParams();
+  const context = useOutletContext<PrototypeContext>();
+  const role = context.role;
+  const movement = context.moves.find((item) => String(item.id) === movementId);
+
+  if (!movement) {
+    return (
+      <section className="panel movement-not-found">
+        <div className="empty">
+          <div>
+            <Icon name="alert" size={27} />
+          </div>
+          <strong>Movimentação não encontrada</strong>
+          <span>O registro informado não existe ou não está disponível para este perfil.</span>
+          <Link className="btn secondary" to={`/${context.role}/historico`}>
+            Voltar às movimentações
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <div className="tag-detail-actions tag-detail-hero">
+        <Link
+          className="tag-back-link"
+          to={`/${role}/historico`}
+          aria-label="Voltar às movimentações"
+        >
+          ←
+        </Link>
+        <div className="tag-detail-hero-copy">
+          <div>
+            <h1>Movimentação #MOV-2025-{movement.id}</h1>
+            <Badge
+              tone={
+                movement.type === "Perda"
+                  ? "red"
+                  : movement.type === "Devolução"
+                    ? "purple"
+                    : movement.type === "Venda"
+                      ? "blue"
+                      : "neutral"
+              }
+            >
+              {movement.type}
+            </Badge>
+          </div>
+          <p>
+            {movement.qty.toLocaleString("pt-BR")} brincos &middot;{" "}
+            {movement.date} às {movement.time} &middot; leitura de barras realizada
+          </p>
+        </div>
+        <Link className="btn secondary" to={`/${role}/historico/${movement.id}/auditoria`}>
+          <Icon name="history" size={15} /> Auditoria da movimentação
+        </Link>
+      </div>
+
+      <div className="tag-detail-grid">
+        <section className="panel tag-info-panel custody-panel">
+          <div className="panel-head">
+            <div>
+              <h2>Dados da movimentação</h2>
+              <p>Informações completas do registro</p>
+            </div>
+            <div className="stat-icon blue">
+              <Icon name="history" size={18} />
+            </div>
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Tipo de movimento</dt>
+                <dd>{movement.type}</dd>
+              </div>
+              <div>
+                <dt>Data e hora</dt>
+                <dd>{movement.date} às {movement.time}</dd>
+              </div>
+              <div>
+                <dt>Quantidade de brincos</dt>
+                <dd>{movement.qty.toLocaleString("pt-BR")}</dd>
+              </div>
+              <div>
+                <dt>Brincos</dt>
+                <dd>{movement.items}</dd>
+              </div>
+              <div>
+                <dt>Registro de leitura</dt>
+                <dd>
+                  <span className="audit-check">
+                    <Icon name="check" size={14} /> Leitura de barras realizada
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section className="panel tag-info-panel origin-panel">
+          <div className="panel-head">
+            <div>
+              <h2>Rota da custódia</h2>
+              <p>De quem saiu e para quem foi</p>
+            </div>
+            <div className="stat-icon green">
+              <Icon name="transfer" size={18} />
+            </div>
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Origem</dt>
+                <dd>
+                  <strong>{movement.from}</strong>
+                </dd>
+              </div>
+              <div>
+                <dt>Destino</dt>
+                <dd>{movement.to}</dd>
+              </div>
+              <div>
+                <dt>Situação</dt>
+                <dd>
+                  <Badge tone="green">{movement.state}</Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>Movimento vinculado</dt>
+                <dd>{movement.link ?? "—"}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+// Página dedicada de auditoria da movimentação — rastro derivado do registro
+export function AuditoriaMovimentacaoPage() {
+  const { movementId } = useParams();
+  const context = useOutletContext<PrototypeContext>();
+  const role = context.role;
+  const movement = context.moves.find((item) => String(item.id) === movementId);
+  const auditoria: RegistroAuditoria[] = [];
+  if (movement) {
+    auditoria.push({
+      quando: `${movement.date} ${movement.time}`,
+      usuario: "sistema",
+      evento: "Movimentação registrada",
+      detalhe: `${movement.type} · ${movement.qty.toLocaleString("pt-BR")} brincos · leitura de barras realizada`,
+    });
+    auditoria.push({
+      quando: movement.date,
+      usuario: "sistema",
+      evento: "Custódia encerrada na origem e aberta no destino",
+      detalhe: `${movement.from} → ${movement.to}`,
+    });
+    if (movement.used) {
+      auditoria.push({
+        quando: "—",
+        usuario: "sistema",
+        evento: "Brincos aplicados a animal",
+        detalhe: "reversão apenas por estorno da SEAPI (RN-005)",
+      });
+    }
+    if (movement.link) {
+      auditoria.push({
+        quando: "—",
+        usuario: "sistema",
+        evento: "Vinculada ao movimento original",
+        detalhe: `${movement.link} · Venda original`,
+      });
+    }
+    auditoria.push({
+      quando: movement.date,
+      usuario: "sistema",
+      evento: `Situação final: ${movement.state}`,
+    });
+  }
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Auditoria da movimentação</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/historico/${movementId ?? ""}`}>
+            ← Voltar à movimentação
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        <span>
+          {movement
+            ? `Rastro do registro #MOV-2025-${movement.id} — derivado do próprio registro e dos vínculos de custódia. O rastro é imutável e acompanha o ciclo de vida da movimentação.`
+            : "Movimentação não localizada — volte ao histórico."}
+        </span>
+      </div>
+      <BlocoAuditoria
+        registros={auditoria}
+        titulo={movement ? `#MOV-2025-${movement.id}` : "Sem movimentação"}
+        subtitulo="Do evento mais recente para o mais antigo"
+      />
+    </div>
   );
 }
 
@@ -2381,37 +2597,88 @@ function StockPage({
   );
 }
 
+const MAX_BRINCOS_POR_CAIXA = 1000;
+
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");
   const [endCode, setEndCode] = useState("");
   const [boxes, setBoxes] = useState<
-    { id: number; start: string; end: string; quantity: number }[]
+    {
+      id: number;
+      start: string;
+      end: string;
+      quantity: number;
+      origem: "barras" | "rfid";
+      alertas: string[];
+    }[]
   >([]);
   const [error, setError] = useState("");
+  const [modoLeitura, setModoLeitura] = useState<"barras" | "rfid">("barras");
+  const [rfidLog, setRfidLog] = useState<{ tipo: "ok" | "alerta" | "erro"; texto: string }[]>([]);
+  const [rfidPendente, setRfidPendente] = useState<{
+    start: string;
+    end: string;
+    quantity: number;
+    alertas: string[];
+  } | null>(null);
   const totalQuantity = boxes.reduce((total, box) => total + box.quantity, 0);
 
   function normalizeCode(value: string) {
     return value.replace(/\D/g, "");
   }
 
-  function addBox(startValue = startCode, endValue = endCode) {
-    const start = normalizeCode(startValue);
-    const end = normalizeCode(endValue);
+  // Camada de validações do recebimento (RN-002/004) — vale para leitura por código de barras E por RFID.
+  // Cada regra bloqueia a caixa com o motivo explícito — nada de confirmar com dados improváveis.
+  function validarFaixa(start: string, end: string): string[] {
+    const erros: string[] = [];
     if (
       start.length !== 15 ||
       end.length !== 15 ||
       !/^(105|076)/.test(start) ||
       !/^(105|076)/.test(end)
     ) {
-      setError("Leia os dois códigos de 15 dígitos impressos na caixa.");
-      return;
+      erros.push("Leia os dois códigos de 15 dígitos impressos na caixa (prefixo 105 ou 076).");
+      return erros;
+    }
+    if (start === end) {
+      erros.push(
+        "Código inicial e final idênticos — uma caixa nunca contém um único brinco. Confira a leitura.",
+      );
+      return erros;
+    }
+    if (start.slice(0, 3) !== end.slice(0, 3)) {
+      erros.push(
+        "Códigos de padrões diferentes (105 × 076) — a caixa não pode misturar padrões de numeração.",
+      );
+      return erros;
     }
     if (Number(end) < Number(start)) {
-      setError("O código final deve ser maior ou igual ao código inicial.");
-      return;
+      erros.push("O código final deve ser maior que o código inicial.");
+      return erros;
     }
-    if (boxes.some((box) => box.start === start && box.end === end)) {
-      setError("Esta caixa já foi adicionada à conferência.");
+    const quantidade = Number(end) - Number(start) + 1;
+    if (quantidade > MAX_BRINCOS_POR_CAIXA) {
+      erros.push(
+        `A faixa lida contém ${quantidade.toLocaleString("pt-BR")} brincos — acima do máximo de ${MAX_BRINCOS_POR_CAIXA} por caixa. Provável erro de leitura.`,
+      );
+    }
+    const s = Number(start);
+    const e = Number(end);
+    const conflito = boxes.find((b) => s <= Number(b.end) && Number(b.start) <= e);
+    if (conflito) {
+      erros.push(
+        `Sobreposição com a caixa já lida (${formatTag(conflito.start)} → ${formatTag(conflito.end)}) — o mesmo brinco não pode entrar duas vezes na conferência.`,
+      );
+    }
+    return erros;
+  }
+
+  function addBox(startValue = startCode, endValue = endCode) {
+    const start = normalizeCode(startValue);
+    const end = normalizeCode(endValue);
+    const erros = validarFaixa(start, end);
+    if (erros.length > 0) {
+      setError(erros[0]);
       return;
     }
     setBoxes((current) => [
@@ -2421,11 +2688,102 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
         start,
         end,
         quantity: Number(end) - Number(start) + 1,
+        origem: "barras",
+        alertas: [],
       },
     ]);
     setStartCode("");
     setEndCode("");
     setError("");
+  }
+
+  // Leitura RFID — cada brinco eletrônico responde com o próprio número; a camada deduplica
+  // leituras repetidas, descarta tags fora do padrão, detecta lacunas na sequência e deriva a
+  // faixa da caixa, aplicando as MESMAS validações da leitura por código de barras.
+  function processarLeituraRfid(tagsBrutas: string[]) {
+    const norm = tagsBrutas.map((t) => t.replace(/\D/g, ""));
+    const validas = norm.filter((t) => t.length === 15 && /^(105|076)/.test(t));
+    const invalidas = norm.length - validas.length;
+    const unicas = [...new Set(validas)];
+    const duplicatas = validas.length - unicas.length;
+    const log: { tipo: "ok" | "alerta" | "erro"; texto: string }[] = [];
+    const padroes = [...new Set(unicas.map((t) => t.slice(0, 3)))];
+    if (padroes.length > 1) {
+      log.push({
+        tipo: "erro",
+        texto: `A caixa contém brincos de padrões diferentes (${padroes.join(" × ")}) — não pode ser recebida em uma única faixa.`,
+      });
+      setRfidLog(log);
+      setRfidPendente(null);
+      return;
+    }
+    if (invalidas > 0) {
+      log.push({
+        tipo: "alerta",
+        texto: `${invalidas} ${invalidas === 1 ? "tag descartada" : "tags descartadas"} — número fora do padrão da aplicação.`,
+      });
+    }
+    if (duplicatas > 0) {
+      log.push({
+        tipo: "ok",
+        texto: `${duplicatas} ${duplicatas === 1 ? "leitura duplicada descartada" : "leituras duplicadas descartadas"} — o mesmo brinco respondeu mais de uma vez.`,
+      });
+    }
+    const nums = unicas.map(Number).sort((a, b) => a - b);
+    const start = String(nums[0]).padStart(15, "0");
+    const end = String(nums[nums.length - 1]).padStart(15, "0");
+    const esperadoNoIntervalo = Number(end) - Number(start) + 1;
+    const lacunas = esperadoNoIntervalo - unicas.length;
+    const alertas: string[] = [];
+    log.push({
+      tipo: "ok",
+      texto: `${unicas.length} brincos únicos identificados — faixa derivada ${formatTag(start)} → ${formatTag(end)}.`,
+    });
+    if (lacunas > 0) {
+      alertas.push(
+        `${lacunas} ${lacunas === 1 ? "brinco ausente" : "brincos ausentes"} na sequência lida (${esperadoNoIntervalo} no intervalo, ${unicas.length} lidos).`,
+      );
+    }
+    const erros = validarFaixa(start, end);
+    if (erros.length > 0) {
+      erros.forEach((e) => log.push({ tipo: "erro", texto: e }));
+      setRfidLog(log);
+      setRfidPendente(null);
+      return;
+    }
+    alertas.forEach((a) => log.push({ tipo: "alerta", texto: a }));
+    log.push({ tipo: "ok", texto: "Caixa pronta para entrar na conferência." });
+    setRfidLog(log);
+    setRfidPendente({ start, end, quantity: unicas.length, alertas });
+  }
+
+  function simularLeituraRfid() {
+    const base = 76210077200001;
+    const tags: string[] = [];
+    for (let i = 0; i < 240; i++) {
+      if (i === 120 || i === 121) continue; // lacuna real de 2 brincos — demonstra a detecção
+      tags.push(String(base + i).padStart(15, "0"));
+    }
+    tags.push(String(base + 55).padStart(15, "0")); // leitura duplicada do mesmo brinco
+    tags.push("999999999999999"); // tag fora do padrão da aplicação
+    processarLeituraRfid(tags);
+  }
+
+  function adicionarCaixaRfid() {
+    if (!rfidPendente) return;
+    setBoxes((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        start: rfidPendente.start,
+        end: rfidPendente.end,
+        quantity: rfidPendente.quantity,
+        origem: "rfid",
+        alertas: rfidPendente.alertas,
+      },
+    ]);
+    setRfidPendente(null);
+    setRfidLog([]);
   }
 
   return (
@@ -2441,6 +2799,22 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
               <p>Cada caixa contém uma única faixa, definida pelo código inicial e pelo final.</p>
             </div>
           </div>
+          <div className="segmented atend-mode-toggle">
+            <button
+              className={modoLeitura === "barras" ? "selected" : ""}
+              onClick={() => setModoLeitura("barras")}
+            >
+              Código de barras — 2 códigos
+            </button>
+            <button
+              className={modoLeitura === "rfid" ? "selected" : ""}
+              onClick={() => setModoLeitura("rfid")}
+            >
+              Leitor RFID
+            </button>
+          </div>
+          {modoLeitura === "barras" ? (
+            <>
           <div className="box-rule-note">
             <div>
               <Icon name="box" size={18} />
@@ -2504,6 +2878,42 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
               <Icon name="plus" size={15} /> Adicionar caixa à conferência
             </button>
           </div>
+            </>
+          ) : (
+            <>
+              <p className="modal-copy">
+                Aproxime o leitor RFID da caixa — cada brinco eletrônico responde com o próprio
+                número. As validações deduplicam leituras repetidas, descartam tags fora do
+                padrão, detectam lacunas na sequência e bloqueiam sobreposição com caixas já
+                conferidas.
+              </p>
+              <div className="add-box-action">
+                <button className="btn secondary" onClick={simularLeituraRfid}>
+                  <Icon name="scan" size={15} /> Simular leitura RFID da caixa
+                </button>
+              </div>
+              {rfidLog.length > 0 && (
+                <div className="rfid-log">
+                  {rfidLog.map((l, i) => (
+                    <p key={i} className={`rfid-log-linha rfid-${l.tipo}`}>
+                      <Icon name={l.tipo === "ok" ? "check" : "alert"} size={13} /> {l.texto}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {rfidPendente && (
+                <div className="add-box-action">
+                  <span>
+                    {rfidPendente.quantity} brincos únicos · faixa {formatTag(rfidPendente.start)} →{" "}
+                    {formatTag(rfidPendente.end)}
+                  </span>
+                  <button className="btn primary" onClick={adicionarCaixaRfid}>
+                    <Icon name="plus" size={15} /> Adicionar caixa à conferência
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </section>
         <section className="panel">
           <div className="panel-head">
@@ -2533,6 +2943,7 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                     <th>Código inicial</th>
                     <th>Código final</th>
                     <th>Quantidade</th>
+                    <th>Leitura</th>
                     <th>Conferência</th>
                     <th></th>
                   </tr>
@@ -2548,6 +2959,16 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                       <td className="tag-number">{formatTag(box.end)}</td>
                       <td>
                         <strong>{box.quantity}</strong>
+                        {box.alertas.length > 0 && (
+                          <small style={{ display: "block", color: "#b57b2e" }}>
+                            {box.alertas[0]}
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        <Badge tone={box.origem === "rfid" ? "blue" : "neutral"}>
+                          {box.origem === "rfid" ? "RFID" : "Barras"}
+                        </Badge>
                       </td>
                       <td>
                         <Badge
@@ -3149,14 +3570,10 @@ function SalePage({ onConfirm }: { onConfirm: (tags: string[], producer: string)
 function HistoryPage({
   role,
   moves,
-  expanded,
-  setExpanded,
   onModal,
 }: {
   role: Role;
   moves: typeof initialMoves;
-  expanded: number | null;
-  setExpanded: (n: number | null) => void;
   onModal: (m: Modal) => void;
 }) {
   const [buscaMov, setBuscaMov] = useState("");
@@ -3259,8 +3676,7 @@ function HistoryPage({
               </tr>
             )}
             {rows.map((m) => (
-              <Fragment key={m.id}>
-                <tr className={expanded === m.id ? "expanded-row" : ""}>
+                <tr key={m.id}>
                   <td>
                     {m.date}
                     <small>{m.time}</small>
@@ -3310,42 +3726,12 @@ function HistoryPage({
                           Estornar
                         </button>
                       )}
-                      <button
-                        className="icon-btn"
-                        onClick={() => setExpanded(expanded === m.id ? null : m.id)}
-                      >
+                      <Link className="icon-btn" to={`/${role}/historico/${m.id}`} aria-label="Abrir detalhes da movimentação">
                         <Icon name="eye" size={16} />
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>
-                {expanded === m.id && (
-                  <tr className="detail-row">
-                    <td colSpan={8}>
-                      <div>
-                        <section>
-                          <span>ITENS DO MOVIMENTO</span>
-                          <strong>{m.items}</strong>
-                        </section>
-                        <section>
-                          <span>REGISTRADO POR</span>
-                          <strong>Mariana T. Oliveira</strong>
-                          <small>Usuário institucional · IP 10.44.18.72</small>
-                        </section>
-                        {m.link && (
-                          <section>
-                            <span>MOVIMENTO VINCULADO</span>
-                            <a>{m.link} · Venda original</a>
-                          </section>
-                        )}
-                        <Link className="btn secondary" to={`/${role}/historico/${m.id}/itens`}>
-                          Ver todos os itens
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
             ))}
           </tbody>
         </table>
