@@ -8873,18 +8873,16 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     }
   }
   return (
-    <>
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Aprovações — pedidos e movimentações</h2>
-            <p>Pedidos de brincos e transferências com aprovação aguardando decisão da SEAPI — aprovar executa a movimentação; recusar registra o motivo.</p>
-          </div>
+    <div className="page-container">
+      <section className="header">
+        <h3>Fila de aprovações</h3>
+        <div className="header-actions">
           <Link to="novo" className="btn primary">
             <Icon name="plus" /> Novo pedido
           </Link>
         </div>
-        <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+      </section>
+      <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
           <div className="filters-header">
             <button type="button" className="filters-toggle" onClick={() => setFiltersExpanded((v) => !v)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -8950,12 +8948,10 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
             </div>
           )}
         </form>
-        <div className="panel-foot">
-          <span>Exibindo {rows.length} de {pedidos.length} registros</span>
-        </div>
-        <div className="table-wrap">
-          <table className="history-table">
-            <thead>
+
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
               <tr>
                 <th>Ator que está pedindo</th>
                 <th>Município</th>
@@ -9097,11 +9093,10 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="panel-foot">
-          <span>Exibindo {pedidos.length} pedidos · estoque central como origem única</span>
-        </div>
-      </section>
+      </div>
+      <div className="panel-foot">
+        <span>Exibindo {rows.length} de {pedidos.length} registros · estoque central como origem única</span>
+      </div>
       {atending && (
         <ModalShell
           title={`Atender pedido de ${atending.ator}`}
@@ -9294,7 +9289,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
           </div>
         </ModalShell>
       )}
-    </>
+    </div>
   );
 }
 
