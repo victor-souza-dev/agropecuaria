@@ -9455,9 +9455,7 @@ export function AprovacaoDetalhePage() {
               {pedido.atendente && (
                 <div>
                   <dt>Atendente solicitante</dt>
-                  <dd>
-                    {pedido.atendente} — operou o pedido na PJ {pedido.ator}
-                  </dd>
+                  <dd>{pedido.atendente}</dd>
                 </div>
               )}
               <div>
