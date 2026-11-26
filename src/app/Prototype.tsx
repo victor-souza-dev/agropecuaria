@@ -63,7 +63,7 @@ type PedidoSda = {
   atendente: string | null;
   tipo: string;
   qtd: number;
-  itens: string;
+  composicao: { rotulo: string; intervalo: string; qty: number }[];
   situacao: "SOLICITADO" | "ENVIADO" | "CONCLUIDO" | "RECUSADO";
   data: string;
   mov: string | null;
@@ -80,8 +80,11 @@ function pedidosSdaSeed(): PedidoSda[] {
       municipio: "Pelotas",
       atendente: "Marina Duarte",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
-      qtd: 480,
-      itens: "FX-C01 · 240 brincos · FX-C02 · 240 brincos",
+      qtd: 360,
+      composicao: [
+        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+        { rotulo: "FX-C02", intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
+      ],
       situacao: "SOLICITADO",
       data: "16/06/2025",
       mov: null,
@@ -95,8 +98,12 @@ function pedidosSdaSeed(): PedidoSda[] {
       municipio: "Bagé",
       atendente: null,
       tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
-      qtd: 960,
-      itens: "FX-C01 · 240 · FX-C02 · 120 · FX-C03 · 600 (faixas complementares)",
+      qtd: 380,
+      composicao: [
+        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+        { rotulo: "FX-C02", intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
+        { rotulo: "FX-C03", intervalo: `${formatTag("076210077183401")} a ${formatTag("076210077183420")}`, qty: 20 },
+      ],
       situacao: "ENVIADO",
       data: "15/06/2025",
       mov: "#MOV-2025-1847",
@@ -111,7 +118,9 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
-      itens: "FX-C02 · 60 brincos",
+      composicao: [
+        { rotulo: "FX-C02 · sub-faixa", intervalo: "sub-faixa da faixa, brincos sequenciais a definir na distribuição", qty: 60 },
+      ],
       situacao: "CONCLUIDO",
       data: "14/06/2025",
       mov: "#MOV-2025-1842",
@@ -126,7 +135,9 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: "Carlos Menezes",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
-      itens: "FX-C01 · 240 brincos",
+      composicao: [
+        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+      ],
       situacao: "RECUSADO",
       data: "13/06/2025",
       mov: null,
@@ -142,7 +153,9 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
       qtd: 20,
-      itens: "076.21.007722000-1 · 20 brincos",
+      composicao: [
+        { rotulo: "Bloco sequencial", intervalo: `${formatTag("076210077220000")} a ${formatTag("076210077220019")}`, qty: 20 },
+      ],
       situacao: "SOLICITADO",
       data: "18/06/2025",
       mov: null,
@@ -157,7 +170,9 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
       qtd: 15,
-      itens: "105.43.005700100-1 · 15 brincos",
+      composicao: [
+        { rotulo: "Bloco sequencial", intervalo: `${formatTag("105430057001000")} a ${formatTag("105430057001014")}`, qty: 15 },
+      ],
       situacao: "SOLICITADO",
       data: "18/06/2025",
       mov: null,
@@ -9466,10 +9481,6 @@ export function AprovacaoDetalhePage() {
                 <dt>Data da solicitação</dt>
                 <dd>{pedido.data}</dd>
               </div>
-              <div>
-                <dt>Composição (brincos específicos)</dt>
-                <dd>{pedido.itens}</dd>
-              </div>
             </dl>
           </div>
         </section>
@@ -9536,6 +9547,50 @@ export function AprovacaoDetalhePage() {
           </div>
         </section>
       </div>
+
+      <section className="panel faixa-pieces-panel">
+        <div className="panel-head">
+          <div>
+            <h2>Composição</h2>
+            <p>
+              Os brincos específicos deste{" "}
+              {pedido.fila === "movimentacao" ? "envio" : "pedido"}
+            </p>
+          </div>
+          <Badge tone="purple">
+            {pedido.composicao.length}{" "}
+            {pedido.fila === "movimentacao"
+              ? "bloco sequencial"
+              : pedido.composicao.length === 1
+                ? "faixa"
+                : "faixas"}
+          </Badge>
+        </div>
+        <div className="table-wrap">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>{pedido.fila === "movimentacao" ? "Bloco" : "Faixa"}</th>
+                <th>Intervalo</th>
+                <th>Brincos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pedido.composicao.map((item, i) => (
+                <tr key={i}>
+                  <td>
+                    <strong>{item.rotulo}</strong>
+                  </td>
+                  <td>{item.intervalo}</td>
+                  <td>
+                    <strong>{item.qty.toLocaleString("pt-BR")}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }
