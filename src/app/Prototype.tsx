@@ -2785,9 +2785,22 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
       setError(erros[0]);
       return false;
     }
+    // vínculo com o envio: o selecionado — ou o envio cujo intervalo contém a faixa lida
+    const s = Number(start);
+    const e = Number(end);
+    const envio =
+      envios.find((env) => env.id === envioSelecionado) ??
+      envios.find((env) => s >= Number(env.inicio) && e <= Number(env.fim)) ??
+      null;
     setBoxes((current) => [
       ...current,
-      { id: Date.now(), start, end, quantity: Number(end) - Number(start) + 1 },
+      {
+        id: Date.now(),
+        start,
+        end,
+        quantity: Number(end) - Number(start) + 1,
+        envioId: envio?.id ?? null,
+      },
     ]);
     setStartCode("");
     setEndCode("");
@@ -3001,13 +3014,25 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
           <div className="confirm-bar">
             <span>
               <Icon name="alert" /> Ao confirmar, os brincos das caixas lidas serão creditados no
-              seu estoque, com o vínculo da faixa e da fábrica de origem.
+              seu estoque e os envios correspondentes serão concluídos.
             </span>
             <button
               className="btn primary"
               disabled={!boxes.length}
               onClick={() => {
-                onSuccess("Brincos recebidos — estoque creditado.", totalQuantity);
+                const concluidos = [
+                  ...new Set(boxes.map((b) => b.envioId).filter((id): id is number => id !== null)),
+                ];
+                onSuccess(
+                  concluidos.length > 0
+                    ? `Brincos recebidos — estoque creditado e ${concluidos.length} ${
+                        concluidos.length === 1 ? "envio concluído" : "envios concluídos"
+                      }.`
+                    : "Brincos recebidos — estoque creditado.",
+                  totalQuantity,
+                );
+                setEnvios((current) => current.filter((e) => !concluidos.includes(e.id)));
+                setEnvioSelecionado(null);
                 setBoxes([]);
               }}
             >
@@ -3018,37 +3043,50 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
       </div>
       <aside className="context-card">
         <div className="context-head">
-          <span>Pedido esperado</span>
-          <Badge tone="yellow">Pendente</Badge>
+          <span>Envios em trânsito</span>
+          <Badge tone="yellow">{envios.length}</Badge>
         </div>
-        <strong>{PEDIDO_ESPERADO.fabrica}</strong>
-        <dl>
-          <div>
-            <dt>Fábrica</dt>
-            <dd>{PEDIDO_ESPERADO.fabrica}</dd>
+        {envios.length === 0 ? (
+          <p className="info-note">
+            <Icon name="check" /> Nenhum envio em trânsito — o próximo recebimento será registrado
+            sem vínculo de pedido.
+          </p>
+        ) : (
+          <div className="envios-lista">
+            {envios.map((env) => (
+              <button
+                key={env.id}
+                type="button"
+                className={`envio-card ${envioSelecionado === env.id ? "selecionado" : ""}`}
+                title={
+                  envioSelecionado === env.id
+                    ? "Selecionado — as caixas lidas serão conferidas contra este envio"
+                    : "Clique para conferir as próximas caixas contra este envio"
+                }
+                onClick={() => setEnvioSelecionado((s) => (s === env.id ? null : env.id))}
+              >
+                <div className="envio-head">
+                  <Badge tone={env.tipo === "pedido" ? "yellow" : "blue"}>
+                    {env.tipo === "pedido" ? "Pedido" : "Transferência"}
+                  </Badge>
+                  <span>enviado em {env.dataEnvio}</span>
+                </div>
+                <strong>{env.origem}</strong>
+                <span className="envio-qty">{env.quantidade} brincos</span>
+                <div className="expected-range">
+                  <span>FAIXA ESPERADA</span>
+                  <strong>{formatTag(env.inicio)}</strong>
+                  <i>até</i>
+                  <strong>{formatTag(env.fim)}</strong>
+                </div>
+              </button>
+            ))}
           </div>
-          <div>
-            <dt>Quantidade</dt>
-            <dd>{PEDIDO_ESPERADO.quantidade} brincos</dd>
-          </div>
-          <div>
-            <dt>Caixas esperadas</dt>
-            <dd>1 caixa · 2 códigos</dd>
-          </div>
-          <div>
-            <dt>Envio declarado</dt>
-            <dd>16/06/2025</dd>
-          </div>
-        </dl>
-        <div className="expected-range">
-          <span>FAIXA ESPERADA</span>
-          <strong>{formatTag(PEDIDO_ESPERADO.inicio)}</strong>
-          <i>até</i>
-          <strong>{formatTag(PEDIDO_ESPERADO.fim)}</strong>
-        </div>
+        )}
         <p className="info-note">
-          <Icon name="alert" /> A leitura só fica completa após os códigos inicial e final da caixa.
-          Divergências serão destacadas antes da confirmação.
+          <Icon name="alert" /> A conferência compara cada caixa lida com o envio selecionado — ou
+          localiza automaticamente o envio pela faixa. A caixa sem correspondência entra como sem
+          vínculo.
         </p>
       </aside>
     </div>
@@ -3677,43 +3715,48 @@ function HistoryPage({
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 </button>
-                {pickerAberto === "de" && (
-                  <div className="month-picker">
-                    <div className="mp-years">
-                      {[2024, 2025, 2026].map((aa) => (
-                        <button
-                          key={aa}
-                          type="button"
-                          className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
-                          onClick={() => setAnoPicker(aa)}
-                        >
-                          {aa}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mp-months">
-                      {mesesCurto.map((mes, idx) => {
-                        const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
-                        return (
+                {pickerAberto === "de" &&
+                  createPortal(
+                    <div
+                      className="month-picker"
+                      style={{ top: pickerPos.top, left: pickerPos.left }}
+                    >
+                      <div className="mp-years">
+                        {[2024, 2025, 2026].map((aa) => (
                           <button
-                            key={mes}
+                            key={aa}
                             type="button"
-                            className={`mp-month ${periodoDe === valor ? "selected" : ""}`}
-                            onClick={() => {
-                              setPeriodoDe(valor);
-                              setPickerAberto(null);
-                            }}
+                            className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
+                            onClick={() => setAnoPicker(aa)}
                           >
-                            {mes}
+                            {aa}
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        ))}
+                      </div>
+                      <div className="mp-months">
+                        {mesesCurto.map((mes, idx) => {
+                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                          return (
+                            <button
+                              key={mes}
+                              type="button"
+                              className={`mp-month ${periodoDe === valor ? "selected" : ""}`}
+                              onClick={() => {
+                                setPeriodoDe(valor);
+                                setPickerAberto(null);
+                              }}
+                            >
+                              {mes}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>,
+                    document.body,
+                  )}
               </div>
               <span className="period-sep">até</span>
-              <div className="period-input-wrap">
+              <div className="period-input-wrap" ref={ateRef}>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -3727,47 +3770,49 @@ function HistoryPage({
                   type="button"
                   className="period-calendar"
                   aria-label="Selecionar mês final"
-                  onClick={() => {
-                    setPickerAberto(pickerAberto === "ate" ? null : "ate");
-                    setAnoPicker(Number(periodoAte.split("/")[1] ?? periodoAte) || 2025);
-                  }}
+                  onClick={() => abrirPicker("ate")}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 </button>
-                {pickerAberto === "ate" && (
-                  <div className="month-picker">
-                    <div className="mp-years">
-                      {[2024, 2025, 2026].map((aa) => (
-                        <button
-                          key={aa}
-                          type="button"
-                          className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
-                          onClick={() => setAnoPicker(aa)}
-                        >
-                          {aa}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mp-months">
-                      {mesesCurto.map((mes, idx) => {
-                        const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
-                        return (
+                {pickerAberto === "ate" &&
+                  createPortal(
+                    <div
+                      className="month-picker"
+                      style={{ top: pickerPos.top, left: pickerPos.left }}
+                    >
+                      <div className="mp-years">
+                        {[2024, 2025, 2026].map((aa) => (
                           <button
-                            key={mes}
+                            key={aa}
                             type="button"
-                            className={`mp-month ${periodoAte === valor ? "selected" : ""}`}
-                            onClick={() => {
-                              setPeriodoAte(valor);
-                              setPickerAberto(null);
-                            }}
+                            className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
+                            onClick={() => setAnoPicker(aa)}
                           >
-                            {mes}
+                            {aa}
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        ))}
+                      </div>
+                      <div className="mp-months">
+                        {mesesCurto.map((mes, idx) => {
+                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                          return (
+                            <button
+                              key={mes}
+                              type="button"
+                              className={`mp-month ${periodoAte === valor ? "selected" : ""}`}
+                              onClick={() => {
+                                setPeriodoAte(valor);
+                                setPickerAberto(null);
+                              }}
+                            >
+                              {mes}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>,
+                    document.body,
+                  )}
               </div>
             </div>
           </div>
