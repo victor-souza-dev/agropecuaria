@@ -3063,57 +3063,131 @@ function ProdutorFaixaDetailPage({ s1, s2 }: { s1: string; s2: string }) {
     );
   }
   const status = piece.note.includes("aplicados") ? "Usado" : "Disponível";
+  const usado = status === "Usado";
+  const padrao = piece.s1.startsWith("076") ? "Internacional (076)" : "Nacional · SISBOV (105)";
+  const dataEntrada = `${piece.note.match(/\d{2}\/\d{2}/)?.[0] ?? "—"}/2025`;
   const brincos = Array.from({ length: piece.qty }, (_, i) => ({
     number: String(Number(piece.s1) + i).padStart(15, "0"),
     status,
   }));
   return (
     <>
-      <section className="header">
-        <h3>Detalhe da faixa</h3>
-        <div className="header-actions">
-          <button
-            className="btn secondary voltar-pill"
-            onClick={() => navigate("/produtor/estoque")}
-          >
-            ← Voltar ao estoque
-          </button>
-        </div>
-      </section>
-      <section className="panel">
-        <div className="panel-head">
+      <div className="tag-detail-actions tag-detail-hero">
+        <Link className="tag-back-link" to="/produtor/estoque" aria-label="Voltar ao estoque">
+          ←
+        </Link>
+        <div className="tag-detail-hero-copy">
           <div>
-            <h2>
-              {formatTag(piece.s1)} <em>a</em> {formatTag(piece.s2)}
-            </h2>
-            <p>{piece.qty} brincos sob a sua custódia</p>
+            <h1>
+              Faixa {formatTag(piece.s1)} a {formatTag(piece.s2)}
+            </h1>
+            <Badge tone={usado ? "red" : "green"}>{status}</Badge>
           </div>
-          <Badge tone={status === "Usado" ? "red" : "green"}>{status}</Badge>
+          <p>
+            {piece.qty} brincos sob a sua custódia &middot; venda registrada pela loja
+            agropecuária &middot; leitura de barras realizada
+          </p>
         </div>
-        <div className="tag-detail-list">
-          <dl>
+      </div>
+
+      <div className="tag-detail-grid">
+        <section className="panel tag-info-panel custody-panel">
+          <div className="panel-head">
             <div>
-              <dt>Origem</dt>
-              <dd>{piece.note} — venda registrada pela loja agropecuária</dd>
+              <h2>Dados da faixa</h2>
+              <p>Informações completas do bloco que está com você</p>
             </div>
+            <div className="stat-icon blue">
+              <Icon name="hash" size={18} />
+            </div>
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Intervalo</dt>
+                <dd>
+                  {formatTag(piece.s1)} a {formatTag(piece.s2)}
+                </dd>
+              </div>
+              <div>
+                <dt>Quantidade de brincos</dt>
+                <dd>{piece.qty}</dd>
+              </div>
+              <div>
+                <dt>Padrão da numeração</dt>
+                <dd>{padrao}</dd>
+              </div>
+              <div>
+                <dt>Origem da entrada</dt>
+                <dd>Venda registrada pela loja agropecuária</dd>
+              </div>
+              <div>
+                <dt>Data da entrada</dt>
+                <dd>{dataEntrada}</dd>
+              </div>
+              <div>
+                <dt>Registro de leitura</dt>
+                <dd>
+                  <span className="audit-check">
+                    <Icon name="check" size={14} /> Leitura de barras realizada na venda
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section className="panel tag-info-panel origin-panel">
+          <div className="panel-head">
             <div>
-              <dt>Titular da custódia</dt>
-              <dd>{piece.titular}</dd>
+              <h2>Sua custódia</h2>
+              <p>O estado dos brincos enquanto estão com você</p>
             </div>
-            <div>
-              <dt>Padrão da numeração</dt>
-              <dd>Internacional (076)</dd>
+            <div className="stat-icon green">
+              <Icon name="box" size={18} />
             </div>
-          </dl>
-        </div>
-      </section>
-      <section className="panel">
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Titular da custódia</dt>
+                <dd>
+                  <strong>{piece.titular}</strong>
+                  <small>Produtor rural — fim da linha da custódia</small>
+                </dd>
+              </div>
+              <div>
+                <dt>Situação atual</dt>
+                <dd>
+                  <Badge tone={usado ? "red" : "green"}>
+                    {usado ? "Aplicados a animal" : "Disponíveis para aplicação"}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>Fabricante</dt>
+                <dd>Identifica Brasil S.A.</dd>
+              </div>
+              <div>
+                <dt>Reversão</dt>
+                <dd>
+                  {usado
+                    ? "Aplicados a animal — só revertem por estorno da SEAPI"
+                    : "Ainda podem voltar à loja por devolução"}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </div>
+
+      <section className="panel faixa-pieces-panel">
         <div className="panel-head">
           <div>
             <h2>Brincos desta faixa</h2>
-            <p>{piece.qty} brincos — a situação acompanha a faixa</p>
+            <p>A situação de cada brinco acompanha a faixa</p>
           </div>
-          <Badge tone={status === "Usado" ? "red" : "green"}>{status}</Badge>
+          <Badge tone={usado ? "red" : "green"}>{piece.qty} brincos {usado ? "aplicados" : "disponíveis"}</Badge>
         </div>
         <div className="table-wrap">
           <table className="history-table">
@@ -3128,7 +3202,7 @@ function ProdutorFaixaDetailPage({ s1, s2 }: { s1: string; s2: string }) {
               {brincos.map((b) => (
                 <tr key={b.number}>
                   <td className="tag-number">{formatTag(b.number)}</td>
-                  <td>Internacional (076)</td>
+                  <td>{padrao}</td>
                   <td>
                     <Badge tone={b.status === "Usado" ? "red" : "green"}>{b.status}</Badge>
                   </td>
