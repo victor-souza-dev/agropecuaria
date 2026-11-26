@@ -979,32 +979,6 @@ tbody tr:hover:not(.detail-row) {
   height: auto;
   padding: 0;
 }
-.rfid-log {
-  border: 1px solid #e7ebef;
-  border-radius: 8px;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-}
-.rfid-log-linha {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  line-height: 1.35;
-}
-.rfid-log-linha.rfid-ok {
-  color: #337a3b;
-}
-.rfid-log-linha.rfid-alerta {
-  color: #a06a1c;
-}
-.rfid-log-linha.rfid-erro {
-  color: #b03434;
-  font-weight: 700;
-}
 .scan-input textarea {
   flex: 1;
   border: 0;

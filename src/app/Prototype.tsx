@@ -2,7 +2,16 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 
-type Role = "seapi" | "loja" | "pf" | "fabrica" | "produtor";
+type Role =
+  | "seapi"
+  | "loja"
+  | "pf"
+  | "prefeitura"
+  | "cooperativa"
+  | "ida"
+  | "posto"
+  | "fabrica"
+  | "produtor";
 type Page =
   | "estoque"
   | "recebimento"
@@ -204,8 +213,16 @@ const PERFIS_INICIAIS: PerfilCatalogo[] = [
 
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "seapi", label: "SEAPI", detail: "Fiscal estadual" },
-  { id: "loja", label: "Loja Agropecuária", detail: "Agropecuária Pampa Sul Ltda." },
-  { id: "pf", label: "Estoquista PF", detail: "Antônio C. Silveira" },
+  {
+    id: "loja",
+    label: "Atendente de agropecuária",
+    detail: "Marina Duarte · Pampa Sul Ltda.",
+  },
+  { id: "pf", label: "Estoquista PF (credenciado)", detail: "Antônio C. Silveira" },
+  { id: "prefeitura", label: "Estocador municipal", detail: "Prefeitura de Bagé" },
+  { id: "cooperativa", label: "Integradora de leite", detail: "Cooperativa Vale do Verde" },
+  { id: "ida", label: "Inspetoria (IDA)", detail: "Fiscal estadual · Inspetoria de Bagé" },
+  { id: "posto", label: "Escritório (EDA)", detail: "Atendente · EDA Hulha Negra" },
   { id: "fabrica", label: "Fábrica de brincos", detail: "Identifica Brasil S.A." },
   { id: "produtor", label: "Produtor rural", detail: "João Pedro Fagundes" },
 ];
@@ -228,6 +245,26 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
     { id: "solicitar", label: "Solicitar brincos", icon: "request" },
   ],
   pf: [
+    { id: "estoque", label: "Meu estoque", icon: "box" },
+    { id: "recebimento", label: "Recebimento", icon: "scan" },
+    { id: "historico", label: "Movimentações", icon: "history" },
+  ],
+  prefeitura: [
+    { id: "estoque", label: "Meu estoque", icon: "box" },
+    { id: "recebimento", label: "Recebimento", icon: "scan" },
+    { id: "historico", label: "Movimentações", icon: "history" },
+  ],
+  cooperativa: [
+    { id: "estoque", label: "Meu estoque", icon: "box" },
+    { id: "recebimento", label: "Recebimento", icon: "scan" },
+    { id: "historico", label: "Movimentações", icon: "history" },
+  ],
+  ida: [
+    { id: "estoque", label: "Meu estoque", icon: "box" },
+    { id: "recebimento", label: "Recebimento", icon: "scan" },
+    { id: "historico", label: "Movimentações", icon: "history" },
+  ],
+  posto: [
     { id: "estoque", label: "Meu estoque", icon: "box" },
     { id: "recebimento", label: "Recebimento", icon: "scan" },
     { id: "historico", label: "Movimentações", icon: "history" },
@@ -2607,31 +2644,18 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
   const [startCode, setStartCode] = useState("");
   const [endCode, setEndCode] = useState("");
   const [boxes, setBoxes] = useState<
-    {
-      id: number;
-      start: string;
-      end: string;
-      quantity: number;
-      origem: "barras" | "rfid";
-      alertas: string[];
-    }[]
+    { id: number; start: string; end: string; quantity: number }[]
   >([]);
   const [error, setError] = useState("");
-  const [modoLeitura, setModoLeitura] = useState<"barras" | "rfid">("barras");
-  const [rfidLog, setRfidLog] = useState<{ tipo: "ok" | "alerta" | "erro"; texto: string }[]>([]);
-  const [rfidPendente, setRfidPendente] = useState<{
-    start: string;
-    end: string;
-    quantity: number;
-    alertas: string[];
-  } | null>(null);
+  const refStart = useRef<HTMLInputElement | null>(null);
+  const refEnd = useRef<HTMLInputElement | null>(null);
   const totalQuantity = boxes.reduce((total, box) => total + box.quantity, 0);
 
   function normalizeCode(value: string) {
     return value.replace(/\D/g, "");
   }
 
-  // Camada de validações do recebimento (RN-002/004) — vale para leitura por código de barras E por RFID.
+  // Camada de validações do recebimento (RN-002/004) — vale para o leitor HID em qualquer campo.
   // Cada regra bloqueia a caixa com o motivo explícito — nada de confirmar com dados improváveis.
   function validarFaixa(start: string, end: string): string[] {
     const erros: string[] = [];
@@ -2677,117 +2701,43 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
     return erros;
   }
 
+  // Modelo HID: o leitor de código de barras age como teclado — digita os 15 dígitos e confirma
+  // com Enter. O foco avança sozinho (início → final → nova caixa) e a conferência flui sem
+  // tocar no mouse.
   function addBox(startValue = startCode, endValue = endCode) {
     const start = normalizeCode(startValue);
     const end = normalizeCode(endValue);
     const erros = validarFaixa(start, end);
     if (erros.length > 0) {
       setError(erros[0]);
-      return;
+      return false;
     }
     setBoxes((current) => [
       ...current,
-      {
-        id: Date.now(),
-        start,
-        end,
-        quantity: Number(end) - Number(start) + 1,
-        origem: "barras",
-        alertas: [],
-      },
+      { id: Date.now(), start, end, quantity: Number(end) - Number(start) + 1 },
     ]);
     setStartCode("");
     setEndCode("");
     setError("");
+    refStart.current?.focus();
+    return true;
   }
-
-  // Leitura RFID — cada brinco eletrônico responde com o próprio número; a camada deduplica
-  // leituras repetidas, descarta tags fora do padrão, detecta lacunas na sequência e deriva a
-  // faixa da caixa, aplicando as MESMAS validações da leitura por código de barras.
-  function processarLeituraRfid(tagsBrutas: string[]) {
-    const norm = tagsBrutas.map((t) => t.replace(/\D/g, ""));
-    const validas = norm.filter((t) => t.length === 15 && /^(105|076)/.test(t));
-    const invalidas = norm.length - validas.length;
-    const unicas = [...new Set(validas)];
-    const duplicatas = validas.length - unicas.length;
-    const log: { tipo: "ok" | "alerta" | "erro"; texto: string }[] = [];
-    const padroes = [...new Set(unicas.map((t) => t.slice(0, 3)))];
-    if (padroes.length > 1) {
-      log.push({
-        tipo: "erro",
-        texto: `A caixa contém brincos de padrões diferentes (${padroes.join(" × ")}) — não pode ser recebida em uma única faixa.`,
-      });
-      setRfidLog(log);
-      setRfidPendente(null);
-      return;
+  function avancarInicio(valor = startCode) {
+    if (normalizeCode(valor).length === 15) {
+      refEnd.current?.focus();
+    } else {
+      setError("Leia o código inicial de 15 dígitos antes de avançar.");
     }
-    if (invalidas > 0) {
-      log.push({
-        tipo: "alerta",
-        texto: `${invalidas} ${invalidas === 1 ? "tag descartada" : "tags descartadas"} — número fora do padrão da aplicação.`,
-      });
-    }
-    if (duplicatas > 0) {
-      log.push({
-        tipo: "ok",
-        texto: `${duplicatas} ${duplicatas === 1 ? "leitura duplicada descartada" : "leituras duplicadas descartadas"} — o mesmo brinco respondeu mais de uma vez.`,
-      });
-    }
-    const nums = unicas.map(Number).sort((a, b) => a - b);
-    const start = String(nums[0]).padStart(15, "0");
-    const end = String(nums[nums.length - 1]).padStart(15, "0");
-    const esperadoNoIntervalo = Number(end) - Number(start) + 1;
-    const lacunas = esperadoNoIntervalo - unicas.length;
-    const alertas: string[] = [];
-    log.push({
-      tipo: "ok",
-      texto: `${unicas.length} brincos únicos identificados — faixa derivada ${formatTag(start)} → ${formatTag(end)}.`,
-    });
-    if (lacunas > 0) {
-      alertas.push(
-        `${lacunas} ${lacunas === 1 ? "brinco ausente" : "brincos ausentes"} na sequência lida (${esperadoNoIntervalo} no intervalo, ${unicas.length} lidos).`,
-      );
-    }
-    const erros = validarFaixa(start, end);
-    if (erros.length > 0) {
-      erros.forEach((e) => log.push({ tipo: "erro", texto: e }));
-      setRfidLog(log);
-      setRfidPendente(null);
-      return;
-    }
-    alertas.forEach((a) => log.push({ tipo: "alerta", texto: a }));
-    log.push({ tipo: "ok", texto: "Caixa pronta para entrar na conferência." });
-    setRfidLog(log);
-    setRfidPendente({ start, end, quantity: unicas.length, alertas });
   }
-
-  function simularLeituraRfid() {
-    const base = 76210077200001;
-    const tags: string[] = [];
-    for (let i = 0; i < 240; i++) {
-      if (i === 120 || i === 121) continue; // lacuna real de 2 brincos — demonstra a detecção
-      tags.push(String(base + i).padStart(15, "0"));
-    }
-    tags.push(String(base + 55).padStart(15, "0")); // leitura duplicada do mesmo brinco
-    tags.push("999999999999999"); // tag fora do padrão da aplicação
-    processarLeituraRfid(tags);
+  function simularInicio() {
+    const code = "076210077200001";
+    setStartCode(code);
+    avancarInicio(code);
   }
-
-  function adicionarCaixaRfid() {
-    if (!rfidPendente) return;
-    setBoxes((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        start: rfidPendente.start,
-        end: rfidPendente.end,
-        quantity: rfidPendente.quantity,
-        origem: "rfid",
-        alertas: rfidPendente.alertas,
-      },
-    ]);
-    setRfidPendente(null);
-    setRfidLog([]);
+  function simularFim() {
+    const code = "076210077200240";
+    setEndCode(code);
+    addBox(startCode, code);
   }
 
   return (
@@ -2800,25 +2750,13 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
             </div>
             <div>
               <h2>Leia os dois códigos da caixa</h2>
-              <p>Cada caixa contém uma única faixa, definida pelo código inicial e pelo final.</p>
+              <p>
+                O leitor de código de barras opera como teclado (HID): digita os 15 dígitos e
+                confirma com Enter — o foco avança sozinho e a conferência fica pronta para a
+                próxima caixa.
+              </p>
             </div>
           </div>
-          <div className="segmented atend-mode-toggle">
-            <button
-              className={modoLeitura === "barras" ? "selected" : ""}
-              onClick={() => setModoLeitura("barras")}
-            >
-              Código de barras — 2 códigos
-            </button>
-            <button
-              className={modoLeitura === "rfid" ? "selected" : ""}
-              onClick={() => setModoLeitura("rfid")}
-            >
-              Leitor RFID
-            </button>
-          </div>
-          {modoLeitura === "barras" ? (
-            <>
           <div className="box-rule-note">
             <div>
               <Icon name="box" size={18} />
@@ -2842,11 +2780,18 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                 <Icon name="scan" />
                 <input
                   autoFocus
+                  ref={refStart}
                   value={startCode}
-                  onChange={(event) => setStartCode(event.target.value)}
+                  onChange={(event) => {
+                    setStartCode(event.target.value);
+                    if (normalizeCode(event.target.value).length === 15) {
+                      refEnd.current?.focus();
+                    }
+                  }}
+                  onKeyDown={(event) => event.key === "Enter" && avancarInicio()}
                   placeholder="Leia os 15 dígitos iniciais"
                 />
-                <button onClick={() => setStartCode("076210077200001")}>Simular</button>
+                <button onClick={simularInicio}>Simular</button>
               </div>
             </label>
             <div className="barcode-connector">→</div>
@@ -2855,12 +2800,18 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
               <div>
                 <Icon name="scan" />
                 <input
+                  ref={refEnd}
                   value={endCode}
-                  onChange={(event) => setEndCode(event.target.value)}
+                  onChange={(event) => {
+                    setEndCode(event.target.value);
+                    if (normalizeCode(event.target.value).length === 15) {
+                      addBox();
+                    }
+                  }}
                   onKeyDown={(event) => event.key === "Enter" && addBox()}
                   placeholder="Leia os 15 dígitos finais"
                 />
-                <button onClick={() => setEndCode("076210077200240")}>Simular</button>
+                <button onClick={simularFim}>Simular</button>
               </div>
             </label>
           </div>
@@ -2872,7 +2823,8 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
           )}
           <div className="add-box-action">
             <span>
-              <kbd>Enter</kbd> no código final também adiciona a caixa.
+              O foco avança sozinho: leia o código inicial, depois o final — a caixa entra na
+              conferência e a leitura recomeça.
             </span>
             <button
               className="btn secondary"
@@ -2882,42 +2834,6 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
               <Icon name="plus" size={15} /> Adicionar caixa à conferência
             </button>
           </div>
-            </>
-          ) : (
-            <>
-              <p className="modal-copy">
-                Aproxime o leitor RFID da caixa — cada brinco eletrônico responde com o próprio
-                número. As validações deduplicam leituras repetidas, descartam tags fora do
-                padrão, detectam lacunas na sequência e bloqueiam sobreposição com caixas já
-                conferidas.
-              </p>
-              <div className="add-box-action">
-                <button className="btn secondary" onClick={simularLeituraRfid}>
-                  <Icon name="scan" size={15} /> Simular leitura RFID da caixa
-                </button>
-              </div>
-              {rfidLog.length > 0 && (
-                <div className="rfid-log">
-                  {rfidLog.map((l, i) => (
-                    <p key={i} className={`rfid-log-linha rfid-${l.tipo}`}>
-                      <Icon name={l.tipo === "ok" ? "check" : "alert"} size={13} /> {l.texto}
-                    </p>
-                  ))}
-                </div>
-              )}
-              {rfidPendente && (
-                <div className="add-box-action">
-                  <span>
-                    {rfidPendente.quantity} brincos únicos · faixa {formatTag(rfidPendente.start)} →{" "}
-                    {formatTag(rfidPendente.end)}
-                  </span>
-                  <button className="btn primary" onClick={adicionarCaixaRfid}>
-                    <Icon name="plus" size={15} /> Adicionar caixa à conferência
-                  </button>
-                </div>
-              )}
-            </>
-          )}
         </section>
         <section className="panel">
           <div className="panel-head">
@@ -2947,7 +2863,6 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                     <th>Código inicial</th>
                     <th>Código final</th>
                     <th>Quantidade</th>
-                    <th>Leitura</th>
                     <th>Conferência</th>
                     <th></th>
                   </tr>
@@ -2963,16 +2878,6 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                       <td className="tag-number">{formatTag(box.end)}</td>
                       <td>
                         <strong>{box.quantity}</strong>
-                        {box.alertas.length > 0 && (
-                          <small style={{ display: "block", color: "#b57b2e" }}>
-                            {box.alertas[0]}
-                          </small>
-                        )}
-                      </td>
-                      <td>
-                        <Badge tone={box.origem === "rfid" ? "blue" : "neutral"}>
-                          {box.origem === "rfid" ? "RFID" : "Barras"}
-                        </Badge>
                       </td>
                       <td>
                         <Badge
