@@ -37,6 +37,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="estoque" />,
       },
       {
+        path: "estoque/faixa",
+        element: <ModulePage page="estoque" />,
+      },
+      {
         path: "estoque/brinco/:tagNumber",
         element: <TagDetailPage />,
       },
@@ -99,6 +103,10 @@ export const router = createBrowserRouter([
       {
         path: "pedidos-sda/:pedidoId",
         element: <AprovacaoDetalhePage />,
+      },
+      {
+        path: "numeracao-solicitada",
+        element: <ModulePage page="numeracao-solicitada" />,
       },
       {
         path: "numeracao",

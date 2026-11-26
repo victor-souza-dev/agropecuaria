@@ -20,6 +20,7 @@ type Page =
   | "habilitacao"
   | "pedidos-sda"
   | "pedidos-sda-novo"
+  | "numeracao-solicitada"
   | "numeracao"
   | "automacoes"
   | "pedidos"
@@ -54,7 +55,23 @@ type PrototypeContext = {
   registraEventoEstocador: (nome: string, evento: string, detalhe?: string) => void;
   pedidosSda: PedidoSda[];
   setPedidosSda: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
+  numSolicitacoes: NumSolicitacao[];
+  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
+  estoqueInternoFabrica: number;
+  setEstoqueInternoFabrica: React.Dispatch<React.SetStateAction<number>>;
 };
+
+type NumSolicitacao = {
+  id: number;
+  qty: number;
+  tipo: "INTERNACIONAL" | "SISBOV";
+  status: "AGUARDANDO" | "CONCEDIDA" | "CANCELADA";
+  data: string;
+};
+
+function numSolicitacoesSeed(): NumSolicitacao[] {
+  return [{ id: 1, qty: 200, tipo: "SISBOV", status: "CONCEDIDA", data: "10/06/2025" }];
+}
 
 type RequestRecord = {
   id: string;
@@ -272,6 +289,7 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
   ],
   fabrica: [
     { id: "pedidos", label: "Fila de pedidos", icon: "factory" },
+    { id: "numeracao-solicitada", label: "Numerações à SEAPI", icon: "hash" },
     { id: "historico", label: "Meus envios", icon: "history" },
   ],
   produtor: [{ id: "estoque", label: "Meu estoque", icon: "box" }],
@@ -295,6 +313,10 @@ const pageMeta: Record<Page, [string, string]> = {
   "pedidos-sda": [
     "Aprovações da SEAPI",
     "Pedidos de brincos e movimentações com aprovação aguardando decisão — aprovar executa a movimentação; recusar registra o motivo.",
+  ],
+  "numeracao-solicitada": [
+    "Numerações solicitadas à SEAPI",
+    "Quando o estoque interno não cobre um pedido, solicite numeração: a SEAPI concede a faixa para a quantidade e você produz com ela.",
   ],
   numeracao: ["Gestão de numeração", "Controle as faixas emitidas pelo PNIB ou internamente."],
   automacoes: [
@@ -873,7 +895,9 @@ export default function Prototype() {
       pathSegments[2] === "auditoria" ||
       pathSegments[2] === "estocador-auditoria");
   const isEstoqueTitularPage =
-    page === "estoque" && pathSegments.length === 3 && pathSegments[2] === "estocador";
+    page === "estoque" &&
+    pathSegments.length === 3 &&
+    (pathSegments[2] === "estocador" || pathSegments[2] === "faixa");
   const isFaixaAuditoriaPage =
     page === "numeracao" && pathSegments.length === 4 && pathSegments[3] === "auditoria";
   const isHistoricoDetailPage =
@@ -916,6 +940,8 @@ export default function Prototype() {
   const [moves, setMoves] = useState(initialMoves);
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [pedidosSda, setPedidosSda] = useState<PedidoSda[]>(pedidosSdaSeed);
+  const [numSolicitacoes, setNumSolicitacoes] = useState<NumSolicitacao[]>(numSolicitacoesSeed);
+  const [estoqueInternoFabrica, setEstoqueInternoFabrica] = useState(300);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const currentRole = roles.find((r) => r.id === role)!;
@@ -1132,6 +1158,10 @@ export default function Prototype() {
               requests,
               pedidosSda,
               setPedidosSda,
+              numSolicitacoes,
+              setNumSolicitacoes,
+              estoqueInternoFabrica,
+              setEstoqueInternoFabrica,
               perfis,
               setPerfis,
               regras,
@@ -1259,6 +1289,15 @@ export function ModulePage({ page }: { page: Page }) {
         const nome = new URLSearchParams(window.location.search).get("nome") ?? "";
         return <EstoqueTitularPage role={context.role} nome={nome} />;
       }
+      if (sub === "faixa") {
+        const params = new URLSearchParams(window.location.search);
+        return (
+          <ProdutorFaixaDetailPage
+            s1={params.get("s1") ?? ""}
+            s2={params.get("s2") ?? ""}
+          />
+        );
+      }
       return (
         <StockPage
           role={context.role}
@@ -1368,7 +1407,25 @@ export function ModulePage({ page }: { page: Page }) {
       );
     }
     case "pedidos":
-      return <FactoryPage notify={context.notify} />;
+      return (
+        <FactoryPage
+          notify={context.notify}
+          numSolicitacoes={context.numSolicitacoes}
+          setNumSolicitacoes={context.setNumSolicitacoes}
+          estoqueInterno={context.estoqueInternoFabrica}
+          setEstoqueInterno={context.setEstoqueInternoFabrica}
+        />
+      );
+    case "numeracao-solicitada":
+      return (
+        <NumeracoesSolicitadasPage
+          notify={context.notify}
+          numSolicitacoes={context.numSolicitacoes}
+          setNumSolicitacoes={context.setNumSolicitacoes}
+          estoqueInterno={context.estoqueInternoFabrica}
+          setEstoqueInterno={context.setEstoqueInternoFabrica}
+        />
+      );
     case "solicitar":
       return (
         <RequestPage
@@ -1829,8 +1886,13 @@ export function TagDetailPage() {
   const range = stockBase.find(
     (item) => Number(number) >= Number(item.start) && Number(number) <= Number(item.end),
   );
+  // Estado único: a custódia real do brinco vem das passagens (faixaPieces) — cobre sub-faixas
+  // de qualquer titular (ex.: produtor) que não estejam no stockBase do estoque da agropecuária
+  const piece = Object.values(faixaPieces)
+    .flat()
+    .find((p) => Number(number) >= Number(p.s1) && Number(number) <= Number(p.s2));
 
-  if (number.length !== 15 || !range) {
+  if (number.length !== 15 || (!range && !piece)) {
     return (
       <section className="panel movement-not-found">
         <div className="empty">
@@ -1847,9 +1909,21 @@ export function TagDetailPage() {
     );
   }
 
-  const holder =
-    context.role === "produtor" ? "João Pedro Fagundes" : "Agropecuária Pampa Sul Ltda.";
-  const holderType = context.role === "produtor" ? "Produtor rural" : "Estocador";
+  const holder = piece?.titular ?? (context.role === "produtor" ? "João Pedro Fagundes" : "Agropecuária Pampa Sul Ltda.");
+  const holderType =
+    holder === "João Pedro Fagundes"
+      ? "Produtor rural"
+      : context.role === "produtor"
+        ? "Produtor rural"
+        : "Estocador";
+  const status = piece
+    ? piece.note.includes("aplicados")
+      ? "Usado"
+      : "Disponível"
+    : range?.status ?? "Disponível";
+  const entradaCustodia = piece?.note ?? range?.source ?? "Recebimento em 16/06/2025";
+  const faixaOrigemInicio = piece?.s1 ?? range?.start ?? number;
+  const faixaOrigemFim = piece?.s2 ?? range?.end ?? number;
 
   return (
     <>
@@ -1864,9 +1938,9 @@ export function TagDetailPage() {
         <div className="tag-detail-hero-copy">
           <div>
             <h1>Brinco {formatTag(number)}</h1>
-            <Badge tone="green">Disponível</Badge>
+            <Badge tone={status === "Usado" ? "red" : "green"}>{status}</Badge>
           </div>
-          <p>Sob custódia da Agropecuária Pampa Sul desde 16/06/2025 às 14:32</p>
+          <p>Sob custódia de {holder} — {entradaCustodia}</p>
         </div>
       </div>
 
@@ -1897,7 +1971,7 @@ export function TagDetailPage() {
               </div>
               <div>
                 <dt>Entrada no estoque</dt>
-                <dd>16/06/2025 às 14:32</dd>
+                <dd>{entradaCustodia}</dd>
               </div>
               <div>
                 <dt>Dias sob custódia</dt>
@@ -1922,7 +1996,7 @@ export function TagDetailPage() {
               <div>
                 <dt>Faixa de origem</dt>
                 <dd>
-                  {formatTag(range.start)} a {formatTag(range.end)}
+                  {formatTag(faixaOrigemInicio)} a {formatTag(faixaOrigemFim)}
                 </dd>
               </div>
               <div>
@@ -2604,7 +2678,16 @@ function StockPage({
         {mode === "range" ? (
           <div className="range-list">
             {blocosFiltrados.map((s, i) => (
-              <article className="range-card" key={s.start}>
+              <article
+                className={`range-card ${role === "produtor" ? "clicavel" : ""}`}
+                key={s.start}
+                title={role === "produtor" ? "Ver o detalhe desta faixa" : undefined}
+                onClick={
+                  role === "produtor"
+                    ? () => navigate(`/${role}/estoque/faixa?s1=${s.start}&s2=${s.end}`)
+                    : undefined
+                }
+              >
                 <div className="range-stripe"></div>
                 <div className="range-main">
                   <div>
@@ -2888,7 +2971,16 @@ function EstoqueTitularPage({ role, nome }: { role: Role; nome: string }) {
         {mode === "range" ? (
           <div className="range-list">
             {blocosFiltrados.map((s, i) => (
-              <article className="range-card" key={s.start}>
+              <article
+                className={`range-card ${role === "produtor" ? "clicavel" : ""}`}
+                key={s.start}
+                title={role === "produtor" ? "Ver o detalhe desta faixa" : undefined}
+                onClick={
+                  role === "produtor"
+                    ? () => navigate(`/${role}/estoque/faixa?s1=${s.start}&s2=${s.end}`)
+                    : undefined
+                }
+              >
                 <div className="range-stripe"></div>
                 <div className="range-main">
                   <div>
@@ -2944,6 +3036,109 @@ function EstoqueTitularPage({ role, nome }: { role: Role; nome: string }) {
             Exibindo {mode === "range" ? blocosFiltrados.length : brincosFiltrados.length} de{" "}
             {blocosDoTitular.length} registros · estoque central como origem única
           </span>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// Detalhe da faixa na visão do Produtor — o card da faixa no estoque abre esta página com
+// o intervalo, a origem (venda registrada pela loja) e os brincos com a situação deles
+function ProdutorFaixaDetailPage({ s1, s2 }: { s1: string; s2: string }) {
+  const navigate = useNavigate();
+  const piece = Object.values(faixaPieces)
+    .flat()
+    .find((p) => p.s1 === s1 && p.s2 === s2);
+  if (!piece) {
+    return (
+      <section className="panel movement-not-found">
+        <div className="empty">
+          <div>
+            <Icon name="alert" size={27} />
+          </div>
+          <strong>Faixa não encontrada</strong>
+          <span>O intervalo informado não pertence ao estoque consultado.</span>
+          <button className="btn secondary" onClick={() => navigate("/produtor/estoque")}>
+            Voltar ao estoque
+          </button>
+        </div>
+      </section>
+    );
+  }
+  const status = piece.note.includes("aplicados") ? "Usado" : "Disponível";
+  const brincos = Array.from({ length: piece.qty }, (_, i) => ({
+    number: String(Number(piece.s1) + i).padStart(15, "0"),
+    status,
+  }));
+  return (
+    <>
+      <section className="header">
+        <h3>Detalhe da faixa</h3>
+        <div className="header-actions">
+          <button
+            className="btn secondary voltar-pill"
+            onClick={() => navigate("/produtor/estoque")}
+          >
+            ← Voltar ao estoque
+          </button>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>
+              {formatTag(piece.s1)} <em>a</em> {formatTag(piece.s2)}
+            </h2>
+            <p>{piece.qty} brincos sob a sua custódia</p>
+          </div>
+          <Badge tone={status === "Usado" ? "red" : "green"}>{status}</Badge>
+        </div>
+        <div className="tag-detail-list">
+          <dl>
+            <div>
+              <dt>Origem</dt>
+              <dd>{piece.note} — venda registrada pela loja agropecuária</dd>
+            </div>
+            <div>
+              <dt>Titular da custódia</dt>
+              <dd>{piece.titular}</dd>
+            </div>
+            <div>
+              <dt>Padrão da numeração</dt>
+              <dd>Internacional (076)</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Brincos desta faixa</h2>
+            <p>{piece.qty} brincos — a situação acompanha a faixa</p>
+          </div>
+          <Badge tone={status === "Usado" ? "red" : "green"}>{status}</Badge>
+        </div>
+        <div className="table-wrap">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Identificação do brinco</th>
+                <th>Padrão</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {brincos.map((b) => (
+                <tr key={b.number}>
+                  <td className="tag-number">{formatTag(b.number)}</td>
+                  <td>Internacional (076)</td>
+                  <td>
+                    <Badge tone={b.status === "Usado" ? "red" : "green"}>{b.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </>
@@ -10128,6 +10323,135 @@ function PedidosSdaPage({
   );
 }
 
+function NumeracoesSolicitadasPage({
+  notify,
+  numSolicitacoes,
+  setNumSolicitacoes,
+  estoqueInterno,
+  setEstoqueInterno,
+}: {
+  notify: (m: string) => void;
+  numSolicitacoes: NumSolicitacao[];
+  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
+  estoqueInterno: number;
+  setEstoqueInterno: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  function registrarConcessao(id: number) {
+    const solicitacao = numSolicitacoes.find((s) => s.id === id);
+    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
+    setNumSolicitacoes((current) =>
+      current.map((s) => (s.id === id ? { ...s, status: "CONCEDIDA" } : s)),
+    );
+    setEstoqueInterno((e) => e + solicitacao.qty);
+    notify(
+      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produção.`,
+    );
+  }
+  function cancelarSolicitacao(id: number) {
+    const solicitacao = numSolicitacoes.find((s) => s.id === id);
+    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
+    setNumSolicitacoes((current) =>
+      current.map((s) => (s.id === id ? { ...s, status: "CANCELADA" } : s)),
+    );
+    notify("Solicitação de numeração cancelada.");
+  }
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Numerações solicitadas à SEAPI</h3>
+      </section>
+      <div className="dash-note">
+        <span>
+          Quando o estoque interno não cobre um pedido, solicite numeração: a SEAPI gera ou usa
+          uma faixa para a quantidade e a devolve para produção. A <strong>concessão é ato da
+          SEAPI</strong> (via integração) — a fábrica acompanha e pode cancelar a própria
+          solicitação enquanto aguarda.
+        </span>
+      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Solicitações de numeração</h2>
+            <p>
+              Estoque interno atual: {estoqueInterno.toLocaleString("pt-BR")} brincos prontos para
+              envio
+            </p>
+          </div>
+          <Badge tone={numSolicitacoes.some((s) => s.status === "AGUARDANDO") ? "yellow" : "green"}>
+            {numSolicitacoes.filter((s) => s.status === "AGUARDANDO").length} aguardando
+          </Badge>
+        </div>
+        <div className="table-wrap">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Tipo do brinco</th>
+                <th>Quantidade</th>
+                <th>Situação</th>
+                <th>Data</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {numSolicitacoes.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    Nenhuma numeração solicitada — as solicitações nascem no atendimento dos
+                    pedidos quando o estoque interno não cobre a quantidade.
+                  </td>
+                </tr>
+              ) : (
+                numSolicitacoes.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong>
+                        {s.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
+                      </strong>
+                    </td>
+                    <td>
+                      <strong>{s.qty.toLocaleString("pt-BR")}</strong>
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          s.status === "AGUARDANDO"
+                            ? "yellow"
+                            : s.status === "CANCELADA"
+                              ? "neutral"
+                              : "green"
+                        }
+                      >
+                        {s.status === "AGUARDANDO"
+                          ? "Aguardando SEAPI"
+                          : s.status === "CONCEDIDA"
+                            ? "Concedida · disponível para produção"
+                            : "Cancelada"}
+                      </Badge>
+                    </td>
+                    <td>{s.data}</td>
+                    <td>
+                      {s.status === "AGUARDANDO" && (
+                        <div className="action-cell">
+                          <button className="text-btn" onClick={() => registrarConcessao(s.id)}>
+                            Registrar concessão da SEAPI
+                          </button>
+                          <button className="text-btn danger-link" onClick={() => cancelarSolicitacao(s.id)}>
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function PedidoSdaFormPage({
   notify,
   role,
@@ -10448,15 +10772,20 @@ export function AprovacaoDetalhePage() {
   );
 }
 
-function FactoryPage({ notify }: { notify: (m: string) => void }) {
+function FactoryPage({
+  notify,
+  numSolicitacoes,
+  setNumSolicitacoes,
+  estoqueInterno,
+  setEstoqueInterno,
+}: {
+  notify: (m: string) => void;
+  numSolicitacoes: NumSolicitacao[];
+  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
+  estoqueInterno: number;
+  setEstoqueInterno: React.Dispatch<React.SetStateAction<number>>;
+}) {
   const [selected, setSelected] = useState<number | null>(null);
-  // Estoque interno da fábrica: brincos produzidos e prontos para envio (camada de faixa abstraída)
-  const [estoqueInterno, setEstoqueInterno] = useState(300);
-  // Numerações solicitadas à SEAPI quando o estoque interno não cobre o pedido:
-  // a SEAPI gera ou usa uma faixa para a quantidade e a devolve à fábrica para produzir
-  const [numSolicitacoes, setNumSolicitacoes] = useState<
-    { id: number; qty: number; tipo: "INTERNACIONAL" | "SISBOV"; status: "AGUARDANDO" | "CONCEDIDA"; data: string }[]
-  >([{ id: 1, qty: 200, tipo: "SISBOV", status: "CONCEDIDA", data: "10/06/2025" }]);
   const orders = [
     {
       id: 47,
@@ -10535,17 +10864,6 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       `Solicitação de numeração enviada à SEAPI — a faixa para produzir ${faltam.toLocaleString("pt-BR")} brincos será concedida pela integração.`,
     );
     setSelected(null);
-  }
-  function registrarConcessao(id: number) {
-    const solicitacao = numSolicitacoes.find((s) => s.id === id);
-    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
-    setNumSolicitacoes((current) =>
-      current.map((s) => (s.id === id ? { ...s, status: "CONCEDIDA" } : s)),
-    );
-    setEstoqueInterno((e) => e + solicitacao.qty);
-    notify(
-      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produção.`,
-    );
   }
   return (
     <>
@@ -10648,61 +10966,14 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
             </tbody>
           </table>
         </div>
-      </section>
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Numerações solicitadas à SEAPI</h2>
-            <p>
-              Quando o estoque interno não cobre um pedido, a SEAPI concede a faixa para a
-              quantidade — os brincos são produzidos com ela
-            </p>
-          </div>
-          <Badge tone={numSolicitacoes.some((s) => s.status === "AGUARDANDO") ? "yellow" : "green"}>
-            {numSolicitacoes.filter((s) => s.status === "AGUARDANDO").length} aguardando
-          </Badge>
-        </div>
-        <div className="table-wrap">
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Tipo do brinco</th>
-                <th>Quantidade</th>
-                <th>Situação</th>
-                <th>Data</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {numSolicitacoes.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <strong>
-                      {s.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
-                    </strong>
-                  </td>
-                  <td>
-                    <strong>{s.qty.toLocaleString("pt-BR")}</strong>
-                  </td>
-                  <td>
-                    <Badge tone={s.status === "AGUARDANDO" ? "yellow" : "green"}>
-                      {s.status === "AGUARDANDO"
-                        ? "Aguardando SEAPI"
-                        : "Concedida · disponível para produção"}
-                    </Badge>
-                  </td>
-                  <td>{s.data}</td>
-                  <td>
-                    {s.status === "AGUARDANDO" && (
-                      <button className="text-btn" onClick={() => registrarConcessao(s.id)}>
-                        Registrar concessão da SEAPI
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="panel-foot">
+          <span>
+            Numerações solicitadas à SEAPI ficam na página{" "}
+            <Link to={`/${role}/numeracao-solicitada`} className="text-btn">
+              Numerações à SEAPI
+            </Link>
+            .
+          </span>
         </div>
       </section>
       {selected && selectedOrder && (
