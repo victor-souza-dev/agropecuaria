@@ -1459,14 +1459,7 @@ export function ModulePage({ page }: { page: Page }) {
       if (isNumeracaoDashboard) {
         return <NumberingDashboard role={context.role} />;
       }
-      return (
-        <NumberingPage
-          notify={context.notify}
-          role={context.role}
-          numSolicitacoes={context.numSolicitacoes}
-          setNumSolicitacoes={context.setNumSolicitacoes}
-        />
-      );
+      return <NumberingPage notify={context.notify} role={context.role} />;
     case "automacoes": {
       const sub = window.location.pathname.split("/").pop();
       if (sub === "auditoria")
@@ -7750,31 +7743,7 @@ function EstocadoresDashboard({
   );
 }
 
-function NumberingPage({
-  notify,
-  role,
-  numSolicitacoes,
-  setNumSolicitacoes,
-}: {
-  notify: (m: string) => void;
-  role: Role;
-  numSolicitacoes: NumSolicitacao[];
-  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
-}) {
-  const aguardandoConcessao = numSolicitacoes.filter((s) => s.status === "AGUARDANDO");
-  function concederFaixaFabrica(id: number) {
-    const solicitacao = numSolicitacoes.find((s) => s.id === id);
-    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
-    const faixa = alocarFaixaConcedida(solicitacao.tipo, solicitacao.qty);
-    setNumSolicitacoes((current) =>
-      current.map((s) =>
-        s.id === id ? { ...s, status: "CONCEDIDA", inicio: faixa.inicio, fim: faixa.fim } : s,
-      ),
-    );
-    notify(
-      `Faixa ${faixa.inicio.slice(-6)}–${faixa.fim.slice(-6)} concedida — ${solicitacao.vinculada} recebe a numeração automaticamente.`,
-    );
-  }
+function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
   const [ranges, setRanges] = useState(numberingRanges);
   const [dialog, setDialog] = useState<"pnib" | "interna" | "distribute" | null>(null);
   const [distribuir, setDistribuir] = useState<(typeof numberingRanges)[number] | null>(null);
@@ -7878,60 +7847,6 @@ function NumberingPage({
   });
   return (
     <div className="page-container">
-      {aguardandoConcessao.length > 0 && (
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Solicitações de numeração da fábrica</h2>
-              <p>
-                Ao conceder, a faixa de numeração é atribuída e o status muda automaticamente
-                para a fábrica (via integração)
-              </p>
-            </div>
-            <Badge tone="yellow">{aguardandoConcessao.length} aguardando</Badge>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Solicitação</th>
-                  <th>Brincos</th>
-                  <th>Tipo</th>
-                  <th>Data</th>
-                  <th className="th-actions">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aguardandoConcessao.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <strong>{s.vinculada}</strong>
-                    </td>
-                    <td>{s.qty.toLocaleString("pt-BR")}</td>
-                    <td>
-                      <Badge tone={s.tipo === "SISBOV" ? "green" : "purple"}>
-                        {s.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
-                      </Badge>
-                    </td>
-                    <td>{s.data}</td>
-                    <td>
-                      <div className="action-cell">
-                        <button
-                          className="text-btn"
-                          title="Simula a concessão via integração — na implementação, automática ao atendê-la no PNIB ou no pool interno"
-                          onClick={() => concederFaixaFabrica(s.id)}
-                        >
-                          Conceder faixa
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
       <section className="header">
         <h3>Faixas de numeração</h3>
         <div className="header-actions">
