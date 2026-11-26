@@ -711,8 +711,12 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 }
 
 function formatTag(value: string) {
-  const digits = value.replace(/\D/g, "").padEnd(15, "0").slice(0, 15);
-  return `${digits.slice(0, 3)}.${digits.slice(3, 5)}.${digits.slice(5, 14)}-${digits.slice(14)}`;
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("105") && digits.length === 14) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 5)}.${digits.slice(5, 13)}-${digits.slice(13)}`;
+  }
+  const d15 = digits.padEnd(15, "0").slice(0, 15);
+  return `${d15.slice(0, 3)}.${d15.slice(3, 5)}.${d15.slice(5, 14)}-${d15.slice(14)}`;
 }
 
 function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: string }) {
@@ -2654,6 +2658,8 @@ function StockPage({
 }
 
 const MAX_BRINCOS_POR_CAIXA = 1000;
+// RN-021 (teto oficial confirmado pelo cliente): Internacional (076) tem 15 dígitos; Nacional · SISBOV (105) tem 14
+const DIGITOS_POR_PREFIXO: Record<string, number> = { "076": 15, "105": 14 };
 
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");
@@ -2670,17 +2676,21 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
     return value.replace(/\D/g, "");
   }
 
-  // Camada de validações do recebimento (RN-002/004) — vale para o leitor HID em qualquer campo.
-  // Cada regra bloqueia a caixa com o motivo explícito — nada de confirmar com dados improváveis.
+  // Camada de validações do recebimento (RN-002/004/021) — vale para o leitor HID em qualquer campo.
+  // O comprimento é POR PADRÃO: Internacional (076) = 15 dígitos; Nacional · SISBOV (105) = 14.
   function validarFaixa(start: string, end: string): string[] {
     const erros: string[] = [];
-    if (
-      start.length !== 15 ||
-      end.length !== 15 ||
-      !/^(105|076)/.test(start) ||
-      !/^(105|076)/.test(end)
-    ) {
-      erros.push("Leia os dois códigos de 15 dígitos impressos na caixa (prefixo 105 ou 076).");
+    const prefixoValido = (c: string) => c.length >= 3 && /^(105|076)/.test(c);
+    if (!prefixoValido(start) || !prefixoValido(end)) {
+      erros.push("Leia códigos iniciados por 105 (Nacional · SISBOV) ou 076 (Internacional).");
+      return erros;
+    }
+    const lenInicio = DIGITOS_POR_PREFIXO[start.slice(0, 3)];
+    const lenFim = DIGITOS_POR_PREFIXO[end.slice(0, 3)];
+    if (start.length !== lenInicio || end.length !== lenFim) {
+      erros.push(
+        "Código incompleto — o padrão Internacional (076) tem 15 dígitos e o SISBOV (105) tem 14.",
+      );
       return erros;
     }
     if (start === end) {
@@ -2738,10 +2748,14 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
     return true;
   }
   function avancarInicio(valor = startCode) {
-    if (normalizeCode(valor).length === 15) {
+    const digits = normalizeCode(valor);
+    const esperado = DIGITOS_POR_PREFIXO[digits.slice(0, 3)];
+    if (esperado && digits.length === esperado) {
       refEnd.current?.focus();
     } else {
-      setError("Leia o código inicial de 15 dígitos antes de avançar.");
+      setError(
+        "Leia o código inicial completo — 15 dígitos (076) ou 14 dígitos (105).",
+      );
     }
   }
   function simularInicio() {
@@ -2802,12 +2816,13 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                   onChange={(event) => {
                     const digits = normalizeCode(event.target.value).slice(0, 15);
                     setStartCode(digits);
-                    if (digits.length === 15) {
+                    const esperado = DIGITOS_POR_PREFIXO[digits.slice(0, 3)];
+                    if (esperado && digits.length === esperado) {
                       refEnd.current?.focus();
                     }
                   }}
                   onKeyDown={(event) => event.key === "Enter" && avancarInicio()}
-                  placeholder="Leia os 15 dígitos iniciais"
+                  placeholder="Código inicial (105 ou 076)"
                 />
                 <button onClick={simularInicio}>Simular</button>
               </div>
@@ -2825,12 +2840,13 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                   onChange={(event) => {
                     const digits = normalizeCode(event.target.value).slice(0, 15);
                     setEndCode(digits);
-                    if (digits.length === 15) {
-                      addBox();
+                    const esperado = DIGITOS_POR_PREFIXO[digits.slice(0, 3)];
+                    if (esperado && digits.length === esperado) {
+                      addBox(startCode, digits);
                     }
                   }}
                   onKeyDown={(event) => event.key === "Enter" && addBox()}
-                  placeholder="Leia os 15 dígitos finais"
+                  placeholder="Código final (105 ou 076)"
                 />
                 <button onClick={simularFim}>Simular</button>
               </div>
@@ -3555,29 +3571,30 @@ function HistoryPage({
                 <option key={t}>{t}</option>
               ))}
             </select>
-            <div className="custom-range">
-              <label>
-                De
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={7}
-                  placeholder="MM/yyyy"
-                  value={periodoDe}
-                  onChange={(e) => setPeriodoDe(e.target.value)}
-                />
-              </label>
-              <label>
-                Até
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={7}
-                  placeholder="MM/yyyy"
-                  value={periodoAte}
-                  onChange={(e) => setPeriodoAte(e.target.value)}
-                />
-              </label>
+            <div
+              className="filter-field period-field"
+              title="Filtrar movimentações deste período (formato MM/yyyy)"
+            >
+              <span className="period-label">Período</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={7}
+                placeholder="MM/yyyy"
+                aria-label="Período — mês inicial (MM/yyyy)"
+                value={periodoDe}
+                onChange={(e) => setPeriodoDe(e.target.value)}
+              />
+              <span className="period-sep">até</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={7}
+                placeholder="MM/yyyy"
+                aria-label="Período — mês final (MM/yyyy)"
+                value={periodoAte}
+                onChange={(e) => setPeriodoAte(e.target.value)}
+              />
             </div>
           </div>
         </div>
