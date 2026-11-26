@@ -103,7 +103,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       ator: "Prefeitura Municipal de Bagé",
       municipio: "Bagé",
       atendente: null,
-      tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
+      tipo: "PREFEITURA · Ligado no novo",
       qtd: 380,
       tipoBrinco: "SISBOV",
       situacao: "ENVIADO",
@@ -133,7 +133,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       ator: "Comercial Rural Tradição Ltda.",
       municipio: "Santa Maria",
       atendente: "Carlos Menezes",
-      tipo: "ESTOQUISTA · PJ · Ligado no novo",
+      tipo: "LOJA AGROPECUÁRIA · Ligado no novo",
       qtd: 240,
       tipoBrinco: "INTERNACIONAL",
       situacao: "RECUSADO",
@@ -1817,7 +1817,7 @@ export function TagDetailPage() {
 
   const holder =
     context.role === "produtor" ? "João Pedro Fagundes" : "Agropecuária Pampa Sul Ltda.";
-  const holderType = context.role === "produtor" ? "Produtor rural" : "Estoquista PJ";
+  const holderType = context.role === "produtor" ? "Produtor rural" : "Estocador";
 
   return (
     <>
@@ -7047,9 +7047,9 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
                 <option>Identifica Brasil S.A. — Fábrica</option>
                 <option>Brinco Sul Indústria — Fábrica</option>
                 <option>Depósito central SEAPI — Estoque</option>
-                <option>Agropecuária Pampa Sul Ltda. — Estoquista</option>
-                <option>Antônio C. Silveira — Estoquista</option>
-                <option>Prefeitura Municipal de Bagé — Estoquista</option>
+                <option>Agropecuária Pampa Sul Ltda. — Estocador</option>
+                <option>Antônio C. Silveira — Estocador</option>
+                <option>Prefeitura Municipal de Bagé — Estocador</option>
               </select>
             </label>
             <label className="wide">
@@ -10514,7 +10514,7 @@ function TransferModal({ close, finish }: { close: () => void; finish: (m: strin
         <label className="field">
           <span>Destino da transferência</span>
           <select value={dest} onChange={(e) => setDest(e.target.value)}>
-            <option value="">Selecione um estoquista...</option>
+            <option value="">Selecione um estocador...</option>
             <option>Antônio Carlos Silveira — PF</option>
             <option>Comercial Rural Tradição Ltda. — PJ</option>
             <option>Depósito central SEAPI</option>
