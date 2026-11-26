@@ -872,6 +872,8 @@ export default function Prototype() {
       pathSegments[2] === "regras" ||
       pathSegments[2] === "auditoria" ||
       pathSegments[2] === "estocador-auditoria");
+  const isEstoqueTitularPage =
+    page === "estoque" && pathSegments.length === 3 && pathSegments[2] === "estocador";
   const isFaixaAuditoriaPage =
     page === "numeracao" && pathSegments.length === 4 && pathSegments[3] === "auditoria";
   const isHistoricoDetailPage =
@@ -930,6 +932,7 @@ export default function Prototype() {
       !isRangeDetailPage &&
       !isNumeracaoDashboard &&
       !isEstocadoresSubPage &&
+      !isEstoqueTitularPage &&
       !isFaixaAuditoriaPage &&
       !isAutomacoesAuditoriaPage &&
       !isHistoricoDetailPage &&
@@ -1250,7 +1253,12 @@ export function ModulePage({ page }: { page: Page }) {
   const isNumeracaoDashboard = page === "numeracao" && window.location.pathname.split("/").pop() === "dashboard";
 
   switch (page) {
-    case "estoque":
+    case "estoque": {
+      const sub = window.location.pathname.split("/").pop();
+      if (sub === "estocador") {
+        const nome = new URLSearchParams(window.location.search).get("nome") ?? "";
+        return <EstoqueTitularPage role={context.role} nome={nome} />;
+      }
       return (
         <StockPage
           role={context.role}
@@ -1258,6 +1266,7 @@ export function ModulePage({ page }: { page: Page }) {
           onModal={context.openModal}
         />
       );
+    }
     case "recebimento":
       return <ReceivingPage onSuccess={context.completeReceipt} />;
     case "venda":
@@ -2321,6 +2330,7 @@ function StockPage({
   producerAdded: string[];
   onModal: (m: Modal) => void;
 }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"range" | "item">("range");
   const [buscaEstoque, setBuscaEstoque] = useState("");
   const [situacaoEstoque, setSituacaoEstoque] = useState("Todas as situações");
@@ -2332,9 +2342,8 @@ function StockPage({
         : "Agropecuária Pampa Sul Ltda.",
   );
   const isLegado = role === "seapi" && holder.startsWith("Prefeitura Municipal de Bagé");
-  const [view, setView] = useState<"titulares" | "detalhe">("titulares");
   const [filtersExpanded, setFiltersExpanded] = useState(true);
-  const showDetail = !(role === "seapi" && view === "titulares");
+  const showDetail = role !== "seapi";
   const [holderStocks, setHolderStocks] = useState([
     {
       select: "Agropecuária Pampa Sul Ltda.",
@@ -2443,20 +2452,7 @@ function StockPage({
         <h3>{role === "seapi" ? "Estoque da rede de estocadores" : "Meu estoque"}</h3>
         <div className="header-actions">
           {role === "seapi" ? (
-            <div className="segmented">
-              <button
-                className={view === "titulares" ? "selected" : ""}
-                onClick={() => setView("titulares")}
-              >
-                Titulares (consolidado)
-              </button>
-              <button
-                className={view === "detalhe" ? "selected" : ""}
-                onClick={() => setView("detalhe")}
-              >
-                Estoque do titular
-              </button>
-            </div>
+            <span className="head-badge">{holderStocks.length} titulares com estoque</span>
           ) : (
             <div className="segmented">
               <button className={mode === "range" ? "selected" : ""} onClick={() => setMode("range")}>
@@ -2469,36 +2465,6 @@ function StockPage({
           )}
         </div>
       </section>
-      {role === "seapi" && view === "detalhe" && (
-        <div className="toolbar-card holder-filter">
-          <label>
-            <span>Titular do estoque</span>
-            <select value={holder} onChange={(e) => setHolder(e.target.value)}>
-              <option>Agropecuária Pampa Sul Ltda.</option>
-              <option>Antônio Carlos Silveira — PF</option>
-              <option>João Pedro Fagundes — Produtor</option>
-              <option>Prefeitura Municipal de Bagé — Portal legado</option>
-              <option>Depósito central SEAPI</option>
-            </select>
-          </label>
-          <button className="btn secondary">
-            <Icon name="search" /> Consultar
-          </button>
-        </div>
-      )}
-      {isLegado && view === "detalhe" && (
-        <div className="danger-banner amber legacy-banner">
-          <Icon name="history" />
-          <div>
-            <strong>Titular ainda operando pelo portal legado · somente consulta aqui</strong>
-            <span>
-              O estoque dele é o mesmo registro do novo (estado único). As movimentações de
-              brincos do titular continuam no portal até a ligação — quando a SEAPI ativa o
-              acesso dele aqui.
-            </span>
-          </div>
-        </div>
-      )}
       {showDetail && (
         <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
           <div className="filters-header">
@@ -2549,7 +2515,7 @@ function StockPage({
           )}
         </form>
       )}
-      {role === "seapi" && view === "titulares" && (
+      {role === "seapi" && (
         <section className="panel">
           <div className="panel-head">
             <div>
@@ -2595,10 +2561,11 @@ function StockPage({
                       <div className="action-cell">
                         <button
                           className="btn secondary"
-                          onClick={() => {
-                            setHolder(h.select);
-                            setView("detalhe");
-                          }}
+                          onClick={() =>
+                            navigate(
+                              `/${role}/estoque/estocador?nome=${encodeURIComponent(h.select)}`,
+                            )
+                          }
                         >
                           <Icon name="eye" size={15} /> Abrir estoque
                         </button>
@@ -2768,6 +2735,220 @@ function StockPage({
 const MAX_BRINCOS_POR_CAIXA = 1000;
 // RN-021 (teto oficial confirmado pelo cliente): Internacional (076) tem 15 dígitos; Nacional · SISBOV (105) tem 14
 const DIGITOS_POR_PREFIXO: Record<string, number> = { "076": 15, "105": 14 };
+
+// Página dedicada do estoque de um titular (SEAPI) — substitui a visão de detalhe embutida
+function EstoqueTitularPage({ role, nome }: { role: Role; nome: string }) {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"range" | "item">("range");
+  const [buscaEstoque, setBuscaEstoque] = useState("");
+  const [situacaoEstoque, setSituacaoEstoque] = useState("Todas as situações");
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const holder = nome || "Agropecuária Pampa Sul Ltda.";
+  const isLegado = holder.startsWith("Prefeitura Municipal de Bagé");
+  const titularAtual = holder.replace(/ — (PF|Produtor|Portal legado)$/, "");
+  const blocosDoTitular: {
+    start: string;
+    end: string;
+    qty: number;
+    source: string;
+    status: string;
+    fabricante: string;
+  }[] = [];
+  for (const pieces of Object.values(faixaPieces)) {
+    for (const p of pieces) {
+      if (p.titular !== titularAtual) continue;
+      blocosDoTitular.push({
+        start: p.s1,
+        end: p.s2,
+        qty: p.qty,
+        source: p.note,
+        status: p.note.includes("aplicados") ? "Usado" : "Disponível",
+        fabricante: "Identifica Brasil S.A.",
+      });
+    }
+  }
+  const blocosFiltrados = blocosDoTitular.filter((s) => {
+    if (situacaoEstoque !== "Todas as situações" && s.status !== situacaoEstoque) return false;
+    const q = buscaEstoque.trim().toLowerCase();
+    if (q && !`${s.start} ${s.end} ${s.fabricante}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const brincosDoTitular = blocosDoTitular.flatMap((b) =>
+    Array.from({ length: b.qty }, (_, i) => ({
+      number: String(Number(b.start) + i).padStart(15, "0"),
+      faixa: `${formatTag(b.start)} a ${formatTag(b.end)}`,
+      fabricante: b.fabricante,
+      status: b.status,
+      entrada: b.source,
+    })),
+  );
+  const brincosFiltrados = brincosDoTitular.filter((s) => {
+    if (situacaoEstoque !== "Todas as situações" && s.status !== situacaoEstoque) return false;
+    return s.number.toLowerCase().includes(buscaEstoque.trim().toLowerCase());
+  });
+  const activeFilterCount = [
+    situacaoEstoque !== "Todas as situações",
+    buscaEstoque.trim() !== "",
+  ].filter(Boolean).length;
+  function clearFilters() {
+    setBuscaEstoque("");
+    setSituacaoEstoque("Todas as situações");
+  }
+  return (
+    <>
+      <section className="header">
+        <h3>Estoque do titular</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/estoque`}>
+            ← Voltar à rede
+          </Link>
+          <div className="segmented">
+            <button className={mode === "range" ? "selected" : ""} onClick={() => setMode("range")}>
+              Por faixa
+            </button>
+            <button className={mode === "item" ? "selected" : ""} onClick={() => setMode("item")}>
+              Por brinco
+            </button>
+          </div>
+        </div>
+      </section>
+      {isLegado && (
+        <div className="danger-banner amber legacy-banner">
+          <Icon name="history" />
+          <div>
+            <strong>Titular ainda operando pelo portal legado · somente consulta aqui</strong>
+            <span>
+              O estoque dele é o mesmo registro do novo (estado único). As movimentações de
+              brincos do titular continuam no portal até a ligação — quando a SEAPI ativa o
+              acesso dele aqui.
+            </span>
+          </div>
+        </div>
+      )}
+      <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+        <div className="filters-header">
+          <button type="button" className="filters-toggle" onClick={() => setFiltersExpanded((v) => !v)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d={filtersExpanded ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
+            </svg>
+            <span className="filters-title">Filtros</span>
+            {activeFilterCount > 0 && <span className="filter-count-badge">{activeFilterCount}</span>}
+          </button>
+          <div className="filters-header-actions">
+            <button type="button" className="btn-search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Pesquisar
+            </button>
+            <button type="button" className="btn-clear" onClick={clearFilters}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              Limpar
+            </button>
+          </div>
+        </div>
+        {filtersExpanded && (
+          <div className="filters-body">
+            <div className="filter-row filter-row--full">
+              <div className="search-field filter-field">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  placeholder="Buscar por numeração ou fabricante..."
+                  value={buscaEstoque}
+                  onChange={(e) => setBuscaEstoque(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="filter-row">
+              <select className="filter-field" value={situacaoEstoque} onChange={(e) => setSituacaoEstoque(e.target.value)}>
+                <option>Todas as situações</option>
+                <option>Disponível</option>
+                <option>Usado</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </form>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Brincos em estoque</h2>
+            <p>
+              {holder}
+              {mode === "range"
+                ? ` · ${blocosFiltrados.length} de ${blocosDoTitular.length} faixas no recorte`
+                : ` · ${brincosFiltrados.length} de ${brincosDoTitular.length} brincos no recorte`}
+            </p>
+          </div>
+        </div>
+        {mode === "range" ? (
+          <div className="range-list">
+            {blocosFiltrados.map((s, i) => (
+              <article className="range-card" key={s.start}>
+                <div className="range-stripe"></div>
+                <div className="range-main">
+                  <div>
+                    <span className="eyebrow">FAIXA {String(i + 1).padStart(2, "0")}</span>
+                    <strong>
+                      {formatTag(s.start)} <em>a</em> {formatTag(s.end)}
+                    </strong>
+                    <small>{s.source}</small>
+                    <small className="range-fabricante">
+                      <Icon name="factory" size={11} />
+                      Fabricante: {s.fabricante}
+                    </small>
+                  </div>
+                </div>
+                <div className="range-qty">
+                  <strong>{s.qty}</strong>
+                  <span>brincos</span>
+                </div>
+                <Badge tone={s.status === "Disponível" ? "green" : "red"}>{s.status}</Badge>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Identificação do brinco</th>
+                  <th>Faixa</th>
+                  <th>Fabricante</th>
+                  <th>Situação</th>
+                  <th>Entrada no estoque</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brincosFiltrados.slice(0, 50).map((b) => (
+                  <tr key={b.number}>
+                    <td className="tag-number">{formatTag(b.number)}</td>
+                    <td>{b.faixa}</td>
+                    <td>{b.fabricante}</td>
+                    <td>
+                      <Badge tone={b.status === "Usado" ? "red" : "green"}>{b.status}</Badge>
+                    </td>
+                    <td>{b.entrada}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="panel-foot">
+          <span>
+            Exibindo {mode === "range" ? blocosFiltrados.length : brincosFiltrados.length} de{" "}
+            {blocosDoTitular.length} registros · estoque central como origem única
+          </span>
+        </div>
+      </section>
+    </>
+  );
+}
 
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");

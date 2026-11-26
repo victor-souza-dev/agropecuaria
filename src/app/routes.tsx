@@ -33,6 +33,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="estoque" />,
       },
       {
+        path: "estoque/estocador",
+        element: <ModulePage page="estoque" />,
+      },
+      {
         path: "estoque/brinco/:tagNumber",
         element: <TagDetailPage />,
       },
