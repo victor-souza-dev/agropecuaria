@@ -3264,6 +3264,35 @@ kbd {
 .modal-body {
   padding: 20px;
 }
+.atend-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.atend-modal .modal-copy,
+.atend-modal .scan-input {
+  margin: 0;
+}
+.atend-modal .atend-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fdecec;
+  border: 1px solid #e5b5b5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8a3b3b;
+}
+.atend-modal .atend-warn svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.modal-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .modal-actions {
   padding: 14px 20px;
 }

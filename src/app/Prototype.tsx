@@ -8764,6 +8764,42 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
     },
   ]);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [buscaPedido, setBuscaPedido] = useState("");
+  const [situacaoFiltro, setSituacaoFiltro] = useState("Todas as situações");
+  const [filaFiltro, setFilaFiltro] = useState("Todas as filas");
+  const [aprovadorFiltro, setAprovadorFiltro] = useState("Todos os aprovadores");
+  const [municipioFiltro, setMunicipioFiltro] = useState("Todos os municípios");
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+
+  const municipiosDistintos = [...new Set(pedidos.map((p) => p.municipio))];
+  const rows = pedidos.filter((p) => {
+    if (situacaoFiltro === "Solicitado" && p.situacao !== "SOLICITADO") return false;
+    if (situacaoFiltro === "Enviado" && p.situacao !== "ENVIADO") return false;
+    if (situacaoFiltro === "Concluído" && p.situacao !== "CONCLUIDO") return false;
+    if (situacaoFiltro === "Recusado" && p.situacao !== "RECUSADO") return false;
+    if (filaFiltro === "Pedidos de brincos" && p.fila !== "pedido") return false;
+    if (filaFiltro === "Movimentações" && p.fila !== "movimentacao") return false;
+    if (aprovadorFiltro === "SEAPI" && p.aprovador !== "SEAPI") return false;
+    if (aprovadorFiltro === "Destinatário" && p.aprovador !== "DESTINO") return false;
+    if (municipioFiltro !== "Todos os municípios" && p.municipio !== municipioFiltro) return false;
+    const q = buscaPedido.trim().toLowerCase();
+    if (q && !`${p.ator} ${p.municipio} ${p.tipo}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const activeFilterCount = [
+    situacaoFiltro !== "Todas as situações",
+    filaFiltro !== "Todas as filas",
+    aprovadorFiltro !== "Todos os aprovadores",
+    municipioFiltro !== "Todos os municípios",
+    buscaPedido.trim() !== "",
+  ].filter(Boolean).length;
+  function clearFilters() {
+    setBuscaPedido("");
+    setSituacaoFiltro("Todas as situações");
+    setFilaFiltro("Todas as filas");
+    setAprovadorFiltro("Todos os aprovadores");
+    setMunicipioFiltro("Todos os municípios");
+  }
   const [recusing, setRecusing] = useState<PedidoSda | null>(null);
   const [reason, setReason] = useState("");
   const [atending, setAtending] = useState<PedidoSda | null>(null);
@@ -8773,6 +8809,9 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
   const [atendPnib, setAtendPnib] = useState<"existente" | "nova">("existente");
   const [atendDestino, setAtendDestino] = useState<"sede" | "direto">("direto");
   const [atendFabrica, setAtendFabrica] = useState("Identifica Brasil S.A. — Porto Alegre/RS");
+  // Demo do fluxo assíncrono PNIB (ADR-019): nenhum estoque de faixa PNIB disponível agora —
+  // "usar faixa existente" bloqueia; "solicitar faixa nova" segue como PENDENTE_PNIB.
+  const pnibFaixasDisponiveis = 0;
   function situacaoBadge(s: PedidoSda["situacao"]) {
     if (s === "SOLICITADO") return <Badge tone="yellow">Solicitado</Badge>;
     if (s === "ENVIADO") return <Badge tone="blue">Enviado</Badge>;
@@ -9005,7 +9044,7 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
           subtitle={`${atending.qtd} brincos — escolha a rota de atendimento.`}
           onClose={() => setAtending(null)}
         >
-          <div className="modal-body">
+          <div className="modal-body atend-modal">
             <div className="segmented atend-mode-toggle">
               <button
                 className={atendMode === "estoque" ? "selected" : ""}
@@ -9076,6 +9115,16 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                         Solicitar faixa nova ao PNIB
                       </button>
                     </div>
+                    {atendPnib === "existente" && pnibFaixasDisponiveis === 0 && (
+                      <div className="atend-warn">
+                        <Icon name="alert" size={14} />
+                        <span>
+                          Nenhuma faixa PNIB disponível no momento —{" "}
+                          <strong>solicite uma faixa nova</strong>: o atendimento fica registrado
+                          e aguarda o retorno da integração antes de seguir para a fábrica.
+                        </span>
+                      </div>
+                    )}
                     <p className="modal-copy">
                       O PNIB fornece somente o padrão Internacional (076) — o tipo fica
                       fixo.
@@ -9130,7 +9179,16 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
             <button className="btn secondary" onClick={() => setAtending(null)}>
               Cancelar
             </button>
-            <button className="btn primary" onClick={confirmarAtendimento}>
+            <button
+              className="btn primary"
+              disabled={atendOrigem === "PNIB" && atendPnib === "existente"}
+              title={
+                atendOrigem === "PNIB" && atendPnib === "existente"
+                  ? "Sem faixa PNIB disponível — solicite uma faixa nova"
+                  : undefined
+              }
+              onClick={confirmarAtendimento}
+            >
               {atendMode === "estoque" ? "Aprovar e enviar" : "Aprovar e encaminhar à fábrica"}
             </button>
           </div>
