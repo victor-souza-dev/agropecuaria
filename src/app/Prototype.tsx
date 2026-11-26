@@ -1429,6 +1429,8 @@ export function ModulePage({ page }: { page: Page }) {
           notify={context.notify}
           pedidos={context.pedidosSda}
           setPedidos={context.setPedidosSda}
+          numSolicitacoes={context.numSolicitacoes}
+          setNumSolicitacoes={context.setNumSolicitacoes}
         />
       );
     case "pedidos-sda-novo":
@@ -10061,10 +10063,14 @@ function PedidosSdaPage({
   notify,
   pedidos,
   setPedidos,
+  numSolicitacoes,
+  setNumSolicitacoes,
 }: {
   notify: (m: string) => void;
   pedidos: PedidoSda[];
   setPedidos: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
+  numSolicitacoes: NumSolicitacao[];
+  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
 }) {
   const [recusing, setRecusing] = useState<PedidoSda | null>(null);
   const [buscaPedido, setBuscaPedido] = useState("");
@@ -10104,6 +10110,22 @@ function PedidosSdaPage({
     setMunicipioFiltro("Todos os municípios");
     setPeriodoDe("");
     setPeriodoAte("");
+  }
+  // RN-017/RN-003 — aprovar a solicitação concede a faixa de numeração à fábrica,
+  // que recebe os intervalos automaticamente (mesmo estado compartilhado do contexto)
+  function aprovarConcessaoNumSolicitacao(s: NumSolicitacao) {
+    if (s.status !== "AGUARDANDO") return;
+    const faixa = alocarFaixaConcedida(s.tipo, s.qty);
+    setNumSolicitacoes((current) =>
+      current.map((x) =>
+        x.id === s.id
+          ? { ...x, status: "CONCEDIDA", inicio: faixa.inicio, fim: faixa.fim }
+          : x,
+      ),
+    );
+    notify(
+      `Numeração concedida — ${s.vinculada} recebe os intervalos automaticamente e a fábrica pode produzir e imprimir.`,
+    );
   }
   const [reason, setReason] = useState("");
   const [atending, setAtending] = useState<PedidoSda | null>(null);
@@ -10336,6 +10358,100 @@ function PedidosSdaPage({
       <div className="panel-foot">
         <span>Exibindo {rows.length} de {pedidos.length} registros · estoque central como origem única</span>
       </div>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Solicitações de numeração da fábrica</h2>
+            <p>
+              Aprovar concede a faixa de numeração à fábrica — que recebe os intervalos
+              automaticamente e pode produzir e imprimir as etiquetas das caixas
+            </p>
+          </div>
+          <Badge tone={numSolicitacoes.some((s) => s.status === "AGUARDANDO") ? "yellow" : "green"}>
+            {numSolicitacoes.filter((s) => s.status === "AGUARDANDO").length} aguardando aprovação
+          </Badge>
+        </div>
+        {numSolicitacoes.length === 0 ? (
+          <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+            Nenhuma solicitação de numeração da fábrica.
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Solicitação</th>
+                  <th>Tipo</th>
+                  <th>Brincos</th>
+                  <th>Solicitada em</th>
+                  <th>Faixa concedida</th>
+                  <th>Situação</th>
+                  <th className="th-actions">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {numSolicitacoes.map((s) => {
+                  const concedida = s.status === "CONCEDIDA";
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <strong>{s.vinculada}</strong>
+                      </td>
+                      <td>
+                        <Badge tone={s.tipo === "SISBOV" ? "green" : "purple"}>
+                          {s.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                        </Badge>
+                      </td>
+                      <td>
+                        <strong>{s.qty.toLocaleString("pt-BR")}</strong>
+                      </td>
+                      <td>{s.data}</td>
+                      <td>
+                        {concedida && s.inicio ? (
+                          <span className="range-cell">
+                            <strong>{formatTag(s.inicio)}</strong>
+                            <span>até {formatTag(s.fim ?? "")}</span>
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        {s.status === "AGUARDANDO" ? (
+                          <Badge tone="yellow">Aguardando aprovação</Badge>
+                        ) : s.status === "CANCELADA" ? (
+                          <Badge tone="neutral">Cancelada</Badge>
+                        ) : (
+                          <Badge tone="green">Concedida — disponível para produção</Badge>
+                        )}
+                      </td>
+                      <td>
+                        <div className="action-cell">
+                          {s.status === "AGUARDANDO" && (
+                            <button
+                              className="text-btn"
+                              onClick={() => aprovarConcessaoNumSolicitacao(s)}
+                            >
+                              Aprovar e conceder numeração
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="panel-foot">
+          <span>
+            A fábrica recebe a numeração automaticamente — o ciclo pedido → numeração → produção
+            → envio se fecha sem intervenção adicional.
+          </span>
+        </div>
+      </section>
       {atending && (
         <ModalShell
           title={`Atender pedido de ${atending.ator}`}
