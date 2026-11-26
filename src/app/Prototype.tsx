@@ -10454,13 +10454,68 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
                         className="btn small primary"
                         onClick={() => {
                           setSelected(o.id);
-                          setBoxes([{ id: 1, start: "", end: "" }]);
                         }}
                       >
                         Declarar envio
                       </button>
                     ) : (
                       <button className="text-btn">Ver envio</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Numerações solicitadas à SEAPI</h2>
+            <p>
+              Quando o estoque interno não cobre um pedido, a SEAPI concede a faixa para a
+              quantidade — os brincos são produzidos com ela
+            </p>
+          </div>
+          <Badge tone={numSolicitacoes.some((s) => s.status === "AGUARDANDO") ? "yellow" : "green"}>
+            {numSolicitacoes.filter((s) => s.status === "AGUARDANDO").length} aguardando
+          </Badge>
+        </div>
+        <div className="table-wrap">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Tipo do brinco</th>
+                <th>Quantidade</th>
+                <th>Situação</th>
+                <th>Data</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {numSolicitacoes.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <strong>
+                      {s.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
+                    </strong>
+                  </td>
+                  <td>
+                    <strong>{s.qty.toLocaleString("pt-BR")}</strong>
+                  </td>
+                  <td>
+                    <Badge tone={s.status === "AGUARDANDO" ? "yellow" : "green"}>
+                      {s.status === "AGUARDANDO"
+                        ? "Aguardando SEAPI"
+                        : "Concedida · disponível para produção"}
+                    </Badge>
+                  </td>
+                  <td>{s.data}</td>
+                  <td>
+                    {s.status === "AGUARDANDO" && (
+                      <button className="text-btn" onClick={() => registrarConcessao(s.id)}>
+                        Registrar concessão da SEAPI
+                      </button>
                     )}
                   </td>
                 </tr>
