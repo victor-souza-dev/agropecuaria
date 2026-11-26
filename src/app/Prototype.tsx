@@ -25,7 +25,8 @@ type Page =
   | "numeracao"
   | "automacoes"
   | "pedidos"
-  | "solicitar";
+  | "solicitar"
+  | "transferir";
 type Modal = null | {
   type: "transferir" | "perda" | "venda" | "devolver" | "estornar";
   id?: number;
@@ -347,7 +348,10 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
     { id: "numeracao-solicitada", label: "Solicitar brinco", icon: "hash" },
     { id: "historico", label: "Meus envios", icon: "history" },
   ],
-  produtor: [{ id: "estoque", label: "Meu estoque", icon: "box" }],
+  produtor: [
+    { id: "estoque", label: "Meu estoque", icon: "box" },
+    { id: "transferir", label: "Transferir brincos", icon: "transfer" },
+  ],
 };
 
 const pageMeta: Record<Page, [string, string]> = {
@@ -384,6 +388,10 @@ const pageMeta: Record<Page, [string, string]> = {
   ],
   pedidos: ["Fila de pedidos da fábrica", "Pedidos aguardando produção e declaração de envio."],
   solicitar: ["Solicitar brincos", "Solicite novos brincos a uma fábrica habilitada."],
+  transferir: [
+    "Transferir brincos",
+    "Envie brincos da sua custódia para outro produtor rural — a transferência fica registrada na cadeia.",
+  ],
 };
 
 function pageTitle(role: Role, page: Page): string {
@@ -1346,6 +1354,8 @@ export function ModulePage({ page }: { page: Page }) {
   const isNumeracaoDashboard = page === "numeracao" && window.location.pathname.split("/").pop() === "dashboard";
 
   switch (page) {
+    case "transferir":
+      return <ProdutorTransferirPage notify={context.notify} />;
     case "estoque": {
       const sub = window.location.pathname.split("/").pop();
       if (sub === "estocador") {
@@ -3284,6 +3294,174 @@ function ProdutorFaixaDetailPage({ s1, s2 }: { s1: string; s2: string }) {
   );
 }
 
+// Transferência produtor → produtor (RN-030) — o produtor declara o envio de faixas da
+// própria custódia para outro produtor rural; a SEAPI pode exigir o aceite do destino pela
+// camada de aprovação (RN-023) quando necessário
+const PRODUTORES_DEMO = [
+  { nome: "Ricardo Alves Moraes", doc: "111.222.333-44", cidade: "Aceguá/RS" },
+  { nome: "Cláudia Regina Prass", doc: "555.666.777-88", cidade: "Hulha Negra/RS" },
+];
+
+function ProdutorTransferirPage({ notify }: { notify: (m: string) => void }) {
+  const navigate = useNavigate();
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const [buscaDestino, setBuscaDestino] = useState("");
+  const [destino, setDestino] = useState<(typeof PRODUTORES_DEMO)[number] | null>(null);
+  const faixas = Object.values(faixaPieces)
+    .flat()
+    .filter((p) => p.titular === "João Pedro Fagundes")
+    .map((p) => ({
+      s1: p.s1,
+      s2: p.s2,
+      qty: p.qty,
+      origem: p.note,
+      transferivel: !p.note.includes("aplicados"),
+    }));
+  const qtySelecionada = faixas
+    .filter((f) => selecionadas.includes(f.s1))
+    .reduce((n, f) => n + f.qty, 0);
+  const resultadosDestino = buscaDestino.trim()
+    ? PRODUTORES_DEMO.filter((p) =>
+        `${p.nome} ${p.doc}`.toLowerCase().includes(buscaDestino.trim().toLowerCase()),
+      )
+    : [];
+
+  function toggle(s1: string, transferivel: boolean) {
+    if (!transferivel) return;
+    setSelecionadas((cur) => (cur.includes(s1) ? cur.filter((x) => x !== s1) : [...cur, s1]));
+  }
+  function confirmar() {
+    if (selecionadas.length === 0 || !destino) return;
+    notify(
+      `${qtySelecionada} brincos transferidos para ${destino.nome} — transferência registrada na cadeia de custódia.`,
+    );
+    navigate("/produtor/estoque");
+  }
+
+  return (
+    <>
+      <section className="header">
+        <h3>Transferir brincos para outro produtor</h3>
+        <div className="header-actions">
+          <button className="btn secondary voltar-pill" onClick={() => navigate("/produtor/estoque")}>
+            ← Voltar ao estoque
+          </button>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>1 · Escolha as faixas da sua custódia</h2>
+            <p>Faixas com brincos já aplicados a animais não podem ser transferidas.</p>
+          </div>
+          <Badge tone="blue">{qtySelecionada} brincos selecionados</Badge>
+        </div>
+        <div className="envios-lista">
+          {faixas.map((f) => (
+            <div key={f.s1} className="envio-card">
+              <div className="envio-head">
+                <label className="check-linha">
+                  <input
+                    type="checkbox"
+                    checked={selecionadas.includes(f.s1)}
+                    disabled={!f.transferivel}
+                    onChange={() => toggle(f.s1, f.transferivel)}
+                  />
+                  <strong>
+                    {formatTag(f.s1)} <em>a</em> {formatTag(f.s2)}
+                  </strong>
+                </label>
+                <Badge tone={f.transferivel ? "green" : "red"}>
+                  {f.transferivel ? "Disponível" : "Aplicados"}
+                </Badge>
+              </div>
+              <span className="envio-qty">
+                {f.qty} brincos · {f.origem}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>2 · Produtor de destino</h2>
+            <p>Busque o produtor rural que vai receber os brincos.</p>
+          </div>
+        </div>
+        <div className="modal-body">
+          <label className="scan-input compact">
+            <span>BUSCAR PRODUTOR — NOME OU CPF</span>
+            <div>
+              <Icon name="search" />
+              <input
+                placeholder="Digite para buscar o produtor de destino..."
+                value={buscaDestino}
+                onChange={(e) => setBuscaDestino(e.target.value)}
+              />
+            </div>
+          </label>
+          {buscaDestino.trim() && (
+            <div className="busca-resultados">
+              {resultadosDestino.length === 0 && (
+                <span className="busca-vazia">
+                  Nenhum produtor encontrado para "{buscaDestino}".
+                </span>
+              )}
+              {resultadosDestino.map((p) => (
+                <button key={p.doc} className="resultado-item" onClick={() => setDestino(p)}>
+                  <strong>{p.nome}</strong>
+                  <span>
+                    {p.doc} · {p.cidade} · Produtor rural
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {destino && (
+            <div className="titular-ficha">
+              <div className="company-icon">PR</div>
+              <div>
+                <strong>{destino.nome}</strong>
+                <span>
+                  {destino.doc} · {destino.cidade} · produtor rural de destino
+                </span>
+              </div>
+              <button
+                className="text-btn"
+                onClick={() => {
+                  setDestino(null);
+                  setBuscaDestino("");
+                }}
+              >
+                trocar destino
+              </button>
+            </div>
+          )}
+          <p className="modal-copy">
+            A transferência registra a passagem de custódia entre produtores na cadeia. Se a SEAPI
+            habilitar o <strong>aceite do destino</strong> para este fluxo (camada de aprovação),
+            a transferência fica pendente da confirmação do produtor que recebe.
+          </p>
+        </div>
+      </section>
+      <div className="confirm-bar">
+        <span>
+          <Icon name="alert" /> {qtySelecionada} brincos selecionados
+          {destino ? ` para ${destino.nome}` : " — escolha o produtor de destino"}.
+        </span>
+        <button
+          className="btn primary"
+          disabled={qtySelecionada === 0 || !destino}
+          onClick={confirmar}
+        >
+          <Icon name="transfer" size={15} /> Transferir
+        </button>
+      </div>
+    </>
+  );
+}
+
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");
   const [endCode, setEndCode] = useState("");
@@ -4734,8 +4912,9 @@ function perfilRulesSeed(): Record<string, Record<string, { origem: RegraFluxo; 
   }
   // PRODUTOR: recebe venda com crédito imediato (RN-006 — sem aprovação) e não vende
   base["PRODUTOR"]["Venda"] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "LIVRE" } };
-  // TRANSFERÊNCIA entre estocadores: livre; o produtor só recebe (RN-005 cobre a devolução dele)
-  base["PRODUTOR"]["Transferência"].origem = { tipo: "BLOQUEIO" };
+  // TRANSFERÊNCIA produtor → produtor (RN-030): o produtor pode enviar brincos para OUTRO PRODUTOR
+  // (ESCOPO restrito a produtores — a SEAPI pode ampliar/restringir pela matriz); continua recebendo de qualquer titular
+  base["PRODUTOR"]["Transferência"].origem = { tipo: "ESCOPO", alvos: ["PRODUTOR"] };
   // DEVOLUÇÃO/PERDA/SAÍDA INTERNA: operações de estocador — o produtor não executa
   for (const movement of ["Devolução", "Perda", "Saída interna"]) {
     base["PRODUTOR"][movement] = { origem: { tipo: "BLOQUEIO" }, destino: { tipo: "BLOQUEIO" } };

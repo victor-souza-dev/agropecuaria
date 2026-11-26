@@ -149,6 +149,10 @@ export const router = createBrowserRouter([
         element: <RequestDetailPage />,
       },
       {
+        path: "transferir",
+        element: <ModulePage page="transferir" />,
+      },
+      {
         path: "*",
         Component: EmptyRoute,
       },
