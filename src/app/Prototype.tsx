@@ -63,7 +63,7 @@ type PedidoSda = {
   atendente: string | null;
   tipo: string;
   qtd: number;
-  composicao: { intervalo: string; qty: number }[];
+  tipoBrinco: "INTERNACIONAL" | "SISBOV";
   situacao: "SOLICITADO" | "ENVIADO" | "CONCLUIDO" | "RECUSADO";
   data: string;
   mov: string | null;
@@ -81,10 +81,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: "Marina Duarte",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 360,
-      composicao: [
-        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
-        { intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
-      ],
+      tipoBrinco: "INTERNACIONAL",
       situacao: "SOLICITADO",
       data: "16/06/2025",
       mov: null,
@@ -99,11 +96,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
       qtd: 380,
-      composicao: [
-        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
-        { intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
-        { intervalo: `${formatTag("076210077183401")} a ${formatTag("076210077183420")}`, qty: 20 },
-      ],
+      tipoBrinco: "SISBOV",
       situacao: "ENVIADO",
       data: "15/06/2025",
       mov: "#MOV-2025-1847",
@@ -118,9 +111,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
-      composicao: [
-        { intervalo: "sub-faixa da faixa, brincos sequenciais a definir na distribuição", qty: 60 },
-      ],
+      tipoBrinco: "INTERNACIONAL",
       situacao: "CONCLUIDO",
       data: "14/06/2025",
       mov: "#MOV-2025-1842",
@@ -135,9 +126,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: "Carlos Menezes",
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
-      composicao: [
-        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
-      ],
+      tipoBrinco: "INTERNACIONAL",
       situacao: "RECUSADO",
       data: "13/06/2025",
       mov: null,
@@ -153,9 +142,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
       qtd: 20,
-      composicao: [
-        { intervalo: `${formatTag("076210077220000")} a ${formatTag("076210077220019")}`, qty: 20 },
-      ],
+      tipoBrinco: "INTERNACIONAL",
       situacao: "SOLICITADO",
       data: "18/06/2025",
       mov: null,
@@ -170,9 +157,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       atendente: null,
       tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
       qtd: 15,
-      composicao: [
-        { intervalo: `${formatTag("105430057001000")} a ${formatTag("105430057001014")}`, qty: 15 },
-      ],
+      tipoBrinco: "SISBOV",
       situacao: "SOLICITADO",
       data: "18/06/2025",
       mov: null,
@@ -9393,9 +9378,6 @@ export function AprovacaoDetalhePage() {
   const context = useOutletContext<PrototypeContext>();
   const pedido = context.pedidosSda.find((p) => String(p.id) === pedidoId);
 
-  // Estado preservado pelo Fast Refresh pode trazer registros do formato antigo (sem composicao)
-  const composicao = Array.isArray(pedido?.composicao) ? pedido.composicao : [];
-
   if (!pedido) {
     return (
       <section className="panel movement-not-found">
@@ -9496,6 +9478,14 @@ export function AprovacaoDetalhePage() {
                 <dd>{pedido.qtd.toLocaleString("pt-BR")} brincos</dd>
               </div>
               <div>
+                <dt>Tipo do brinco</dt>
+                <dd>
+                  {pedido.tipoBrinco === "SISBOV"
+                    ? "Nacional · SISBOV (105)"
+                    : "Internacional (076)"}
+                </dd>
+              </div>
+              <div>
                 <dt>Data da solicitação</dt>
                 <dd>{pedido.data}</dd>
               </div>
@@ -9565,55 +9555,6 @@ export function AprovacaoDetalhePage() {
           </div>
         </section>
       </div>
-
-      <section className="panel faixa-pieces-panel">
-        <div className="panel-head">
-          <div>
-            <h2>Composição</h2>
-            <p>
-              Os brincos específicos deste{" "}
-              {pedido.fila === "movimentacao" ? "envio" : "pedido"}
-            </p>
-          </div>
-          <Badge tone="purple">
-            {composicao.length}{" "}
-            {pedido.fila === "movimentacao"
-              ? "bloco sequencial"
-              : composicao.length === 1
-                ? "faixa"
-                : "faixas"}
-          </Badge>
-        </div>
-        <div className="table-wrap">
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Intervalo</th>
-                <th>Brincos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {composicao.length === 0 ? (
-                <tr>
-                  <td colSpan={2}>
-                    Composição não disponível neste registro — recarregue a página para atualizar
-                    os dados da sessão.
-                  </td>
-                </tr>
-              ) : (
-                composicao.map((item, i) => (
-                <tr key={i}>
-                  <td>{item.intervalo}</td>
-                  <td>
-                    <strong>{item.qty.toLocaleString("pt-BR")}</strong>
-                  </td>
-                </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </>
   );
 }
