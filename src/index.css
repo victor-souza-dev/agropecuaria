@@ -6804,6 +6804,12 @@ button.filter-select .chev {
   width: 100%;
   justify-content: center;
 }
+.tag-detail-list dd small {
+  display: block;
+  color: #8a94a0;
+  font-size: 11px;
+  margin-top: 2px;
+}
 .tag-detail-hero .btn.secondary {
   height: 38px;
   display: inline-flex;

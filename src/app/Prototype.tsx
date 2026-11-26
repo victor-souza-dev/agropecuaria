@@ -565,6 +565,17 @@ const initialMoves = [
 
 const SEAPI_LABEL = "SEAPI";
 
+// Tipo de ator por titular — base dos rótulos de natureza na Rota da custódia (dados demonstrativos)
+const tipoAtorPorNome: Record<string, string> = {
+  "Identifica Brasil S.A.": "Fábrica de brincos",
+  "Agropecuária Pampa Sul": "Loja Agropecuária",
+  "João Pedro Fagundes": "Produtor rural",
+  "Antônio C. Silveira": "Estocador habilitado (PF)",
+  "SEAPI — fiscal estadual": "SEAPI — estoque central",
+};
+const tipoAtor = (nome: string) =>
+  tipoAtorPorNome[nome] ?? (nome === "—" ? "—" : "Titular do estoque");
+
 const initialRequests: RequestRecord[] = [
   {
     id: "0048",
@@ -1680,14 +1691,18 @@ export function MovementDetailPage() {
           <div className="tag-detail-list">
             <dl>
               <div>
-                <dt>Origem</dt>
+                <dt>Origem — quem enviou</dt>
                 <dd>
                   <strong>{movement.from}</strong>
+                  <small>{tipoAtor(movement.from)}</small>
                 </dd>
               </div>
               <div>
-                <dt>Destino</dt>
-                <dd>{movement.to}</dd>
+                <dt>Destino — quem recebeu</dt>
+                <dd>
+                  {movement.to}
+                  <small>{tipoAtor(movement.to)}</small>
+                </dd>
               </div>
               <div>
                 <dt>Situação</dt>
@@ -1725,7 +1740,7 @@ export function AuditoriaMovimentacaoPage() {
       quando: movement.date,
       usuario: "sistema",
       evento: "Custódia encerrada na origem e aberta no destino",
-      detalhe: `${movement.from} → ${movement.to}`,
+      detalhe: `${movement.from} (${tipoAtor(movement.from)}) → ${movement.to} (${tipoAtor(movement.to)})`,
     });
     if (movement.used) {
       auditoria.push({
@@ -2781,10 +2796,13 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                 <input
                   autoFocus
                   ref={refStart}
+                  inputMode="numeric"
+                  maxLength={15}
                   value={startCode}
                   onChange={(event) => {
-                    setStartCode(event.target.value);
-                    if (normalizeCode(event.target.value).length === 15) {
+                    const digits = normalizeCode(event.target.value).slice(0, 15);
+                    setStartCode(digits);
+                    if (digits.length === 15) {
                       refEnd.current?.focus();
                     }
                   }}
@@ -2801,10 +2819,13 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                 <Icon name="scan" />
                 <input
                   ref={refEnd}
+                  inputMode="numeric"
+                  maxLength={15}
                   value={endCode}
                   onChange={(event) => {
-                    setEndCode(event.target.value);
-                    if (normalizeCode(event.target.value).length === 15) {
+                    const digits = normalizeCode(event.target.value).slice(0, 15);
+                    setEndCode(digits);
+                    if (digits.length === 15) {
                       addBox();
                     }
                   }}
