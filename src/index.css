@@ -5012,10 +5012,8 @@ td {
   color: #2e7d32;
 }
 .month-picker {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 60;
+  position: fixed;
+  z-index: 70;
   background: #fff;
   border: 1px solid #d1d5db;
   border-radius: 10px;

@@ -3619,6 +3619,7 @@ function HistoryPage({
   const [periodoAte, setPeriodoAte] = useState("");
   const [pickerAberto, setPickerAberto] = useState<"de" | "ate" | null>(null);
   const [anoPicker, setAnoPicker] = useState(2025);
+  const anoPickerRef = useRef(2025);
   const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
   const periodoRef = useRef<HTMLDivElement | null>(null);
   const deRef = useRef<HTMLDivElement | null>(null);
@@ -3727,7 +3728,7 @@ function HistoryPage({
                             key={aa}
                             type="button"
                             className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
-                            onClick={() => setAnoPicker(aa)}
+                            onClick={() => { setAnoPicker(aa); anoPickerRef.current = aa; }}
                           >
                             {aa}
                           </button>
@@ -3735,7 +3736,7 @@ function HistoryPage({
                       </div>
                       <div className="mp-months">
                         {mesesCurto.map((mes, idx) => {
-                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPickerRef.current}`;
                           return (
                             <button
                               key={mes}
@@ -3786,7 +3787,7 @@ function HistoryPage({
                             key={aa}
                             type="button"
                             className={`mp-year ${anoPicker === aa ? "selected" : ""}`}
-                            onClick={() => setAnoPicker(aa)}
+                            onClick={() => { setAnoPicker(aa); anoPickerRef.current = aa; }}
                           >
                             {aa}
                           </button>
@@ -3794,7 +3795,7 @@ function HistoryPage({
                       </div>
                       <div className="mp-months">
                         {mesesCurto.map((mes, idx) => {
-                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPicker}`;
+                          const valor = `${String(idx + 1).padStart(2, "0")}/${anoPickerRef.current}`;
                           return (
                             <button
                               key={mes}
