@@ -125,6 +125,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="automacoes" />,
       },
       {
+        path: "numeracao-fabrica",
+        element: <ModulePage page="numeracao-fabrica" />,
+      },
+      {
         path: "numeracao/:rangeId",
         element: <RangeDetailPage />,
       },
