@@ -3375,6 +3375,13 @@ kbd {
   display: block;
   margin-top: 1px;
 }
+.factory-page > .panel,
+.factory-page > .stats-grid {
+  margin-bottom: 28px;
+}
+.factory-page > .panel:last-of-type {
+  margin-bottom: 0;
+}
 .modal-actions {
   padding: 14px 20px;
 }

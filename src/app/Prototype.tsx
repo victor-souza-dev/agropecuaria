@@ -10973,6 +10973,55 @@ function FactoryPage({
   >;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
+  const [producaoAberta, setProducaoAberta] = useState(false);
+  const [qtdProducao, setQtdProducao] = useState("");
+  // Faixas de numeração concedidas pela SEAPI — a fábrica as imprime em código de barras e coloca nas caixas
+  const [faixasFabrica, setFaixasFabrica] = useState([
+    {
+      id: 1,
+      inicio: "076210077220001",
+      fim: "076210077220200",
+      qty: 200,
+      tipo: "SISBOV",
+      concedidaEm: "17/06/2025",
+      vinculada: "Pedido #47 — Agropecuária Pampa Sul",
+      ciclo: "Aguardando impressão",
+    },
+    {
+      id: 2,
+      inicio: "076210077220201",
+      fim: "076210077220600",
+      qty: 400,
+      tipo: "SISBOV",
+      concedidaEm: "15/06/2025",
+      vinculada: "Pedido #46 — Cooperativa Campos de Cima",
+      ciclo: "Impressa — nas caixas",
+    },
+    {
+      id: 3,
+      inicio: "076210077220601",
+      fim: "076210077220999",
+      qty: 400,
+      tipo: "INTERNACIONAL",
+      concedidaEm: "10/06/2025",
+      vinculada: "Estoque central SDA",
+      ciclo: "Impressa — nas caixas",
+    },
+  ]);
+  function registrarProducaoFaixa(id: number) {
+    const faixa = faixasFabrica.find((f) => f.id === id);
+    if (!faixa || faixa.ciclo !== "Aguardando impressão") return;
+    setFaixasFabrica((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, ciclo: "Impressa — nas caixas" } : f)),
+    );
+    setProducaoFabrica((p) => ({
+      pronto: p.pronto + faixa.qty,
+      numeracaoConcedida: Math.max(0, p.numeracaoConcedida - faixa.qty),
+    }));
+    notify(
+      `Etiquetas da faixa ${faixa.inicio.slice(-6)}–${faixa.fim.slice(-6)} impressas e colocadas nas caixas — ${faixa.qty} brincos prontos para envio.`,
+    );
+  }
   const [orders, setOrders] = useState([
     {
       id: 47,
@@ -11055,8 +11104,20 @@ function FactoryPage({
     );
     setSelected(null);
   }
+  function registrarProducao() {
+    const qtd = Number(qtdProducao);
+    if (!Number.isFinite(qtd) || qtd <= 0 || qtd > producaoFabrica.numeracaoConcedida) return;
+    setProducaoFabrica((p) => ({
+      ...p,
+      pronto: p.pronto + qtd,
+      numeracaoConcedida: p.numeracaoConcedida - qtd,
+    }));
+    notify(`Produção registrada — ${qtd.toLocaleString("pt-BR")} brincos prontos para envio.`);
+    setProducaoAberta(false);
+    setQtdProducao("");
+  }
   return (
-    <>
+    <div className="factory-page">
       <section className="stats-grid numbering-stats">
         <article className="stat">
           <div className="stat-icon blue">
@@ -11092,6 +11153,83 @@ function FactoryPage({
       <section className="panel">
         <div className="panel-head">
           <div>
+            <h2>Faixas de numeração recebidas da SEAPI</h2>
+            <p>
+              Os intervalos concedidos pela SEAPI — a fábrica imprime esses números em código de
+              barras e os coloca nas caixas antes do envio
+            </p>
+          </div>
+          <Badge tone="blue">
+            {faixasFabrica.filter((f) => f.ciclo === "Aguardando impressão").length} aguardando impressão
+          </Badge>
+        </div>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Faixa de numeração</th>
+                <th>Brincos</th>
+                <th>Tipo</th>
+                <th>Concedida em</th>
+                <th>Vinculada a</th>
+                <th>Ciclo de impressão</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {faixasFabrica.map((f) => (
+                <tr key={f.id}>
+                  <td className="range-cell">
+                    <strong>{formatTag(f.inicio)}</strong>
+                    <span>até {formatTag(f.fim)}</span>
+                  </td>
+                  <td>
+                    <strong>{f.qty.toLocaleString("pt-BR")}</strong>
+                  </td>
+                  <td>
+                    <Badge tone={f.tipo === "SISBOV" ? "green" : "purple"}>
+                      {f.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                    </Badge>
+                  </td>
+                  <td>{f.concedidaEm}</td>
+                  <td>{f.vinculada}</td>
+                  <td>
+                    {f.ciclo === "Aguardando impressão" ? (
+                      <Badge tone="yellow">Aguardando impressão</Badge>
+                    ) : (
+                      <Badge tone="green">Impressa — nas caixas</Badge>
+                    )}
+                  </td>
+                  <td>
+                    <div className="action-cell">
+                      {f.ciclo === "Aguardando impressão" ? (
+                        <button
+                          className="text-btn"
+                          onClick={() => registrarProducaoFaixa(f.id)}
+                          title="Imprime as etiquetas de código de barras desta faixa e coloca os brincos nas caixas"
+                        >
+                          Registrar produção
+                        </button>
+                      ) : (
+                        <span className="aging-note">Pronta para envio</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="panel-foot">
+          <span>
+            Sem a faixa de numeração não há o que imprimir — a produção só é registrada após a
+            SEAPI conceder os intervalos.
+          </span>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
             <h2>Produção e numeração</h2>
             <p>
               A numeração concedida é o que a fábrica pode produzir — produção sempre requer
@@ -11103,15 +11241,8 @@ function FactoryPage({
               className="btn small primary"
               title="Sempre antes de produzir é necessário que haja numeração"
               onClick={() => {
-                const qty = producaoFabrica.numeracaoConcedida;
-                setProducaoFabrica((p) => ({
-                  ...p,
-                  pronto: p.pronto + qty,
-                  numeracaoConcedida: p.numeracaoConcedida - qty,
-                }));
-                notify(
-                  `Produção registrada — ${qty.toLocaleString("pt-BR")} brincos prontos para envio.`,
-                );
+                setQtdProducao(String(producaoFabrica.numeracaoConcedida));
+                setProducaoAberta(true);
               }}
             >
               Registrar produção
@@ -11289,7 +11420,63 @@ function FactoryPage({
           </div>
         </ModalShell>
       )}
-    </>
+      {producaoAberta && (
+        <ModalShell
+          title="Registrar produção"
+          subtitle="A produção consome a numeração concedida e credita os brincos prontos para envio."
+          onClose={() => setProducaoAberta(false)}
+        >
+          <div className="modal-body atend-modal">
+            <div className="allocation-note">
+              <Icon name="hash" />
+              <div>
+                <span>NUMERAÇÃO CONCEDIDA DISPONÍVEL</span>
+                <strong>
+                  {producaoFabrica.numeracaoConcedida.toLocaleString("pt-BR")} brincos
+                </strong>
+              </div>
+            </div>
+            <label className="scan-input">
+              <span>QUANTIDADE A PRODUZIR</span>
+              <div>
+                <input
+                  type="number"
+                  min={1}
+                  max={producaoFabrica.numeracaoConcedida}
+                  value={qtdProducao}
+                  onChange={(e) => setQtdProducao(e.target.value)}
+                />
+              </div>
+            </label>
+            {Number(qtdProducao) > producaoFabrica.numeracaoConcedida && (
+              <p className="form-error">
+                <Icon name="alert" size={15} /> A quantidade não pode exceder a numeração
+                concedida ({producaoFabrica.numeracaoConcedida.toLocaleString("pt-BR")} brincos).
+              </p>
+            )}
+            <p className="modal-copy">
+              Sempre antes de produzir é necessário que haja numeração — produzir consome a
+              numeração concedida e credita os brincos prontos para envio.
+            </p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn secondary" onClick={() => setProducaoAberta(false)}>
+              Cancelar
+            </button>
+            <button
+              className="btn primary"
+              disabled={
+                !(Number(qtdProducao) > 0) ||
+                Number(qtdProducao) > producaoFabrica.numeracaoConcedida
+              }
+              onClick={() => registrarProducao()}
+            >
+              Registrar produção
+            </button>
+          </div>
+        </ModalShell>
+      )}
+    </div>
   );
 }
 
