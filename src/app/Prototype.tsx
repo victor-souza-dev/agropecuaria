@@ -57,8 +57,10 @@ type PrototypeContext = {
   setPedidosSda: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
   numSolicitacoes: NumSolicitacao[];
   setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
-  estoqueInternoFabrica: number;
-  setEstoqueInternoFabrica: React.Dispatch<React.SetStateAction<number>>;
+  producaoFabrica: { pronto: number; produzidoSemNum: number; numeracaoConcedida: number };
+  setProducaoFabrica: React.Dispatch<
+    React.SetStateAction<{ pronto: number; produzidoSemNum: number; numeracaoConcedida: number }>
+  >;
 };
 
 type NumSolicitacao = {
@@ -941,7 +943,11 @@ export default function Prototype() {
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [pedidosSda, setPedidosSda] = useState<PedidoSda[]>(pedidosSdaSeed);
   const [numSolicitacoes, setNumSolicitacoes] = useState<NumSolicitacao[]>(numSolicitacoesSeed);
-  const [estoqueInternoFabrica, setEstoqueInternoFabrica] = useState(300);
+  const [producaoFabrica, setProducaoFabrica] = useState({
+    pronto: 300,
+    produzidoSemNum: 0,
+    numeracaoConcedida: 200,
+  });
   const [expanded, setExpanded] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const currentRole = roles.find((r) => r.id === role)!;
@@ -1160,8 +1166,8 @@ export default function Prototype() {
               setPedidosSda,
               numSolicitacoes,
               setNumSolicitacoes,
-              estoqueInternoFabrica,
-              setEstoqueInternoFabrica,
+              producaoFabrica,
+              setProducaoFabrica,
               perfis,
               setPerfis,
               regras,
@@ -1413,8 +1419,8 @@ export function ModulePage({ page }: { page: Page }) {
           role={context.role}
           numSolicitacoes={context.numSolicitacoes}
           setNumSolicitacoes={context.setNumSolicitacoes}
-          estoqueInterno={context.estoqueInternoFabrica}
-          setEstoqueInterno={context.setEstoqueInternoFabrica}
+          producaoFabrica={context.producaoFabrica}
+          setProducaoFabrica={context.setProducaoFabrica}
         />
       );
     case "numeracao-solicitada":
@@ -1423,8 +1429,8 @@ export function ModulePage({ page }: { page: Page }) {
           notify={context.notify}
           numSolicitacoes={context.numSolicitacoes}
           setNumSolicitacoes={context.setNumSolicitacoes}
-          estoqueInterno={context.estoqueInternoFabrica}
-          setEstoqueInterno={context.setEstoqueInternoFabrica}
+          producaoFabrica={context.producaoFabrica}
+          setProducaoFabrica={context.setProducaoFabrica}
         />
       );
     case "solicitar":
@@ -10394,14 +10400,16 @@ function NumeracoesSolicitadasPage({
   notify,
   numSolicitacoes,
   setNumSolicitacoes,
-  estoqueInterno,
-  setEstoqueInterno,
+  producaoFabrica,
+  setProducaoFabrica,
 }: {
   notify: (m: string) => void;
   numSolicitacoes: NumSolicitacao[];
   setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
-  estoqueInterno: number;
-  setEstoqueInterno: React.Dispatch<React.SetStateAction<number>>;
+  producaoFabrica: { pronto: number; numeracaoConcedida: number };
+  setProducaoFabrica: React.Dispatch<
+    React.SetStateAction<{ pronto: number; numeracaoConcedida: number }>
+  >;
 }) {
   function registrarConcessao(id: number) {
     const solicitacao = numSolicitacoes.find((s) => s.id === id);
@@ -10409,9 +10417,19 @@ function NumeracoesSolicitadasPage({
     setNumSolicitacoes((current) =>
       current.map((s) => (s.id === id ? { ...s, status: "CONCEDIDA" } : s)),
     );
-    setEstoqueInterno((e) => e + solicitacao.qty);
+    setProducaoFabrica((p) => ({ ...p, numeracaoConcedida: p.numeracaoConcedida + solicitacao.qty }));
     notify(
-      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produção.`,
+      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produzir.`,
+    );
+  }
+  function registrarProducao(s: NumSolicitacao) {
+    setProducaoFabrica((p) => ({
+      ...p,
+      pronto: p.pronto + s.qty,
+      numeracaoConcedida: p.numeracaoConcedida - s.qty,
+    }));
+    notify(
+      `Produção registrada — ${s.qty.toLocaleString("pt-BR")} brincos prontos para envio.`,
     );
   }
   function cancelarSolicitacao(id: number) {
@@ -10476,7 +10494,7 @@ function NumeracoesSolicitadasPage({
           <div>
             <h2>Solicitações de numeração</h2>
             <p>
-              Estoque interno atual: {estoqueInterno.toLocaleString("pt-BR")} brincos prontos para
+              Estoque interno atual: {producaoFabrica.pronto.toLocaleString("pt-BR")} brincos prontos para
               envio
             </p>
           </div>
@@ -10540,6 +10558,17 @@ function NumeracoesSolicitadasPage({
                           </button>
                           <button className="text-btn danger-link" onClick={() => cancelarSolicitacao(s.id)}>
                             Cancelar
+                          </button>
+                        </div>
+                      )}
+                      {s.status === "CONCEDIDA" && (
+                        <div className="action-cell">
+                          <button
+                            className="text-btn"
+                            title="Sempre antes de produzir é necessário que haja numeração"
+                            onClick={() => registrarProducao(s)}
+                          >
+                            Registrar produção
                           </button>
                         </div>
                       )}
@@ -10931,15 +10960,17 @@ function FactoryPage({
   role,
   numSolicitacoes,
   setNumSolicitacoes,
-  estoqueInterno,
-  setEstoqueInterno,
+  producaoFabrica,
+  setProducaoFabrica,
 }: {
   notify: (m: string) => void;
   role: Role;
   numSolicitacoes: NumSolicitacao[];
   setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
-  estoqueInterno: number;
-  setEstoqueInterno: React.Dispatch<React.SetStateAction<number>>;
+  producaoFabrica: { pronto: number; numeracaoConcedida: number };
+  setProducaoFabrica: React.Dispatch<
+    React.SetStateAction<{ pronto: number; numeracaoConcedida: number }>
+  >;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [orders, setOrders] = useState([
@@ -10989,14 +11020,14 @@ function FactoryPage({
     },
   ]);
   const selectedOrder = orders.find((order) => order.id === selected);
-  const estoqueCobre = !!selectedOrder && estoqueInterno >= selectedOrder.qty;
-  const faltam = selectedOrder ? Math.max(0, selectedOrder.qty - estoqueInterno) : 0;
+  const estoqueCobre = !!selectedOrder && producaoFabrica.pronto >= selectedOrder.qty;
+  const faltam = selectedOrder ? Math.max(0, selectedOrder.qty - producaoFabrica.pronto) : 0;
   const pendentes = orders.filter((o) => o.status === "Pendente").length;
   const producao = orders.filter((o) => o.status === "Em produção").length;
   const enviados = orders.filter((o) => o.status === "Enviado").length;
   function declararDoEstoque() {
     if (!selectedOrder) return;
-    setEstoqueInterno((e) => e - selectedOrder.qty);
+    setProducaoFabrica((p) => ({ ...p, pronto: p.pronto - selectedOrder.qty }));
     setOrders((current) =>
       current.map((o) => (o.id === selectedOrder.id ? { ...o, status: "Enviado" } : o)),
     );
@@ -11033,7 +11064,7 @@ function FactoryPage({
           </div>
           <div>
             <span>Estoque interno</span>
-            <strong>{estoqueInterno.toLocaleString("pt-BR")}</strong>
+            <strong>{producaoFabrica.pronto.toLocaleString("pt-BR")}</strong>
             <small>brincos prontos para envio</small>
           </div>
         </article>
@@ -11057,6 +11088,51 @@ function FactoryPage({
             <small>pedidos</small>
           </div>
         </article>
+      </section>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Produção e numeração</h2>
+            <p>
+              A numeração concedida é o que a fábrica pode produzir — produção sempre requer
+              numeração prévia
+            </p>
+          </div>
+          {producaoFabrica.numeracaoConcedida > 0 && (
+            <button
+              className="btn small primary"
+              title="Sempre antes de produzir é necessário que haja numeração"
+              onClick={() => {
+                const qty = producaoFabrica.numeracaoConcedida;
+                setProducaoFabrica((p) => ({
+                  ...p,
+                  pronto: p.pronto + qty,
+                  numeracaoConcedida: p.numeracaoConcedida - qty,
+                }));
+                notify(
+                  `Produção registrada — ${qty.toLocaleString("pt-BR")} brincos prontos para envio.`,
+                );
+              }}
+            >
+              Registrar produção
+            </button>
+          )}
+        </div>
+        <MiniBars
+          rows={[
+            {
+              label: "Prontos para envio (produzidos e numerados)",
+              value: producaoFabrica.pronto,
+              color: "#4BA044",
+            },
+            {
+              label: "Numeração concedida — disponível para produzir",
+              value: producaoFabrica.numeracaoConcedida,
+              color: "#3b648c",
+            },
+          ]}
+          unit="brincos"
+        />
       </section>
       <section className="panel">
         <div className="panel-head">
@@ -11166,7 +11242,7 @@ function FactoryPage({
               <Icon name="box" />
               <div>
                 <span>ESTOQUE INTERNO DISPONÍVEL</span>
-                <strong>{estoqueInterno.toLocaleString("pt-BR")} brincos prontos para envio</strong>
+                <strong>{producaoFabrica.pronto.toLocaleString("pt-BR")} brincos prontos para envio</strong>
               </div>
             </div>
             <div className="allocation-note">
