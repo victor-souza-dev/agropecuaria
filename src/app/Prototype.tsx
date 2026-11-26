@@ -4947,6 +4947,10 @@ function HabilitacaoNovoPage({
   const [complemento, setComplemento] = useState("");
   const [bairro, setBairro] = useState("");
   const [verRegras, setVerRegras] = useState(false);
+  const [agro, setAgro] = useState<Titular | null>(null);
+  const [atendente, setAtendente] = useState<Titular | null>(null);
+  const [buscaAtendente, setBuscaAtendente] = useState("");
+  const perfilLoja = perfil === "LOJA_AGROPECUARIA";
   const navigate = useNavigate();
   // Catálogo completo (9 perfis + os criados pela SEAPI na sessão) com fallback: perfil sem
   // restrição registrada opera livre (postura padrão — RN-012)
@@ -4956,6 +4960,26 @@ function HabilitacaoNovoPage({
   const resultados = busca.trim()
     ? baseBusca.filter((p) => `${p.nome} ${p.doc}`.toLowerCase().includes(busca.trim().toLowerCase()))
     : [];
+  const resultadosPJ = perfilLoja ? resultados.filter((p) => p.natureza === "PJ") : [];
+  const resultadosPF = perfilLoja && buscaAtendente.trim()
+    ? baseBusca.filter(
+        (p) =>
+          p.natureza === "PF" &&
+          `${p.nome} ${p.doc}`.toLowerCase().includes(buscaAtendente.trim().toLowerCase()),
+      )
+    : [];
+  function escolherAgro(p: Titular) {
+    setAgro(p);
+    setAtendente(null);
+    setBusca("");
+    setBuscaAtendente("");
+    setCidade(p.cidade);
+    setMunicipioQuery(p.cidade);
+  }
+  function escolherAtendente(p: Titular) {
+    setAtendente(p);
+    setBuscaAtendente("");
+  }
   function limparEndereco() {
     setUsarMesmoEndereco(true);
     setMunicipioQuery("");
@@ -4999,14 +5023,148 @@ function HabilitacaoNovoPage({
       <section className="panel novo-estocador-panel">
         <div className="panel-head">
           <div>
-            <h2>Dados do titular</h2>
+            <h2>{perfilLoja ? "Agropecuária e atendente" : "Dados do titular"}</h2>
             <p>
-              Habilitação constitutiva do cadastro — o titular nasce habilitado e
-              ligado neste sistema.
+              {perfilLoja
+                ? "A agropecuária (PJ) é criada no Portal herdado — aqui você habilita o estocador e vincula a pessoa que opera o balcão."
+                : "Habilitação constitutiva do cadastro — o titular nasce habilitado e ligado neste sistema."}
             </p>
           </div>
         </div>
         <div className="modal-body">
+          <label className="scan-input compact">
+            <span>PERFIL DE ESTOCADOR — PARA VER AS REGRAS, USE O "i"</span>
+            <div className="perfil-regras-controles">
+              <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
+                {perfis.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.label ?? labelPerfil(p.code)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="info-regras-btn"
+                title="Ver as regras de fluxo deste perfil"
+                onClick={() => setVerRegras(true)}
+              >
+                <span className="i-glyph">i</span> ver regras
+              </button>
+            </div>
+          </label>
+          {perfilLoja ? (
+            <>
+              {!agro ? (
+                <label className="scan-input compact">
+                  <span>AGROPECUÁRIA — BUSCAR A PJ CRIADA NO PORTAL HERDADO (NOME OU CNPJ)</span>
+                  <div>
+                    <Icon name="search" />
+                    <input
+                      placeholder="Digite para buscar a agropecuária..."
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                    />
+                  </div>
+                </label>
+              ) : (
+                <div className="titular-ficha">
+                  <div className="company-icon">PJ</div>
+                  <div>
+                    <strong>{agro.nome}</strong>
+                    <span>
+                      {agro.doc} · {agro.cidade} · agropecuária criada no Portal herdado
+                    </span>
+                  </div>
+                  <button
+                    className="text-btn"
+                    onClick={() => {
+                      setAgro(null);
+                      setAtendente(null);
+                      setBusca("");
+                    }}
+                  >
+                    trocar agropecuária
+                  </button>
+                </div>
+              )}
+              {busca.trim() && !agro && (
+                <div className="busca-resultados">
+                  {resultadosPJ.length === 0 && (
+                    <span className="busca-vazia">
+                      Nenhuma agropecuária encontrada — a criação de agropecuárias continua no
+                      Portal herdado. Vincule o atendente aqui depois de criá-la lá.
+                    </span>
+                  )}
+                  {resultadosPJ.map((p) => (
+                    <button key={p.doc} className="resultado-item" onClick={() => escolherAgro(p)}>
+                      <strong>{p.nome}</strong>
+                      <span>
+                        {p.doc} · {p.cidade} · Pessoa jurídica
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {agro && (
+                <>
+                  {!atendente ? (
+                    <label className="scan-input compact">
+                      <span>ATENDENTE — BUSCAR A PESSOA NA BASE DE CADASTRO (NOME OU CPF)</span>
+                      <div>
+                        <Icon name="search" />
+                        <input
+                          placeholder="Digite para buscar a pessoa..."
+                          value={buscaAtendente}
+                          onChange={(e) => setBuscaAtendente(e.target.value)}
+                        />
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="titular-ficha">
+                      <div className="company-icon">PF</div>
+                      <div>
+                        <strong>{atendente.nome}</strong>
+                        <span>
+                          {atendente.doc} · {atendente.cidade} · atende o balcão da loja
+                        </span>
+                      </div>
+                      <button
+                        className="text-btn"
+                        onClick={() => {
+                          setAtendente(null);
+                          setBuscaAtendente("");
+                        }}
+                      >
+                        trocar atendente
+                      </button>
+                    </div>
+                  )}
+                  {buscaAtendente.trim() && !atendente && (
+                    <div className="busca-resultados">
+                      {resultadosPF.length === 0 && (
+                        <span className="busca-vazia">
+                          Nenhuma pessoa encontrada para "{buscaAtendente}".
+                        </span>
+                      )}
+                      {resultadosPF.map((p) => (
+                        <button
+                          key={p.doc}
+                          className="resultado-item"
+                          onClick={() => escolherAtendente(p)}
+                        >
+                          <strong>{p.nome}</strong>
+                          <span>
+                            {p.doc} · {p.cidade} · Pessoa física
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
           {!titular ? (
             <label className="scan-input compact">
               <span>BUSCAR NA BASE DE CADASTRO — NOME, CPF OU CNPJ</span>
@@ -5055,27 +5213,9 @@ function HabilitacaoNovoPage({
               ))}
             </div>
           )}
-          <label className="scan-input compact">
-            <span>PERFIL DE ESTOCADOR — PARA VER AS REGRAS, USE O "i"</span>
-            <div className="perfil-regras-controles">
-              <select value={perfil} onChange={(e) => setPerfil(e.target.value)}>
-                {perfis.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.label ?? labelPerfil(p.code)}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="info-regras-btn"
-                title="Ver as regras de fluxo deste perfil"
-                onClick={() => setVerRegras(true)}
-              >
-                <span className="i-glyph">i</span> ver regras
-              </button>
-            </div>
-          </label>
-          {titular && (
+            </>
+          )}
+          {(perfilLoja ? agro && atendente : titular) && (
             <div className="endereco-entrega">
               <span className="endereco-titulo">ENDEREÇO DE ENTREGA DOS BRINCOS</span>
               <label className="check-linha">
@@ -5084,7 +5224,11 @@ function HabilitacaoNovoPage({
                   checked={usarMesmoEndereco}
                   onChange={(e) => setUsarMesmoEndereco(e.target.checked)}
                 />
-                <span>Usar o mesmo endereço do titular ({titular.cidade}).</span>
+                <span>
+                  {perfilLoja
+                    ? `Usar o mesmo endereço da agropecuária (${agro?.cidade}).`
+                    : `Usar o mesmo endereço do titular (${titular?.cidade}).`}
+                </span>
               </label>
               {!usarMesmoEndereco && (
                 <div className="endereco-grade">
@@ -5208,9 +5352,20 @@ function HabilitacaoNovoPage({
             </div>
           )}
           <p className="modal-copy">
-            O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
-            intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
-            primeiro movimento.
+            {perfilLoja ? (
+              <>
+                A criação da agropecuária continua no <strong>Portal herdado</strong> — aqui você
+                apenas habilita o estocador e <strong>vincula o atendente</strong> que opera o
+                balcão. O estoque fica em custódia da agropecuária; a venda ao produtor é
+                registrada pelo atendente, com leitura do código de barras.
+              </>
+            ) : (
+              <>
+                O titular nasce <strong>habilitado e ligado neste sistema</strong> — não há regime
+                intermediário. As regras de fluxo do perfil selecionado passam a valer a partir do
+                primeiro movimento.
+              </>
+            )}
           </p>
         </div>
         <div className="modal-actions">
@@ -5219,23 +5374,31 @@ function HabilitacaoNovoPage({
           </button>
           <button
             className="btn primary pill"
-            disabled={!titular}
+            disabled={perfilLoja ? !agro || !atendente : !titular}
             onClick={() => {
               if (!usarMesmoEndereco && (!cep.trim() || !logradouro.trim())) {
                 notify(
-                  "Preencha o endereço de entrega dos brincos — ou volte a usar o endereço do titular.",
+                  "Preencha o endereço de entrega dos brincos — ou volte a usar o endereço de referência.",
                 );
                 return;
               }
+              if (perfilLoja && agro && atendente) {
+                notify(
+                  `${atendente.nome} vinculada como atendente de ${agro.nome} — estocador habilitado e ligado no novo.`,
+                );
+                navigate(`/${role}/habilitacao`);
+                return;
+              }
+              if (!titular) return;
               notify(
-                `Estocador habilitado e ligado no novo — ${titular?.nome}, perfil ${labelPerfil(
+                `Estocador habilitado e ligado no novo — ${titular.nome}, perfil ${labelPerfil(
                   perfil,
                 )}${usarMesmoEndereco ? "" : ", entrega em endereço próprio declarado"}.`,
               );
               navigate(`/${role}/habilitacao`);
             }}
           >
-            Habilitar estocador
+            {perfilLoja ? "Vincular atendente" : "Habilitar estocador"}
           </button>
         </div>
       </section>
