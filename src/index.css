@@ -544,11 +544,14 @@ main > *:not(.page-heading):not(.modal-backdrop) {
 .field-label {
   display: block;
   color: #6a7a85;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 9px;  font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
+}
+/* Espaçamento vertical dos grupos rotulados dentro de modais — mesmo ritmo dos scan-input (18px) */
+.modal-body > div > .field-label {
+  margin-top: 18px;
 }
 .filters {
   display: flex;
@@ -6731,6 +6734,18 @@ button.filter-select .chev {
 }
 .auto-auditoria small b {
   color: #5f6b76;
+}
+.audit-link {
+  margin-top: 10px;
+  width: 100%;
+  justify-content: center;
+}
+.tag-detail-hero .btn.secondary {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 .switch {
   position: relative;

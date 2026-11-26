@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
+import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 
 type Role = "seapi" | "loja" | "pf" | "fabrica" | "produtor";
 type Page =
@@ -39,6 +39,10 @@ type PrototypeContext = {
   setRegras: React.Dispatch<React.SetStateAction<Record<string, PerfilRegras>>>;
   auditoriaMatriz: AuditoriaMatrizRow[];
   registraAuditoria: (entry: AuditoriaMatrizRow) => void;
+  auditoriaAutomacoes: Record<number, RegistroAuditoria[]>;
+  registraEventoAutomacao: (id: number, alvo: string, evento: string, detalhe?: string) => void;
+  auditoriaEstocadores: Record<string, RegistroAuditoria[]>;
+  registraEventoEstocador: (nome: string, evento: string, detalhe?: string) => void;
 };
 
 type RequestRecord = {
@@ -650,7 +654,12 @@ export default function Prototype() {
     (pathSegments[2] === "dashboard" ||
       pathSegments[2] === "novo" ||
       pathSegments[2] === "regras" ||
-      pathSegments[2] === "auditoria");
+      pathSegments[2] === "auditoria" ||
+      pathSegments[2] === "estocador-auditoria");
+  const isFaixaAuditoriaPage =
+    page === "numeracao" && pathSegments.length === 4 && pathSegments[3] === "auditoria";
+  const isAutomacoesAuditoriaPage =
+    page === "automacoes" && pathSegments.length === 3 && pathSegments[2] === "auditoria";
   const headingTitle = isMovementItemsPage
     ? "Itens da movimentação"
     : isTagDetailPage
@@ -678,6 +687,8 @@ export default function Prototype() {
   const [perfis, setPerfis] = useState<PerfilCatalogo[]>(PERFIS_INICIAIS);
   const [regras, setRegras] = useState(perfilRulesSeed);
   const [auditoriaMatriz, setAuditoriaMatriz] = useState<AuditoriaMatrizRow[]>(AUDITORIA_SEED);
+  const [auditoriaAutomacoes, setAuditoriaAutomacoes] = useState(auditoriaAutomacoesSeed);
+  const [auditoriaEstocadores, setAuditoriaEstocadores] = useState(auditoriaEstocadoresSeed);
   const [moves, setMoves] = useState(initialMoves);
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -694,12 +705,16 @@ export default function Prototype() {
       !isPedidoSdaFormPage &&
       !isRangeDetailPage &&
       !isNumeracaoDashboard &&
-      !isEstocadoresSubPage
+      !isEstocadoresSubPage &&
+      !isFaixaAuditoriaPage &&
+      !isAutomacoesAuditoriaPage
     ) {
       navigate(canonicalPath, { replace: true });
     }
   }, [
+    isAutomacoesAuditoriaPage,
     isEstocadoresSubPage,
+    isFaixaAuditoriaPage,
     isMovementItemsPage,
     isRequestDetailPage,
     isTagDetailPage,
@@ -885,6 +900,24 @@ export default function Prototype() {
               auditoriaMatriz,
               registraAuditoria: (entry: AuditoriaMatrizRow) =>
                 setAuditoriaMatriz((current) => [entry, ...current]),
+              auditoriaAutomacoes,
+              registraEventoAutomacao: (id: number, alvo: string, evento: string, detalhe?: string) =>
+                setAuditoriaAutomacoes((current) => ({
+                  ...current,
+                  [id]: [
+                    { quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe, alvo },
+                    ...(current[id] ?? []),
+                  ],
+                })),
+              auditoriaEstocadores,
+              registraEventoEstocador: (nome: string, evento: string, detalhe?: string) =>
+                setAuditoriaEstocadores((current) => ({
+                  ...current,
+                  [nome]: [
+                    { quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe },
+                    ...(current[nome] ?? []),
+                  ],
+                })),
               createRequest: (quantity: number, factory: string) => {
                 setRequests((current) => {
                   const nextId = String(
@@ -1032,7 +1065,21 @@ export function ModulePage({ page }: { page: Page }) {
             registraAuditoria={context.registraAuditoria}
           />
         );
-      return <EstocadoresPage notify={context.notify} role={context.role} />;
+      if (sub === "estocador-auditoria")
+        return (
+          <AuditoriaEstocadorPage
+            role={context.role}
+            auditoriaEstocadores={context.auditoriaEstocadores}
+          />
+        );
+      return (
+        <EstocadoresPage
+          notify={context.notify}
+          role={context.role}
+          auditoriaEstocadores={context.auditoriaEstocadores}
+          registraEventoEstocador={context.registraEventoEstocador}
+        />
+      );
     }
     case "pedidos-sda":
       return <PedidosSdaPage notify={context.notify} />;
@@ -1043,8 +1090,24 @@ export function ModulePage({ page }: { page: Page }) {
         return <NumberingDashboard role={context.role} />;
       }
       return <NumberingPage notify={context.notify} role={context.role} />;
-    case "automacoes":
-      return <AutomacoesPage notify={context.notify} />;
+    case "automacoes": {
+      const sub = window.location.pathname.split("/").pop();
+      if (sub === "auditoria")
+        return (
+          <AuditoriaAutomacoesPage
+            role={context.role}
+            auditoriaAutomacoes={context.auditoriaAutomacoes}
+          />
+        );
+      return (
+        <AutomacoesPage
+          notify={context.notify}
+          role={context.role}
+          auditoriaAutomacoes={context.auditoriaAutomacoes}
+          registraEventoAutomacao={context.registraEventoAutomacao}
+        />
+      );
+    }
     case "pedidos":
       return <FactoryPage notify={context.notify} />;
     case "solicitar":
@@ -1465,6 +1528,7 @@ type RegistroAuditoria = {
   usuario: string;
   evento: string;
   detalhe?: string;
+  alvo?: string;
 };
 
 const agoraAuditoria = () =>
@@ -1560,32 +1624,6 @@ export function RangeDetailPage() {
     );
   }
 
-  // Auditoria da faixa — derivada do rastro do próprio registro (RN-018: gerado por / modo)
-  const auditoriaFaixa: RegistroAuditoria[] = [];
-  const pecasFaixa = faixaPieces[range.start] ?? [];
-  if (range.situacao !== "Disponível" && range.destino) {
-    auditoriaFaixa.push({
-      quando: range.dataCadastro,
-      usuario: "seapi.fiscal",
-      evento: "Faixa distribuída",
-      detalhe: `Destinatário: ${range.destino}`,
-    });
-  }
-  if (pecasFaixa.length > 0) {
-    auditoriaFaixa.push({
-      quando: range.dataCadastro,
-      usuario: "seapi.fiscal",
-      evento: "Brincos vinculados a titulares",
-      detalhe: `${pecasFaixa.reduce((n, p) => n + p.qty, 0).toLocaleString("pt-BR")} brincos em ${pecasFaixa.length} blocos`,
-    });
-  }
-  auditoriaFaixa.push({
-    quando: range.dataCadastro,
-    usuario: String(range.criadoPor ?? "seapi.fiscal"),
-    evento: "Faixa gerada",
-    detalhe: `Modo: ${range.modoGeracao}`,
-  });
-
   return (
     <>
       <div className="tag-detail-actions tag-detail-hero">
@@ -1611,6 +1649,12 @@ export function RangeDetailPage() {
             {range.origem === "PNIB" ? "Autorizado pelo PNIB" : "Faixa interna SDA"}
           </p>
         </div>
+        <Link
+          className="btn secondary"
+          to={`/${context.role}/numeracao/${range.start}/auditoria`}
+        >
+          <Icon name="history" size={15} /> Auditoria da faixa
+        </Link>
       </div>
 
       <div className="tag-detail-grid">
@@ -1710,12 +1754,6 @@ export function RangeDetailPage() {
         </section>
 
       </div>
-
-      <BlocoAuditoria
-        registros={auditoriaFaixa}
-        titulo="Auditoria da faixa"
-        subtitulo="Geração e alocação da numeração — rastro do registro"
-      />
 
       <section className="panel faixa-pieces-panel">
           <div className="panel-head">
@@ -3515,9 +3553,18 @@ function InfoTip({ texto }: { texto: string }) {
   );
 }
 
-function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+function EstocadoresPage({
+  notify,
+  role,
+  auditoriaEstocadores,
+  registraEventoEstocador,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  auditoriaEstocadores: Record<string, RegistroAuditoria[]>;
+  registraEventoEstocador: (nome: string, evento: string, detalhe?: string) => void;
+}) {
   const [holderList, setHolderList] = useState<Estocador[]>(estocadoresBase);
-  const [auditoriaEstocadores, setAuditoriaEstocadores] = useState(auditoriaEstocadoresSeed);
   const [searchH, setSearchH] = useState("");
   const [filterPerfilH, setFilterPerfilH] = useState("Todos os perfis");
   const [filterCanalH, setFilterCanalH] = useState("Todos os canais");
@@ -3549,18 +3596,15 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
     setFilterCanalH("Todos os canais");
     setFilterSituacaoH("Todas as situações");
   }
-  function registraEventoEstocador(nome: string, evento: string, detalhe?: string) {
-    setAuditoriaEstocadores((prev) => ({
-      ...prev,
-      [nome]: [{ quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe }, ...(prev[nome] ?? [])],
-    }));
+  function registraEventoLocal(nome: string, evento: string, detalhe?: string) {
+    registraEventoEstocador(nome, evento, detalhe);
   }
   function ligarNoNovo(est: Estocador) {
     const hoje = new Date().toLocaleDateString("pt-BR");
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, canal: "NOVO", ligadoEm: hoje } : x)),
     );
-    registraEventoEstocador(est.name, "Ligado no novo", "acesso no Portal herdado bloqueado");
+    registraEventoLocal(est.name, "Ligado no novo", "acesso no Portal herdado bloqueado");
     setLigar(null);
     notify(`${est.name} ligado no novo — acesso no Portal herdado bloqueado.`);
   }
@@ -3568,14 +3612,14 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, active: !x.active } : x)),
     );
-    registraEventoEstocador(est.name, est.active ? "Suspenso" : "Reativado");
+    registraEventoLocal(est.name, est.active ? "Suspenso" : "Reativado");
     notify(est.active ? "Estocador suspenso com sucesso." : "Estocador reativado com sucesso.");
   }
   function addAtendente(est: Estocador) {
     setHolderList((prev) =>
       prev.map((x) => (x.name === est.name ? { ...x, atendentes: x.atendentes + 1 } : x)),
     );
-    registraEventoEstocador(est.name, "Atendente habilitado", "vínculo por CPF");
+    registraEventoLocal(est.name, "Atendente habilitado", "vínculo por CPF");
     notify("Atendente habilitado e vinculado à pessoa jurídica.");
   }
   return (
@@ -3910,11 +3954,12 @@ function EstocadoresPage({ notify, role }: { notify: (m: string) => void; role: 
                 )}
               </>
             )}
-            <BlocoAuditoria
-              registros={auditoriaEstocadores[detalheAtual.name] ?? []}
-              titulo="Auditoria do estocador"
-              subtitulo="Habilitação, ligação, atendentes e situação — do mais recente para o mais antigo"
-            />
+            <Link
+              className="btn secondary audit-link"
+              to={`/${role}/habilitacao/estocador-auditoria?nome=${encodeURIComponent(detalheAtual.name)}`}
+            >
+              <Icon name="history" size={15} /> Ver auditoria completa do estocador
+            </Link>
           </div>
           <div className="modal-actions">
             <button className="btn secondary" onClick={() => setDetalheNome(null)}>
@@ -4646,6 +4691,212 @@ function AuditoriaRegrasPage({
           </table>
         )}
       </section>
+    </div>
+  );
+}
+
+// Página dedicada de auditoria das automações — histórico consolidado, derivado dos registros
+function AuditoriaAutomacoesPage({
+  role,
+  auditoriaAutomacoes,
+}: {
+  role: Role;
+  auditoriaAutomacoes: Record<number, RegistroAuditoria[]>;
+}) {
+  const [alvoFiltro, setAlvoFiltro] = useState("TODOS");
+  const [alvoAberto, setAlvoAberto] = useState(false);
+  const alvoRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (alvoRef.current && !alvoRef.current.contains(e.target as Node)) {
+        setAlvoAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+
+  const todos = Object.entries(auditoriaAutomacoes).flatMap(([, registros]) => registros);
+  const alvosDistintos = [...new Set(todos.map((r) => r.alvo ?? ""))].filter(Boolean);
+  const filtrada = alvoFiltro === "TODOS" ? todos : todos.filter((r) => r.alvo === alvoFiltro);
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Auditoria das automações</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/automacoes`}>
+            ← Voltar às automações
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        <span>
+          Cada ação sobre as automações de geração — criação, edição, ativação, desativação e
+          execução — registra um rastro imutável com autoria e resultado. Os registros não são
+          apagados por edições posteriores.
+        </span>
+      </div>
+      <div className="dash-filters">
+        <div className="filter-group multiselect" ref={alvoRef}>
+          <span className="filter-label">Automação</span>
+          <button
+            type="button"
+            className={`filter-select ${alvoFiltro === "TODOS" ? "" : "ativo"}`}
+            onClick={() => setAlvoAberto(!alvoAberto)}
+          >
+            {alvoFiltro === "TODOS" ? "Todas as automações" : alvoFiltro}
+            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+          {alvoAberto && (
+            <div className="multiselect-dropdown">
+              {["TODOS", ...alvosDistintos].map((alvo) => (
+                <label
+                  className="ms-option"
+                  key={alvo}
+                  onClick={() => {
+                    setAlvoFiltro(alvo);
+                    setAlvoAberto(false);
+                  }}
+                >
+                  <input type="checkbox" checked={alvoFiltro === alvo} readOnly />
+                  <span>{alvo === "TODOS" ? "Todas as automações" : alvo}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Histórico consolidado</h2>
+            <p>Do registro mais recente de cada automação para o mais antigo</p>
+          </div>
+          <span className="head-badge">{filtrada.length} registros</span>
+        </div>
+        {filtrada.length === 0 ? (
+          <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+            Nenhum evento registrado para este recorte.
+          </p>
+        ) : (
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Quando</th>
+                <th>Usuário</th>
+                <th>Automação</th>
+                <th>Evento</th>
+                <th>Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrada.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.quando}</td>
+                  <td>{r.usuario}</td>
+                  <td>{r.alvo ?? "—"}</td>
+                  <td>{r.evento}</td>
+                  <td>{r.detalhe ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// Página dedicada de auditoria do estocador — histórico real do titular (?nome=)
+function AuditoriaEstocadorPage({
+  role,
+  auditoriaEstocadores,
+}: {
+  role: Role;
+  auditoriaEstocadores: Record<string, RegistroAuditoria[]>;
+}) {
+  const [params] = useSearchParams();
+  const nome = params.get("nome") ?? "";
+  const registros = auditoriaEstocadores[nome] ?? [];
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Auditoria do estocador</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/habilitacao`}>
+            ← Voltar aos estocadores
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        <span>
+          {nome
+            ? `Histórico do titular ${nome} — habilitação, ligação de canal, atendentes e situação. Cada ação da SEAPI registra um rastro imutável; nenhuma edição apaga o anterior.`
+            : "Titular não informado — volte à listagem e abra a ficha de um estocador."}
+        </span>
+      </div>
+      <BlocoAuditoria
+        registros={registros}
+        titulo={nome || "Sem titular"}
+        subtitulo="Do evento mais recente para o mais antigo"
+      />
+    </div>
+  );
+}
+
+// Página dedicada de auditoria da faixa — rastro derivado do registro (?id= via rota)
+export function AuditoriaFaixaPage() {
+  const { rangeId } = useParams();
+  const { role } = useOutletContext<PrototypeContext>();
+  const range = numberingRanges.find((r) => r.start === rangeId || r.end === rangeId);
+  const pecasFaixa = range ? faixaPieces[range.start] ?? [] : [];
+  const auditoriaFaixa: RegistroAuditoria[] = [];
+  if (range) {
+    if (range.situacao !== "Disponível" && range.destino) {
+      auditoriaFaixa.push({
+        quando: range.dataCadastro,
+        usuario: "seapi.fiscal",
+        evento: "Faixa distribuída",
+        detalhe: `Destinatário: ${range.destino}`,
+      });
+    }
+    if (pecasFaixa.length > 0) {
+      auditoriaFaixa.push({
+        quando: range.dataCadastro,
+        usuario: "seapi.fiscal",
+        evento: "Brincos vinculados a titulares",
+        detalhe: `${pecasFaixa.reduce((n, p) => n + p.qty, 0).toLocaleString("pt-BR")} brincos em ${pecasFaixa.length} blocos`,
+      });
+    }
+    auditoriaFaixa.push({
+      quando: range.dataCadastro,
+      usuario: String(range.criadoPor ?? "seapi.fiscal"),
+      evento: "Faixa gerada",
+      detalhe: `Modo: ${range.modoGeracao}`,
+    });
+  }
+  return (
+    <div className="page-container">
+      <section className="header">
+        <h3>Auditoria da faixa</h3>
+        <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/numeracao/${rangeId ?? ""}`}>
+            ← Voltar à faixa
+          </Link>
+        </div>
+      </section>
+      <div className="dash-note">
+        <span>
+          {range
+            ? `Faixa ${formatTag(range.start)} a ${formatTag(range.end)} — geração e alocação da numeração, com autoria e data. O rastro acompanha o ciclo de vida do registro.`
+            : "Faixa não localizada — volte à gestão de numeração."}
+        </span>
+      </div>
+      <BlocoAuditoria
+        registros={auditoriaFaixa}
+        titulo={range ? "Auditoria da faixa" : "Sem faixa"}
+        subtitulo="Do evento mais recente para o mais antigo"
+      />
     </div>
   );
 }
@@ -7530,6 +7781,37 @@ const automacoesIniciais: Automacao[] = [
   },
 ];
 
+// Auditoria por automação — seed derivado do cadastro; eventos ao vivo entram quando a SEAPI age
+const auditoriaAutomacoesSeed: Record<number, RegistroAuditoria[]> = {};
+for (const a of automacoesIniciais) {
+  const eventos: RegistroAuditoria[] = [];
+  if (!a.ativa) {
+    eventos.unshift({
+      quando: "—",
+      usuario: "seapi.fiscal",
+      evento: "Desativada",
+      alvo: nomeAutomacao(a),
+    });
+  }
+  if (a.ultimaGeracao !== "—") {
+    eventos.unshift({
+      quando: a.ultimaGeracao,
+      usuario: "sistema (gatilho da automação)",
+      evento: "Execução automática — faixas geradas",
+      detalhe: `${fmtBR(a.ultimaQtd ?? 0)} numerações`,
+      alvo: nomeAutomacao(a),
+    });
+  }
+  eventos.unshift({
+    quando: "—",
+    usuario: "seapi.fiscal",
+    evento: a.padrao ? "Automação padrão do sistema semeada" : "Automação criada",
+    detalhe: `${a.origem} · ${a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}`,
+    alvo: nomeAutomacao(a),
+  });
+  auditoriaAutomacoesSeed[a.id] = eventos;
+}
+
 const atoresPendentes = [
   { nome: "Brinco Sul Indústria", pendente: 480, perfil: "Fabricante de brincos" },
   { nome: "Identifica Brasil S.A.", pendente: 1200, perfil: "Fabricante de brincos" },
@@ -7593,39 +7875,18 @@ const formNova: FormAutomacao = {
   ativa: true,
 };
 
-function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
+function AutomacoesPage({
+  notify,
+  role,
+  auditoriaAutomacoes,
+  registraEventoAutomacao,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  auditoriaAutomacoes: Record<number, RegistroAuditoria[]>;
+  registraEventoAutomacao: (id: number, alvo: string, evento: string, detalhe?: string) => void;
+}) {
   const [automacoes, setAutomacoes] = useState(automacoesIniciais);
-  const [auditoriaAutomacoes, setAuditoriaAutomacoes] = useState(() => {
-    const seed: Record<number, RegistroAuditoria[]> = {};
-    for (const a of automacoesIniciais) {
-      const eventos: RegistroAuditoria[] = [];
-      if (!a.ativa) {
-        eventos.unshift({ quando: "—", usuario: "seapi.fiscal", evento: "Desativada" });
-      }
-      if (a.ultimaGeracao !== "—") {
-        eventos.unshift({
-          quando: a.ultimaGeracao,
-          usuario: "sistema (gatilho da automação)",
-          evento: "Execução automática — faixas geradas",
-          detalhe: `${fmtBR(a.ultimaQtd ?? 0)} numerações`,
-        });
-      }
-      eventos.unshift({
-        quando: "—",
-        usuario: "seapi.fiscal",
-        evento: a.padrao ? "Automação padrão do sistema semeada" : "Automação criada",
-        detalhe: `${a.origem} · ${a.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}`,
-      });
-      seed[a.id] = eventos;
-    }
-    return seed;
-  });
-  const registraEventoAutomacao = (id: number, evento: string, detalhe?: string) => {
-    setAuditoriaAutomacoes((prev) => ({
-      ...prev,
-      [id]: [{ quando: agoraAuditoria(), usuario: "seapi.fiscal", evento, detalhe }, ...(prev[id] ?? [])],
-    }));
-  };
   const [form, setForm] = useState<FormAutomacao | null>(null);
   const [buscaAtor, setBuscaAtor] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "lista">("cards");
@@ -7673,7 +7934,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
     setAutomacoes((prev) =>
       prev.map((a) => (a.id === id ? { ...a, ativa: !a.ativa } : a))
     );
-    registraEventoAutomacao(id, alvo.ativa ? "Desativada" : "Ativada");
+    registraEventoAutomacao(id, nomeAutomacao(alvo), alvo.ativa ? "Desativada" : "Ativada");
     notify(`Automação "${nomeAutomacao(alvo)}" ${alvo.ativa ? "desativada" : "ativada"}.`);
   };
 
@@ -7693,7 +7954,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
     );
     const qtdGerada =
       alvo ? (alvo.quantidadeModo === "pedido" ? Math.min(alvo.qtdMax ?? 1500, Math.max(alvo.qtdMin ?? 0, 1500)) : alvo.lote) : 0;
-    registraEventoAutomacao(id, "Execução manual — faixas geradas", `${fmtBR(qtdGerada)} numerações`);
+    registraEventoAutomacao(id, nomeAutomacao(alvo), "Execução manual — faixas geradas", `${fmtBR(qtdGerada)} numerações`);
     notify("Geração manual executada — faixas criadas conforme a automação.");
   };
 
@@ -7708,7 +7969,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
       setAutomacoes((prev) =>
         prev.map((a) => (a.id === form.id ? { ...a, ...form } : a))
       );
-      registraEventoAutomacao(form.id, "Automação editada", "configuração vale para as próximas gerações");
+      registraEventoAutomacao(form.id, nomeAutomacao({ ...form, id: 0 }), "Automação editada", "configuração vale para as próximas gerações");
       notify("Automação atualizada — vale para as próximas gerações.");
     } else {
       const novoId = Date.now();
@@ -7716,7 +7977,7 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
         ...prev,
         { ...form, id: novoId, ultimaGeracao: "—", ultimaQtd: null },
       ]);
-      registraEventoAutomacao(novoId, "Automação criada", "a geração seguirá a configuração definida");
+      registraEventoAutomacao(novoId, nomeAutomacao({ ...form, id: 0 }), "Automação criada", "a geração seguirá a configuração definida");
       notify("Automação criada — a geração seguirá a configuração definida.");
     }
     setForm(null);
@@ -7729,6 +7990,9 @@ function AutomacoesPage({ notify }: { notify: (m: string) => void }) {
       <section className="header">
         <h3>Automações de geração</h3>
         <div className="header-actions">
+          <Link className="btn secondary voltar-pill" to={`/${role}/automacoes/auditoria`}>
+            <Icon name="history" size={15} /> Auditoria
+          </Link>
           <button
             className="btn primary"
             onClick={() => setForm({ ...formNova })}

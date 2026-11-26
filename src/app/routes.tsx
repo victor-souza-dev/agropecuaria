@@ -5,6 +5,7 @@ import Prototype, {
   RequestDetailPage,
   TagDetailPage,
   RangeDetailPage,
+  AuditoriaFaixaPage,
 } from "./Prototype";
 
 function EmptyRoute() {
@@ -69,6 +70,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="habilitacao" />,
       },
       {
+        path: "habilitacao/estocador-auditoria",
+        element: <ModulePage page="habilitacao" />,
+      },
+      {
         path: "pedidos-sda",
         element: <ModulePage page="pedidos-sda" />,
       },
@@ -95,6 +100,10 @@ export const router = createBrowserRouter([
       {
         path: "numeracao/:rangeId",
         element: <RangeDetailPage />,
+      },
+      {
+        path: "numeracao/:rangeId/auditoria",
+        element: <AuditoriaFaixaPage />,
       },
       {
         path: "pedidos",
