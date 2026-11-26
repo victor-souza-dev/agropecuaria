@@ -780,26 +780,22 @@ export default function Prototype() {
     page === "automacoes" && pathSegments.length === 3 && pathSegments[2] === "auditoria";
   const headingTitle = isMovementItemsPage
     ? "Itens da movimentação"
-    : isPedidoSdaDetailPage
-      ? "Detalhes da aprovação"
-      : isTagDetailPage
-        ? "Detalhes do brinco"
-        : isRequestDetailPage
-          ? "Detalhes da solicitação"
-          : isRangeDetailPage
-            ? "Detalhes da faixa de numeração"
-            : pageTitle(role, page);
+    : isTagDetailPage
+      ? "Detalhes do brinco"
+      : isRequestDetailPage
+        ? "Detalhes da solicitação"
+        : isRangeDetailPage
+          ? "Detalhes da faixa de numeração"
+          : pageTitle(role, page);
   const headingDescription = isMovementItemsPage
     ? "Consulte individualmente os brincos vinculados e sua situação na cadeia de custódia."
-    : isPedidoSdaDetailPage
-      ? "Contexto completo do pedido ou da pendência — as decisões acontecem na fila de Aprovações."
-      : isTagDetailPage
-        ? "Acompanhe a identificação, a custódia atual e todo o histórico do item."
-        : isRequestDetailPage
-          ? "Acompanhe a situação, o atendimento da fábrica e os eventos do pedido."
-          : isRangeDetailPage
-            ? "Consulte os dados completos da faixa, distribuições associadas e rastreabilidade da numeração."
-            : pageSubtitle(role, page);
+    : isTagDetailPage
+      ? "Acompanhe a identificação, a custódia atual e todo o histórico do item."
+      : isRequestDetailPage
+        ? "Acompanhe a situação, o atendimento da fábrica e os eventos do pedido."
+        : isRangeDetailPage
+          ? "Consulte os dados completos da faixa, distribuições associadas e rastreabilidade da numeração."
+          : pageSubtitle(role, page);
   const [modal, setModal] = useState<Modal>(null);
   const [toast, setToast] = useState("");
   const [producerAdded, setProducerAdded] = useState<string[]>([]);
@@ -953,7 +949,7 @@ export default function Prototype() {
 
       <main>
         {loading && <PageSkeleton />}
-        {!isTagDetailPage && !isNumeracaoDashboard && (
+        {!isTagDetailPage && !isNumeracaoDashboard && !isPedidoSdaDetailPage && (
           <div className="page-heading">
             <div>
               <div className="breadcrumb">
@@ -9496,95 +9492,141 @@ export function AprovacaoDetalhePage() {
 
   return (
     <>
-      <div className="movement-detail-actions">
-        <Link className="back-link" to={`/${context.role}/pedidos-sda`}>
-          <span>←</span> Voltar às aprovações
+      <div className="tag-detail-actions tag-detail-hero">
+        <Link
+          className="tag-back-link"
+          to={`/${context.role}/pedidos-sda`}
+          aria-label="Voltar às aprovações"
+        >
+          ←
         </Link>
-        <span>Contexto completo · as decisões acontecem na fila de Aprovações</span>
-      </div>
-      <section className="panel">
-        <div className="panel-head">
+        <div className="tag-detail-hero-copy">
           <div>
-            <h2>
-              {pedido.fila === "movimentacao"
-                ? "Movimentação aguardando aprovação"
-                : "Pedido de brincos ao estoque central"}
-            </h2>
-            <p>
-              {pedido.ator} · {pedido.municipio}
-            </p>
+            <h1>{pedido.ator}</h1>
+            {badge}
           </div>
-          {badge}
+          <p>
+            {pedido.fila === "movimentacao"
+              ? "Movimentação aguardando aprovação"
+              : "Pedido ao estoque central"}{" "}
+            &middot; {pedido.qtd.toLocaleString("pt-BR")} brincos &middot; {pedido.municipio}
+          </p>
         </div>
-        <div className="aprov-detalhe-grid">
-          <section>
-            <span>SITUAÇÃO NO CICLO</span>
-            <strong>{ciclo}</strong>
-          </section>
-          <section>
-            <span>PERFIL / CANAL</span>
-            <strong>{pedido.tipo}</strong>
-          </section>
-          <section>
-            <span>QUANTIDADE</span>
-            <strong>{pedido.qtd} brincos</strong>
-          </section>
-          <section>
-            <span>DATA DA SOLICITAÇÃO</span>
-            <strong>{pedido.data}</strong>
-          </section>
-          {pedido.atendente && (
-            <section>
-              <span>ATENDENTE SOLICITANTE</span>
-              <strong>
-                {pedido.atendente} — operou o pedido na PJ {pedido.ator}
-              </strong>
-            </section>
-          )}
-          {pedido.situacao === "SOLICITADO" && pedido.fila === "movimentacao" && (
-            <>
-              <section>
-                <span>APROVADOR</span>
-                <strong>
-                  {pedido.aprovador === "SEAPI"
-                    ? "A SEAPI — política de aprovação ligada na matriz de regras deste perfil"
-                    : "O próprio destinatário — pendência exibida no acesso dele"}
-                </strong>
-              </section>
-              <section>
-                <span>RESERVA DURANTE A PENDÊNCIA</span>
-                <strong>Brincos reservados no estoque do remetente até a decisão.</strong>
-              </section>
-              <section className="span-all">
-                <span>ACEITE TÁCITO</span>
-                <strong>
-                  O uso de um brinco pelo destinatário durante a pendência consolida o aceite — a
-                  reversão posterior só ocorre por estorno.
-                </strong>
-              </section>
-            </>
-          )}
-          {pedido.situacao === "RECUSADO" && pedido.motivo && (
-            <section className="span-all">
-              <span>MOTIVO DA RECUSA (TRILHA DE AUDITORIA)</span>
-              <strong>{pedido.motivo}</strong>
-            </section>
-          )}
-          <section className="span-all">
-            <span>COMPOSIÇÃO (brincos específicos)</span>
-            <strong>{pedido.itens}</strong>
-          </section>
-          {pedido.mov && (
-            <section className="span-all">
-              <span>MOVIMENTO DE ENVIO VINCULADO</span>
-              <strong>
-                Transferência ESTOQUE SDA → {pedido.ator} — consultável no histórico de
-                movimentações
-              </strong>
-            </section>
-          )}
-        </div>
-      </section>
+      </div>
+
+      <div className="tag-detail-grid">
+        <section className="panel tag-info-panel custody-panel">
+          <div className="panel-head">
+            <div>
+              <h2>
+                {pedido.fila === "movimentacao" ? "Dados da movimentação" : "Dados do pedido"}
+              </h2>
+              <p>Quem pediu e o que foi composto</p>
+            </div>
+            <div className="stat-icon blue">
+              <Icon name="request" size={18} />
+            </div>
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Solicitante</dt>
+                <dd>{pedido.ator}</dd>
+              </div>
+              <div>
+                <dt>Perfil / canal</dt>
+                <dd>{pedido.tipo}</dd>
+              </div>
+              <div>
+                <dt>Município</dt>
+                <dd>{pedido.municipio}</dd>
+              </div>
+              {pedido.atendente && (
+                <div>
+                  <dt>Atendente solicitante</dt>
+                  <dd>
+                    {pedido.atendente} — operou o pedido na PJ {pedido.ator}
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt>Quantidade</dt>
+                <dd>{pedido.qtd.toLocaleString("pt-BR")} brincos</dd>
+              </div>
+              <div>
+                <dt>Data da solicitação</dt>
+                <dd>{pedido.data}</dd>
+              </div>
+              <div>
+                <dt>Composição (brincos específicos)</dt>
+                <dd>{pedido.itens}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section className="panel tag-info-panel origin-panel">
+          <div className="panel-head">
+            <div>
+              <h2>Situação e ciclo</h2>
+              <p>Onde o registro está na fila</p>
+            </div>
+            <div className="stat-icon green">
+              <Icon name="history" size={18} />
+            </div>
+          </div>
+          <div className="tag-detail-list">
+            <dl>
+              <div>
+                <dt>Situação atual</dt>
+                <dd>{badge}</dd>
+              </div>
+              <div>
+                <dt>Ciclo</dt>
+                <dd>{ciclo}</dd>
+              </div>
+              {pedido.situacao === "SOLICITADO" && pedido.fila === "movimentacao" && (
+                <>
+                  <div>
+                    <dt>Aprovador</dt>
+                    <dd>
+                      {pedido.aprovador === "SEAPI"
+                        ? "A SEAPI — política de aprovação ligada na matriz de regras deste perfil"
+                        : "O próprio destinatário — pendência exibida no acesso dele"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Reserva durante a pendência</dt>
+                    <dd>Brincos reservados no estoque do remetente até a decisão.</dd>
+                  </div>
+                  <div>
+                    <dt>Aceite tácito</dt>
+                    <dd>
+                      O uso de um brinco pelo destinatário durante a pendência consolida o aceite —
+                      a reversão posterior só ocorre por estorno.
+                    </dd>
+                  </div>
+                </>
+              )}
+              {pedido.situacao === "RECUSADO" && pedido.motivo && (
+                <div>
+                  <dt>Motivo da recusa (trilha de auditoria)</dt>
+                  <dd>{pedido.motivo}</dd>
+                </div>
+              )}
+              {pedido.mov && (
+                <div>
+                  <dt>Movimento de envio vinculado</dt>
+                  <dd>
+                    Transferência ESTOQUE SDA → {pedido.ator} — consultável no histórico de
+                    movimentações
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </section>
+      </div>
     </>
   );
 }
