@@ -63,7 +63,7 @@ type PedidoSda = {
   atendente: string | null;
   tipo: string;
   qtd: number;
-  composicao: { rotulo: string; intervalo: string; qty: number }[];
+  composicao: { intervalo: string; qty: number }[];
   situacao: "SOLICITADO" | "ENVIADO" | "CONCLUIDO" | "RECUSADO";
   data: string;
   mov: string | null;
@@ -82,8 +82,8 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 360,
       composicao: [
-        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
-        { rotulo: "FX-C02", intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
+        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+        { intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
       ],
       situacao: "SOLICITADO",
       data: "16/06/2025",
@@ -100,9 +100,9 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "ESTOQUISTA · PREFEITURA · Ligado no novo",
       qtd: 380,
       composicao: [
-        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
-        { rotulo: "FX-C02", intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
-        { rotulo: "FX-C03", intervalo: `${formatTag("076210077183401")} a ${formatTag("076210077183420")}`, qty: 20 },
+        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+        { intervalo: `${formatTag("076210077200241")} a ${formatTag("076210077200330")}`, qty: 120 },
+        { intervalo: `${formatTag("076210077183401")} a ${formatTag("076210077183420")}`, qty: 20 },
       ],
       situacao: "ENVIADO",
       data: "15/06/2025",
@@ -119,7 +119,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "PRODUTOR · Ligado no novo",
       qtd: 60,
       composicao: [
-        { rotulo: "FX-C02 · sub-faixa", intervalo: "sub-faixa da faixa, brincos sequenciais a definir na distribuição", qty: 60 },
+        { intervalo: "sub-faixa da faixa, brincos sequenciais a definir na distribuição", qty: 60 },
       ],
       situacao: "CONCLUIDO",
       data: "14/06/2025",
@@ -136,7 +136,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "ESTOQUISTA · PJ · Ligado no novo",
       qtd: 240,
       composicao: [
-        { rotulo: "FX-C01", intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
+        { intervalo: `${formatTag("076210077200001")} a ${formatTag("076210077200240")}`, qty: 240 },
       ],
       situacao: "RECUSADO",
       data: "13/06/2025",
@@ -154,7 +154,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "TRANSFERÊNCIA · PREFEITURA → Habilitado",
       qtd: 20,
       composicao: [
-        { rotulo: "Bloco sequencial", intervalo: `${formatTag("076210077220000")} a ${formatTag("076210077220019")}`, qty: 20 },
+        { intervalo: `${formatTag("076210077220000")} a ${formatTag("076210077220019")}`, qty: 20 },
       ],
       situacao: "SOLICITADO",
       data: "18/06/2025",
@@ -171,7 +171,7 @@ function pedidosSdaSeed(): PedidoSda[] {
       tipo: "TRANSFERÊNCIA · COOPERATIVA_LEITE → Habilitado",
       qtd: 15,
       composicao: [
-        { rotulo: "Bloco sequencial", intervalo: `${formatTag("105430057001000")} a ${formatTag("105430057001014")}`, qty: 15 },
+        { intervalo: `${formatTag("105430057001000")} a ${formatTag("105430057001014")}`, qty: 15 },
       ],
       situacao: "SOLICITADO",
       data: "18/06/2025",
@@ -464,7 +464,7 @@ const initialMoves = [
     id: 1815,
     date: "05/06/2025",
     time: "10:22",
-    type: "Devolvido",
+    type: "Devolução",
     from: "João Pedro Fagundes",
     to: "Agropecuária Pampa Sul",
     qty: 5,
@@ -473,6 +473,32 @@ const initialMoves = [
     used: false,
     items: "076210077200366 a 076210077200370",
     link: "#MOV-2025-1791",
+  },
+  {
+    id: 1808,
+    date: "03/06/2025",
+    time: "17:05",
+    type: "Saída interna",
+    from: "Agropecuária Pampa Sul",
+    to: "—",
+    qty: 4,
+    read: "Sistema",
+    state: "Concluído",
+    used: false,
+    items: "076210077200381 a 076210077200384",
+  },
+  {
+    id: 1800,
+    date: "01/06/2025",
+    time: "09:47",
+    type: "Estorno",
+    from: "SEAPI — fiscal estadual",
+    to: "Agropecuária Pampa Sul",
+    qty: 20,
+    read: "Sistema",
+    state: "Concluído",
+    used: false,
+    items: "076210077220401 a 076210077220420",
   },
   {
     id: 1806,
@@ -3193,11 +3219,10 @@ function HistoryPage({
         <table className="data-table">
           <thead>
             <tr>
-              <th>Movimento</th>
               <th>Data</th>
               <th>Tipo</th>
-              <th>Origem → Destino</th>
-              <th>Leitura</th>
+              <th>Origem</th>
+              <th>Destino</th>
               <th>Qtd.</th>
               <th>Situação</th>
               <th>Ações</th>
@@ -3206,7 +3231,7 @@ function HistoryPage({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <span className="aging-note" style={{ display: "block", padding: "12px 16px" }}>
                     Nenhuma movimentação para o recorte selecionado — ajuste os filtros ou limpe a busca.
                   </span>
@@ -3217,14 +3242,6 @@ function HistoryPage({
               <Fragment key={m.id}>
                 <tr className={expanded === m.id ? "expanded-row" : ""}>
                   <td>
-                    <button
-                      className="movement-id"
-                      onClick={() => setExpanded(expanded === m.id ? null : m.id)}
-                    >
-                      #MOV-2025-{m.id} <span>{expanded === m.id ? "⌃" : "⌄"}</span>
-                    </button>
-                  </td>
-                  <td>
                     {m.date}
                     <small>{m.time}</small>
                   </td>
@@ -3233,7 +3250,7 @@ function HistoryPage({
                       tone={
                         m.type === "Perda"
                           ? "red"
-                          : m.type === "Devolvido"
+                          : m.type === "Devolução"
                             ? "purple"
                             : m.type === "Venda"
                               ? "blue"
@@ -3243,11 +3260,10 @@ function HistoryPage({
                       {m.type}
                     </Badge>
                   </td>
-                  <td className="route-cell">
+                  <td>
                     <strong>{m.from}</strong>
-                    <span>→ {m.to}</span>
                   </td>
-                  <td>{m.read}</td>
+                  <td>{m.to}</td>
                   <td>
                     <strong>{m.qty}</strong>
                   </td>
@@ -9334,7 +9350,6 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
                   {isSelected && <Icon name="check" size={13} />}
                 </span>
                 <span className="range-picker-copy">
-                  <small>{range.id}</small>
                   <strong>
                     {formatTag(range.start)} <i>a</i> {formatTag(range.end)}
                   </strong>
@@ -9573,7 +9588,6 @@ export function AprovacaoDetalhePage() {
           <table className="history-table">
             <thead>
               <tr>
-                <th>{pedido.fila === "movimentacao" ? "Bloco" : "Faixa"}</th>
                 <th>Intervalo</th>
                 <th>Brincos</th>
               </tr>
@@ -9581,7 +9595,7 @@ export function AprovacaoDetalhePage() {
             <tbody>
               {composicao.length === 0 ? (
                 <tr>
-                  <td colSpan={3}>
+                  <td colSpan={2}>
                     Composição não disponível neste registro — recarregue a página para atualizar
                     os dados da sessão.
                   </td>
@@ -9589,9 +9603,6 @@ export function AprovacaoDetalhePage() {
               ) : (
                 composicao.map((item, i) => (
                 <tr key={i}>
-                  <td>
-                    <strong>{item.rotulo}</strong>
-                  </td>
                   <td>{item.intervalo}</td>
                   <td>
                     <strong>{item.qty.toLocaleString("pt-BR")}</strong>
