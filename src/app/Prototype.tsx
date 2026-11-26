@@ -63,6 +63,7 @@ type RequestRecord = {
   quantity: number;
   status: "Pendente" | "Atendida" | "Recusada";
   updatedAt: string;
+  tipoBrinco?: "INTERNACIONAL" | "SISBOV";
 };
 
 type PedidoSda = {
@@ -606,6 +607,7 @@ const initialRequests: RequestRecord[] = [
     quantity: 240,
     status: "Pendente",
     updatedAt: "12/06/2025 às 10:18",
+    tipoBrinco: "INTERNACIONAL",
   },
   {
     id: "0039",
@@ -614,6 +616,7 @@ const initialRequests: RequestRecord[] = [
     quantity: 500,
     status: "Atendida",
     updatedAt: "02/06/2025 às 16:42",
+    tipoBrinco: "SISBOV",
   },
   {
     id: "0031",
@@ -622,6 +625,7 @@ const initialRequests: RequestRecord[] = [
     quantity: 120,
     status: "Recusada",
     updatedAt: "03/05/2025 às 09:27",
+    tipoBrinco: "INTERNACIONAL",
   },
 ];
 
@@ -1150,7 +1154,7 @@ export default function Prototype() {
                     ...(current[nome] ?? []),
                   ],
                 })),
-              createRequest: (quantity: number, factory: string) => {
+              createRequest: (quantity: number, factory: string, tipoBrinco?: "INTERNACIONAL" | "SISBOV") => {
                 setRequests((current) => {
                   const nextId = String(
                     Math.max(...current.map((request) => Number(request.id))) + 1,
@@ -1163,6 +1167,7 @@ export default function Prototype() {
                       quantity,
                       status: "Pendente",
                       updatedAt: "18/06/2025 às 15:42",
+                      tipoBrinco,
                     },
                     ...current,
                   ];
@@ -2695,7 +2700,6 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
     { id: 2, tipo: "pedido", origem: "Brinco Sul Indústria", quantidade: 150, inicio: "10512345678901", fim: "10512345679050", dataEnvio: "17/06/2025" },
     { id: 3, tipo: "transferencia", origem: "Prefeitura Municipal de Bagé", quantidade: 120, inicio: "076210077200241", fim: "076210077200360", dataEnvio: "18/06/2025" },
   ]);
-  const [envioSelecionado, setEnvioSelecionado] = useState<number | null>(null);
 
   // Conferência: contra o envio SELECIONADO — ou o envio localizado automaticamente pela faixa lida.
   function divergenciasDaCaixa(box: {
@@ -2785,11 +2789,10 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
       setError(erros[0]);
       return false;
     }
-    // vínculo com o envio: o selecionado — ou o envio cujo intervalo contém a faixa lida
+    // vínculo automático: o envio cujo intervalo contém a faixa lida identifica o pedido de origem
     const s = Number(start);
     const e = Number(end);
     const envio =
-      envios.find((env) => env.id === envioSelecionado) ??
       envios.find((env) => s >= Number(env.inicio) && e <= Number(env.fim)) ??
       null;
     setBoxes((current) => [
@@ -2961,6 +2964,7 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                     <th>Código inicial</th>
                     <th>Código final</th>
                     <th>Quantidade</th>
+                    <th>Envio identificado</th>
                     <th>Conferência</th>
                     <th></th>
                   </tr>
@@ -2979,13 +2983,28 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
                       </td>
                       <td>
                         {(() => {
+                          const env = envios.find((e) => e.id === box.envioId);
+                          return env ? (
+                            <span>
+                              <strong>{env.origem}</strong>
+                              <small style={{ display: "block", color: "#84909e" }}>
+                                {env.tipo === "pedido" ? "Pedido" : "Transferência"}
+                              </small>
+                            </span>
+                          ) : (
+                            <Badge tone="red">Sem vínculo</Badge>
+                          );
+                        })()}
+                      </td>
+                      <td>
+                        {(() => {
                           const divs = divergenciasDaCaixa(box);
                           return (
                             <span
                               title={
                                 divs.length > 0
                                   ? divs.join(" · ")
-                                  : "Bate com o pedido esperado — faixa e quantidade dentro do combinado."
+                                  : "Bate com o envio — faixa e quantidade dentro do combinado."
                               }
                             >
                               <Badge tone={divs.length > 0 ? "red" : "green"}>
@@ -3043,50 +3062,48 @@ function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: n
       </div>
       <aside className="context-card">
         <div className="context-head">
-          <span>Envios em trânsito</span>
+          <span>Pedidos pendentes de chegada</span>
           <Badge tone="yellow">{envios.length}</Badge>
         </div>
         {envios.length === 0 ? (
           <p className="info-note">
-            <Icon name="check" /> Nenhum envio em trânsito — o próximo recebimento será registrado
-            sem vínculo de pedido.
+            <Icon name="check" /> Nenhum pedido pendente — tudo o que estava a caminho já foi
+            recebido.
           </p>
         ) : (
           <div className="envios-lista">
-            {envios.map((env) => (
-              <button
-                key={env.id}
-                type="button"
-                className={`envio-card ${envioSelecionado === env.id ? "selecionado" : ""}`}
-                title={
-                  envioSelecionado === env.id
-                    ? "Selecionado — as caixas lidas serão conferidas contra este envio"
-                    : "Clique para conferir as próximas caixas contra este envio"
-                }
-                onClick={() => setEnvioSelecionado((s) => (s === env.id ? null : env.id))}
-              >
-                <div className="envio-head">
-                  <Badge tone={env.tipo === "pedido" ? "yellow" : "blue"}>
-                    {env.tipo === "pedido" ? "Pedido" : "Transferência"}
-                  </Badge>
-                  <span>enviado em {env.dataEnvio}</span>
+            {envios.map((env) => {
+              const emConferencia = boxes.filter((b) => b.envioId === env.id).length;
+              return (
+                <div key={env.id} className="envio-card">
+                  <div className="envio-head">
+                    <Badge tone={env.tipo === "pedido" ? "yellow" : "blue"}>
+                      {env.tipo === "pedido" ? "Pedido" : "Transferência"}
+                    </Badge>
+                    <span>enviado em {env.dataEnvio}</span>
+                  </div>
+                  <strong>{env.origem}</strong>
+                  <span className="envio-qty">{env.quantidade} brincos</span>
+                  <div className="expected-range">
+                    <span>FAIXA ESPERADA</span>
+                    <strong>{formatTag(env.inicio)}</strong>
+                    <i>até</i>
+                    <strong>{formatTag(env.fim)}</strong>
+                  </div>
+                  {emConferencia > 0 && (
+                    <span className="envio-status">
+                      Em conferência — {emConferencia}{" "}
+                      {emConferencia === 1 ? "caixa lida" : "caixas lidas"}
+                    </span>
+                  )}
                 </div>
-                <strong>{env.origem}</strong>
-                <span className="envio-qty">{env.quantidade} brincos</span>
-                <div className="expected-range">
-                  <span>FAIXA ESPERADA</span>
-                  <strong>{formatTag(env.inicio)}</strong>
-                  <i>até</i>
-                  <strong>{formatTag(env.fim)}</strong>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
         <p className="info-note">
-          <Icon name="alert" /> A conferência compara cada caixa lida com o envio selecionado — ou
-          localiza automaticamente o envio pela faixa. A caixa sem correspondência entra como sem
-          vínculo.
+          <Icon name="alert" /> Ao ler as faixas, o pedido de origem é identificado automaticamente
+          pela numeração — a caixa entra na conferência já vinculada ao envio.
         </p>
       </aside>
     </div>
@@ -10612,9 +10629,10 @@ function RequestPage({
 }: {
   role: Role;
   requests: RequestRecord[];
-  onCreate: (quantity: number, factory: string) => void;
+  onCreate: (quantity: number, factory: string, tipoBrinco?: "INTERNACIONAL" | "SISBOV") => void;
 }) {
   const [qty, setQty] = useState(240);
+  const [novoTipo, setNovoTipo] = useState<"INTERNACIONAL" | "SISBOV">("INTERNACIONAL");
   const [destination, setDestination] = useState("Identifica Brasil S.A. — Porto Alegre/RS");
   const isSeapi = destination === SEAPI_LABEL;
   return (
@@ -10639,6 +10657,20 @@ function RequestPage({
               <option>{SEAPI_LABEL}</option>
             </select>
           </label>
+          {!isSeapi && (
+            <label className="wide">
+              <span>TIPO DO BRINCO</span>
+              <div>
+                <select
+                  value={novoTipo}
+                  onChange={(e) => setNovoTipo(e.target.value as "INTERNACIONAL" | "SISBOV")}
+                >
+                  <option value="INTERNACIONAL">Internacional (076)</option>
+                  <option value="SISBOV">Nacional · SISBOV (105)</option>
+                </select>
+              </div>
+            </label>
+          )}
           <label className="wide">
             <span>Quantidade de brincos</span>
             <input
@@ -10679,7 +10711,7 @@ function RequestPage({
           <button
             className="btn primary"
             disabled={qty <= 0}
-            onClick={() => onCreate(qty, destination)}
+            onClick={() => (isSeapi ? onCreate(qty, destination) : onCreate(qty, destination, novoTipo))}
           >
             Enviar solicitação
           </button>
@@ -10700,9 +10732,15 @@ function RequestPage({
               </div>
               <div>
                 <Link to={`/${role}/solicitar/${r.id}`}>
-                  <strong>#PED-2026-{r.id}</strong>
+                  <strong>{r.factory}</strong>
                 </Link>
-                <span>{r.factory}</span>
+                <span>
+                  {r.tipoBrinco === "SISBOV"
+                    ? "Nacional · SISBOV (105)"
+                    : r.tipoBrinco === "INTERNACIONAL"
+                      ? "Internacional (076)"
+                      : "Tipo definido pela SEAPI no atendimento"}
+                </span>
                 <small>Solicitado em {r.date}</small>
               </div>
               <div className="request-qty">
