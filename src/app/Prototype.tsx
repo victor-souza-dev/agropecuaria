@@ -272,13 +272,13 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
   ],
   fabrica: [
     { id: "pedidos", label: "Fila de pedidos", icon: "factory" },
-    { id: "historico", label: "Movimentações", icon: "history" },
+    { id: "historico", label: "Meus envios", icon: "history" },
   ],
   produtor: [{ id: "estoque", label: "Meu estoque", icon: "box" }],
 };
 
 const pageMeta: Record<Page, [string, string]> = {
-  estoque: ["Meu estoque", "Consulte os brincos sob custódia e suas situações."],
+  estoque: ["Estoque", "Consulte os brincos sob custódia e suas situações."],
   recebimento: [
     "Recebimento com leitor",
     "Leia os códigos inicial e final de cada caixa para creditar a faixa no estoque.",
@@ -2324,9 +2324,16 @@ function StockPage({
   const [mode, setMode] = useState<"range" | "item">("range");
   const [buscaEstoque, setBuscaEstoque] = useState("");
   const [situacaoEstoque, setSituacaoEstoque] = useState("Todas as situações");
-  const [holder, setHolder] = useState("Agropecuária Pampa Sul Ltda.");
+  const [holder, setHolder] = useState(
+    role === "pf"
+      ? "Antônio Carlos Silveira — PF"
+      : role === "produtor"
+        ? "João Pedro Fagundes — Produtor"
+        : "Agropecuária Pampa Sul Ltda.",
+  );
   const isLegado = role === "seapi" && holder.startsWith("Prefeitura Municipal de Bagé");
   const [view, setView] = useState<"titulares" | "detalhe">("titulares");
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
   const showDetail = !(role === "seapi" && view === "titulares");
   const [holderStocks, setHolderStocks] = useState([
     {
@@ -2334,13 +2341,13 @@ function StockPage({
       titular: "Agropecuária Pampa Sul Ltda.",
       perfil: "PJ · LOJA_AGROPECUARIA",
       canal: "NOVO",
-      ranges: 3,
-      brincos: 350,
+      ranges: 6,
+      brincos: 473,
     },
     {
       select: "Antônio Carlos Silveira — PF",
       titular: "Antônio Carlos Silveira",
-      perfil: "PF · HABILITADO",
+      perfil: "PF · CREDENCIADO",
       canal: "NOVO",
       ranges: 2,
       brincos: 120,
@@ -2350,21 +2357,21 @@ function StockPage({
       titular: "João Pedro Fagundes",
       perfil: "PRODUTOR",
       canal: "NOVO",
-      ranges: 2,
-      brincos: 15,
+      ranges: 3,
+      brincos: 22,
     },
     {
       select: "Prefeitura Municipal de Bagé — Portal legado",
       titular: "Prefeitura Municipal de Bagé",
       perfil: "PREFEITURA",
       canal: "PORTAL",
-      ranges: 4,
+      ranges: 3,
       brincos: 960,
     },
     {
       select: "Depósito central SEAPI",
       titular: "Depósito central SEAPI",
-      perfil: "ESTOQUE_SDA",
+      perfil: "SEAPI",
       canal: "NOVO",
       ranges: 3,
       brincos: 1200,
@@ -2379,28 +2386,89 @@ function StockPage({
     .filter((h) => h.canal === "PORTAL")
     .reduce((n, h) => n + h.brincos, 0);
   const subFaixasTotal = holderStocks.reduce((n, h) => n + h.ranges, 0);
-  const stocks = role === "produtor" ? producerStock : stockBase;
-  const stocksFiltrados = stocks.filter((s) => {
+  // Estoque do titular — derivado dos pedaços por titular do estado único (faixaPieces, Opção 3)
+  const titularAtual =
+    holderStocks.find((h) => h.select === holder)?.titular ?? holder;
+  const blocosDoTitular: {
+    start: string;
+    end: string;
+    qty: number;
+    source: string;
+    status: string;
+    fabricante: string;
+  }[] = [];
+  for (const pieces of Object.values(faixaPieces)) {
+    for (const p of pieces) {
+      if (p.titular !== titularAtual) continue;
+      blocosDoTitular.push({
+        start: p.s1,
+        end: p.s2,
+        qty: p.qty,
+        source: p.note,
+        status: p.note.includes("aplicados") ? "Usado" : "Disponível",
+        fabricante: "Identifica Brasil S.A.",
+      });
+    }
+  }
+  const blocosFiltrados = blocosDoTitular.filter((s) => {
     if (situacaoEstoque !== "Todas as situações" && s.status !== situacaoEstoque) return false;
     const q = buscaEstoque.trim().toLowerCase();
     if (q && !`${s.start} ${s.end} ${s.fabricante}`.toLowerCase().includes(q)) return false;
     return true;
   });
-  const total =
-    stocks.reduce((n, s) => n + s.qty, 0) + (role === "produtor" ? producerAdded.length : 0);
-  const itemRows = [
-    "076210077200301",
-    "076210077200302",
-    "076210077200303",
-    "076210077200304",
-    "076210077200305",
-    "076210077200306",
-  ];
-  const itensFiltrados = itemRows.filter((c) =>
-    c.toLowerCase().includes(buscaEstoque.trim().toLowerCase()),
+  const brincosDoTitular = blocosDoTitular.flatMap((b) =>
+    Array.from({ length: b.qty }, (_, i) => ({
+      number: String(Number(b.start) + i).padStart(15, "0"),
+      faixa: `${formatTag(b.start)} a ${formatTag(b.end)}`,
+      fabricante: b.fabricante,
+      status: b.status,
+      entrada: b.source,
+    })),
   );
+  const brincosFiltrados = brincosDoTitular.filter((s) => {
+    if (situacaoEstoque !== "Todas as situações" && s.status !== situacaoEstoque) return false;
+    return s.number.toLowerCase().includes(buscaEstoque.trim().toLowerCase());
+  });
+  const activeFilterCount = [
+    situacaoEstoque !== "Todas as situações",
+    buscaEstoque.trim() !== "",
+  ].filter(Boolean).length;
+  function clearFilters() {
+    setBuscaEstoque("");
+    setSituacaoEstoque("Todas as situações");
+  }
   return (
     <>
+      <section className="header">
+        <h3>{role === "seapi" ? "Estoque da rede de estocadores" : "Meu estoque"}</h3>
+        <div className="header-actions">
+          {role === "seapi" ? (
+            <div className="segmented">
+              <button
+                className={view === "titulares" ? "selected" : ""}
+                onClick={() => setView("titulares")}
+              >
+                Titulares (consolidado)
+              </button>
+              <button
+                className={view === "detalhe" ? "selected" : ""}
+                onClick={() => setView("detalhe")}
+              >
+                Estoque do titular
+              </button>
+            </div>
+          ) : (
+            <div className="segmented">
+              <button className={mode === "range" ? "selected" : ""} onClick={() => setMode("range")}>
+                Por faixa
+              </button>
+              <button className={mode === "item" ? "selected" : ""} onClick={() => setMode("item")}>
+                Por brinco
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
       {role === "seapi" && view === "detalhe" && (
         <div className="toolbar-card holder-filter">
           <label>
@@ -2431,21 +2499,55 @@ function StockPage({
           </div>
         </div>
       )}
-      {role === "seapi" && (
-        <div className="segmented estoque-tabs">
-          <button
-            className={view === "titulares" ? "selected" : ""}
-            onClick={() => setView("titulares")}
-          >
-            Titulares (consolidado)
-          </button>
-          <button
-            className={view === "detalhe" ? "selected" : ""}
-            onClick={() => setView("detalhe")}
-          >
-            Estoque do titular
-          </button>
-        </div>
+      {showDetail && (
+        <form className="filters-card" onSubmit={(e) => e.preventDefault()}>
+          <div className="filters-header">
+            <button type="button" className="filters-toggle" onClick={() => setFiltersExpanded((v) => !v)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d={filtersExpanded ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
+              </svg>
+              <span className="filters-title">Filtros</span>
+              {activeFilterCount > 0 && <span className="filter-count-badge">{activeFilterCount}</span>}
+            </button>
+            <div className="filters-header-actions">
+              <button type="button" className="btn-search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Pesquisar
+              </button>
+              <button type="button" className="btn-clear" onClick={clearFilters}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Limpar
+              </button>
+            </div>
+          </div>
+          {filtersExpanded && (
+            <div className="filters-body">
+              <div className="filter-row filter-row--full">
+                <div className="search-field filter-field">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    placeholder="Buscar por numeração ou fabricante..."
+                    value={buscaEstoque}
+                    onChange={(e) => setBuscaEstoque(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="filter-row">
+                <select className="filter-field" value={situacaoEstoque} onChange={(e) => setSituacaoEstoque(e.target.value)}>
+                  <option>Todas as situações</option>
+                  <option>Disponível</option>
+                  <option>Usado</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </form>
       )}
       {role === "seapi" && view === "titulares" && (
         <section className="panel">
@@ -2474,7 +2576,12 @@ function StockPage({
                     <td>
                       <strong>{h.titular}</strong>
                     </td>
-                    <td>{h.perfil}</td>
+                    <td>
+                      {h.perfil
+                        .split(" · ")
+                        .map((parte) => labelPerfil(parte))
+                        .join(" · ")}
+                    </td>
                     <td>
                       <Badge tone={h.canal === "NOVO" ? "blue" : "neutral"}>
                         {h.canal === "NOVO" ? "Ligado no novo" : "Portal legado"}
@@ -2521,40 +2628,15 @@ function StockPage({
               {role === "seapi"
                 ? `${holder} — posição detalhada do titular selecionado`
                 : "Posição atual por numeração e situação"}
+              {mode === "range"
+                ? ` · ${blocosFiltrados.length} de ${blocosDoTitular.length} faixas no recorte`
+                : ` · ${brincosFiltrados.length} de ${brincosDoTitular.length} brincos no recorte`}
             </p>
           </div>
-          <div className="segmented">
-            <button className={mode === "range" ? "selected" : ""} onClick={() => setMode("range")}>
-              Por faixa
-            </button>
-            <button className={mode === "item" ? "selected" : ""} onClick={() => setMode("item")}>
-              Por brinco
-            </button>
-          </div>
-        </div>
-        <div className="filters">
-          <div className="search-field">
-            <Icon name="search" />
-            <input
-              placeholder="Buscar numeração ou fabricante..."
-              value={buscaEstoque}
-              onChange={(e) => setBuscaEstoque(e.target.value)}
-            />
-          </div>
-          <select value={situacaoEstoque} onChange={(e) => setSituacaoEstoque(e.target.value)}>
-            <option>Todas as situações</option>
-            <option>Disponível</option>
-            <option>Usado</option>
-          </select>
-          <span className="result-count">
-            {mode === "range"
-              ? `${stocksFiltrados.length} de ${stocks.length} faixas`
-              : `${itensFiltrados.length} de ${itemRows.length} brincos`}
-          </span>
         </div>
         {mode === "range" ? (
           <div className="range-list">
-            {stocksFiltrados.map((s, i) => (
+            {blocosFiltrados.map((s, i) => (
               <article className="range-card" key={s.start}>
                 <div className="range-stripe"></div>
                 <div className="range-main">
@@ -2583,10 +2665,17 @@ function StockPage({
                 </Badge>
                 {role !== "produtor" && !isLegado && (
                   <div className="row-actions">
-                    <button onClick={() => onModal({ type: "transferir" })}>
+                    <button
+                      title="Demonstração — na implementação, a disponibilidade vem da matriz de regras do perfil"
+                      onClick={() => onModal({ type: "transferir" })}
+                    >
                       <Icon name="transfer" /> Transferir
                     </button>
-                    <button className="danger-link" onClick={() => onModal({ type: "perda" })}>
+                    <button
+                      className="danger-link"
+                      title="Demonstração — na implementação, a disponibilidade vem da matriz de regras do perfil"
+                      onClick={() => onModal({ type: "perda" })}
+                    >
                       <Icon name="trash" /> Perda
                     </button>
                   </div>
@@ -2616,7 +2705,7 @@ function StockPage({
           </div>
         ) : (
           <div className="table-wrap">
-            <table>
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Identificação do brinco</th>
@@ -2628,24 +2717,24 @@ function StockPage({
                 </tr>
               </thead>
               <tbody>
-                {itensFiltrados.map((tag) => (
-                  <tr key={tag}>
+                {brincosFiltrados.map((b) => (
+                  <tr key={b.number}>
                     <td className="tag-number">
-                      <Link to={`/${role}/estoque/brinco/${tag}`}>{formatTag(tag)}</Link>
+                      <Link to={`/${role}/estoque/brinco/${b.number}`}>{formatTag(b.number)}</Link>
                     </td>
                     <td>
-                      <Link to={`/${role}/estoque/brinco/${tag}`}>Faixa 01</Link>
+                      <Link to={`/${role}/estoque/brinco/${b.number}`}>{b.faixa}</Link>
                     </td>
-                    <td>Identifica Brasil S.A.</td>
+                    <td>{b.fabricante}</td>
                     <td>
-                      <Badge tone="green">Disponível</Badge>
+                      <Badge tone={b.status === "Usado" ? "red" : "green"}>{b.status}</Badge>
                     </td>
-                    <td>16/06/2025</td>
+                    <td>{b.entrada}</td>
                     <td>
                       <Link
                         className="icon-btn detail-link"
-                        to={`/${role}/estoque/brinco/${tag}`}
-                        aria-label={`Ver detalhes do brinco ${formatTag(tag)}`}
+                        to={`/${role}/estoque/brinco/${b.number}`}
+                        aria-label={`Ver detalhes do brinco ${formatTag(b.number)}`}
                         title="Ver detalhes do brinco"
                       >
                         <Icon name="eye" size={17} />
@@ -2659,8 +2748,8 @@ function StockPage({
         )}
         <div className="panel-foot">
           <span>
-            Exibindo {mode === "range" ? stocks.length : 6} de{" "}
-            {mode === "range" ? stocks.length : total} registros
+            Exibindo {mode === "range" ? blocosFiltrados.length : brincosFiltrados.length} de{" "}
+            {blocosDoTitular.length} registros · estoque central como origem única
           </span>
           <div className="pagination">
             <button disabled>‹</button>
@@ -10180,43 +10269,66 @@ export function AprovacaoDetalhePage() {
 
 function FactoryPage({ notify }: { notify: (m: string) => void }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const [boxes, setBoxes] = useState([{ id: 1, start: "076210077200001", end: "076210077200240" }]);
+  const [boxes, setBoxes] = useState([{ id: 1, start: "", end: "" }]);
   const orders = [
     {
       id: 47,
       store: "Agropecuária Pampa Sul Ltda.",
-      city: "Bagé/RS",
+      city: "Pelotas/RS",
+      origem: "Loja agropecuária",
+      tipo: "INTERNACIONAL",
       qty: 240,
       date: "12/06/2025",
       status: "Pendente",
+      alocacao: { start: "076210077206001", end: "076210077206240" },
+      destinoSede: false,
     },
     {
       id: 46,
       store: "Cooperativa Campos de Cima",
       city: "Vacaria/RS",
+      origem: "Loja agropecuária",
+      tipo: "SISBOV",
       qty: 500,
       date: "11/06/2025",
       status: "Em produção",
+      alocacao: { start: "105430055950001", end: "105430055960000" },
+      destinoSede: false,
+    },
+    {
+      id: 45,
+      store: "Estoque central SDA",
+      city: "Porto Alegre/RS",
+      origem: "SEAPI — fabricação nova para o estoque",
+      tipo: "INTERNACIONAL",
+      qty: 380,
+      date: "10/06/2025",
+      status: "Pendente",
+      alocacao: { start: "076210077207001", end: "076210077207380" },
+      destinoSede: true,
     },
     {
       id: 42,
       store: "Casa Rural Missões Ltda.",
       city: "Santo Ângelo/RS",
+      origem: "Loja agropecuária",
+      tipo: "INTERNACIONAL",
       qty: 120,
       date: "08/06/2025",
       status: "Enviado",
+      alocacao: null,
+      destinoSede: false,
     },
   ];
   const selectedOrder = orders.find((order) => order.id === selected);
-  const distributedStart = 105430055950001;
-  const distributedEnd = 105430055960000;
+  const alocacao = selectedOrder?.alocacao ?? null;
   const boxesComplete = boxes.every(
     (box) => box.start.replace(/\D/g, "").length === 15 && box.end.replace(/\D/g, "").length === 15,
   );
   const boxesInsideAllocation = boxes.every((box) => {
     const start = Number(box.start.replace(/\D/g, ""));
     const end = Number(box.end.replace(/\D/g, ""));
-    return start >= distributedStart && end <= distributedEnd && end >= start;
+    return !!alocacao && start >= Number(alocacao.start) && end <= Number(alocacao.end) && end >= start;
   });
   const hasOverlap = boxes.some((box, index) =>
     boxes.some(
@@ -10231,6 +10343,9 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
     : 0;
   const quantityMismatch = !!selectedOrder && shipmentQuantity !== selectedOrder.qty;
   const invalid = !boxesComplete || !boxesInsideAllocation || hasOverlap || quantityMismatch;
+  const pendentes = orders.filter((o) => o.status === "Pendente").length;
+  const producao = orders.filter((o) => o.status === "Em produção").length;
+  const enviados = orders.filter((o) => o.status === "Enviado").length;
   return (
     <>
       <section className="stats-grid numbering-stats">
@@ -10240,7 +10355,7 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
           </div>
           <div>
             <span>Pedidos pendentes</span>
-            <strong>4</strong>
+            <strong>{pendentes}</strong>
             <small>aguardando ação</small>
           </div>
         </article>
@@ -10250,7 +10365,7 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
           </div>
           <div>
             <span>Em produção</span>
-            <strong>2</strong>
+            <strong>{producao}</strong>
             <small>pedidos</small>
           </div>
         </article>
@@ -10259,8 +10374,8 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
             <Icon name="transfer" />
           </div>
           <div>
-            <span>Enviados no mês</span>
-            <strong>18</strong>
+            <span>Enviados</span>
+            <strong>{enviados}</strong>
             <small>pedidos</small>
           </div>
         </article>
@@ -10268,16 +10383,17 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       <section className="panel">
         <div className="panel-head">
           <div>
-            <h2>Pedidos das lojas</h2>
-            <p>Ordenados por data da solicitação</p>
+            <h2>Fila de fabricação</h2>
+            <p>Pedidos de lojas agropecuárias e da SEAPI — ordenados por data da solicitação</p>
           </div>
         </div>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Pedido</th>
                 <th>Solicitante</th>
+                <th>Origem do pedido</th>
+                <th>Tipo do brinco</th>
                 <th>Data</th>
                 <th>Quantidade</th>
                 <th>Situação</th>
@@ -10287,21 +10403,40 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id}>
-                  <td className="tag-number">#PED-2025-{String(o.id).padStart(4, "0")}</td>
                   <td className="route-cell">
                     <strong>{o.store}</strong>
                     <span>{o.city}</span>
+                  </td>
+                  <td>{o.origem}</td>
+                  <td>
+                    {o.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
                   </td>
                   <td>{o.date}</td>
                   <td>
                     <strong>{o.qty} brincos</strong>
                   </td>
                   <td>
-                    <Badge tone={o.status === "Enviado" ? "green" : "yellow"}>{o.status}</Badge>
+                    <Badge
+                      tone={
+                        o.status === "Enviado"
+                          ? "green"
+                          : o.status === "Em produção"
+                            ? "blue"
+                            : "yellow"
+                      }
+                    >
+                      {o.status}
+                    </Badge>
                   </td>
                   <td>
                     {o.status !== "Enviado" ? (
-                      <button className="btn small primary" onClick={() => setSelected(o.id)}>
+                      <button
+                        className="btn small primary"
+                        onClick={() => {
+                          setSelected(o.id);
+                          setBoxes([{ id: 1, start: "", end: "" }]);
+                        }}
+                      >
                         Declarar envio
                       </button>
                     ) : (
@@ -10314,9 +10449,9 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
           </table>
         </div>
       </section>
-      {selected && (
+      {selected && selectedOrder && (
         <ModalShell
-          title={`Declarar Pedido #PED-2026-${String(selected).padStart(4, "0")}`}
+          title={`Declarar envio — pedido de ${selectedOrder.store}`}
           subtitle="Cada caixa deve conter uma faixa, identificada por dois códigos de barras."
           onClose={() => setSelected(null)}
         >
@@ -10324,9 +10459,11 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
             <div className="allocation-note">
               <Icon name="hash" />
               <div>
-                <span>FAIXA DISTRIBUÍDA À FÁBRICA</span>
+                <span>FAIXA DISTRIBUÍDA A ESTE PEDIDO</span>
                 <strong>
-                  {formatTag("105430055950001")} a {formatTag("105430055960000")}
+                  {alocacao
+                    ? `${formatTag(alocacao.start)} a ${formatTag(alocacao.end)}`
+                    : "—"}
                 </strong>
               </div>
             </div>
@@ -10429,7 +10566,11 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
               disabled={invalid}
               onClick={() => {
                 setSelected(null);
-                notify("Envio declarado. A loja já pode receber as caixas com o leitor.");
+                notify(
+                  selectedOrder.destinoSede
+                    ? "Envio declarado. As caixas seguem para o estoque central SDA — a SEAPI confirma pela leitura."
+                    : `Envio declarado. ${selectedOrder.store} já pode receber as caixas com o leitor.`,
+                );
               }}
             >
               Confirmar e declarar envio
