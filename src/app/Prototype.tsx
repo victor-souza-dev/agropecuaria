@@ -1410,6 +1410,7 @@ export function ModulePage({ page }: { page: Page }) {
       return (
         <FactoryPage
           notify={context.notify}
+          role={context.role}
           numSolicitacoes={context.numSolicitacoes}
           setNumSolicitacoes={context.setNumSolicitacoes}
           estoqueInterno={context.estoqueInternoFabrica}
@@ -2006,10 +2007,6 @@ export function TagDetailPage() {
               <div>
                 <dt>Fábrica</dt>
                 <dd>Identifica Brasil S.A.</dd>
-              </div>
-              <div>
-                <dt>Pedido</dt>
-                <dd>#PED-2026-0047</dd>
               </div>
               <div>
                 <dt>Caixa</dt>
@@ -10774,12 +10771,14 @@ export function AprovacaoDetalhePage() {
 
 function FactoryPage({
   notify,
+  role,
   numSolicitacoes,
   setNumSolicitacoes,
   estoqueInterno,
   setEstoqueInterno,
 }: {
   notify: (m: string) => void;
+  role: Role;
   numSolicitacoes: NumSolicitacao[];
   setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
   estoqueInterno: number;
