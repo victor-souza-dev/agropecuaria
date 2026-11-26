@@ -776,7 +776,9 @@ export default function Prototype() {
   const allowedPages = nav[role].map((item) => item.id);
   const page: Page = allowedPages.includes(routePage as Page)
     ? (routePage as Page)
-    : allowedPages[0];
+    : isPedidoSdaFormPage
+      ? "pedidos-sda"
+      : allowedPages[0];
   const isMovementItemsPage =
     page === "historico" &&
     pathSegments.length === 4 &&
@@ -9286,38 +9288,61 @@ function PedidosSdaPage({
   );
 }
 
-function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+function PedidoSdaFormPage({
+  notify,
+  role,
+  pedidos,
+  setPedidos,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  pedidos: PedidoSda[];
+  setPedidos: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
+}) {
   const navigate = useNavigate();
   const [newActor, setNewActor] = useState("Agropecuária Pampa Sul Ltda.");
-  const [newItems, setNewItems] = useState<string[]>([]);
-  const centralRanges = [
-    { id: "FX-C01", start: "076210077200001", end: "076210077200240", qty: 240 },
-    { id: "FX-C02", start: "076210077200241", end: "076210077200330", qty: 120 },
-    { id: "FX-C03", start: "076210077183401", end: "076210077183420", qty: 20 },
-  ];
-  const selectedQty = centralRanges
-    .filter((range) => newItems.includes(range.id))
-    .reduce((n, range) => n + range.qty, 0);
+  const [novoTipo, setNovoTipo] = useState<"INTERNACIONAL" | "SISBOV">("INTERNACIONAL");
+  const [novaQtd, setNovaQtd] = useState("");
   const atores = [
     "Agropecuária Pampa Sul Ltda.",
-    "Comercial Rural Tradição Ltda. (Regime LEGADO)",
+    "Comercial Rural Tradição Ltda.",
     "Antônio Carlos Silveira",
     "Prefeitura Municipal de Bagé",
     "João Pedro Fagundes",
   ];
-  function toggleItem(rangeId: string) {
-    setNewItems((current) =>
-      current.includes(rangeId)
-        ? current.filter((id) => id !== rangeId)
-        : [...current, rangeId],
-    );
-  }
+  const municipiosPorAtor: Record<string, string> = {
+    "Agropecuária Pampa Sul Ltda.": "Pelotas",
+    "Comercial Rural Tradição Ltda.": "Santa Maria",
+    "Antônio Carlos Silveira": "Rio Grande",
+    "Prefeitura Municipal de Bagé": "Bagé",
+    "João Pedro Fagundes": "Dom Pedrito",
+  };
   function criarPedido() {
-    if (selectedQty === 0) {
-      notify("Selecione ao menos uma faixa do estoque central para compor o pedido.");
+    const qtd = Number(novaQtd);
+    if (!Number.isFinite(qtd) || qtd <= 0) {
+      notify("Informe a quantidade de brincos (maior que zero).");
       return;
     }
-    notify("Pedido composto com brincos específicos — aguardando aprovação da SEAPI.");
+    const novoId = Math.max(0, ...pedidos.map((p) => p.id)) + 1;
+    setPedidos((current) => [
+      {
+        id: novoId,
+        ator: newActor,
+        municipio: municipiosPorAtor[newActor] ?? "—",
+        atendente: null,
+        tipo: "SOLICITAÇÃO · registrada pela SEAPI em nome do ator",
+        qtd,
+        tipoBrinco: novoTipo,
+        situacao: "SOLICITADO",
+        data: "19/06/2025",
+        mov: null,
+        fila: "pedido",
+        aprovador: "SEAPI",
+        motivo: null,
+      },
+      ...current,
+    ]);
+    notify("Pedido registrado — entra na fila de Aprovações para aprovação e atendimento.");
     navigate(`/${role}/pedidos-sda`);
   }
   return (
@@ -9327,8 +9352,8 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
           <div>
             <h2>Novo pedido de brincos</h2>
             <p>
-              Componha o pedido selecionando as faixas do estoque central — o ator que está pedindo
-              é especificado e a quantidade é derivada da composição.
+              O pedido especifica o ator solicitante, o tipo do brinco e a quantidade — a faixa
+              que atenderá o pedido é definida pela SEAPI no atendimento.
             </p>
           </div>
         </div>
@@ -9342,63 +9367,52 @@ function PedidoSdaFormPage({ notify, role }: { notify: (m: string) => void; role
             </select>
           </label>
           <label className="wide scan-input compact">
-            <span>ORIGEM (ÚNICA POR CONFIGURAÇÃO)</span>
+            <span>TIPO DO BRINCO</span>
             <div>
-              <input disabled value="Estoque central SDA" />
+              <select
+                value={novoTipo}
+                onChange={(e) => setNovoTipo(e.target.value as "INTERNACIONAL" | "SISBOV")}
+              >
+                <option value="INTERNACIONAL">Internacional (076)</option>
+                <option value="SISBOV">Nacional · SISBOV (105)</option>
+              </select>
+            </div>
+          </label>
+          <label className="wide scan-input compact">
+            <span>QUANTIDADE DE BRINCOS</span>
+            <div>
+              <input
+                type="number"
+                min={1}
+                value={novaQtd}
+                placeholder="Ex.: 480"
+                onChange={(e) => setNovaQtd(e.target.value)}
+              />
             </div>
           </label>
         </div>
-        <div className="stock-picker-head" style={{ padding: "0 24px" }}>
-          <div>
-            <strong>Brincos do estoque central</strong>
-            <span>Adicionar/remover a qualquer momento — padrão salvarBrincos do legado</span>
-          </div>
-          <span className={`selection-count ${newItems.length ? "has-selection" : ""}`}>
-            {selectedQty} brincos em {newItems.length} faixas
-          </span>
-        </div>
-        <div className="stock-range-picker" style={{ margin: "0 24px 24px" }}>
-          {centralRanges.map((range) => {
-            const isSelected = newItems.includes(range.id);
-            return (
-              <button
-                key={range.id}
-                className={isSelected ? "selected" : ""}
-                onClick={() => toggleItem(range.id)}
-              >
-                <span className="selection-check">
-                  {isSelected && <Icon name="check" size={13} />}
-                </span>
-                <span className="range-picker-copy">
-                  <strong>
-                    {formatTag(range.start)} <i>a</i> {formatTag(range.end)}
-                  </strong>
-                </span>
-                <span className="range-picker-qty">
-                  <strong>{range.qty}</strong>
-                  <small>brincos</small>
-                </span>
-              </button>
-            );
-          })}
-        </div>
         <div style={{ padding: "0 24px 24px" }}>
           <p className="modal-copy">
-            O envio manda <strong>exatamente os brincos selecionados</strong> — a quantidade é
-            derivada da composição (padrão do legado: salvarBrincos/removerBrincos, quantidade
-            enviada = solicitada). Ao aprovar, o envio gera uma transferência vinculada a este
-            pedido; o destino confirma pela leitura do código de barras.
+            O pedido entra na fila de Aprovações. No atendimento, a SEAPI define{" "}
+            <strong>quais brincos específicos</strong> atenderão a solicitação — do estoque central
+            ou por fabricação nova — e o envio gera uma transferência vinculada ao pedido, com
+            confirmação do destino pela leitura do código de barras.
           </p>
         </div>
         <div className="request-submit">
           <p>
-            <Icon name="alert" /> A SEAPI receberá o pedido imediatamente.
+            <Icon name="alert" /> O pedido entra na fila de Aprovações para aprovação e
+            atendimento.
           </p>
           <div style={{ display: "flex", gap: 12 }}>
             <Link className="btn secondary" to={`/${role}/pedidos-sda`}>
               Cancelar
             </Link>
-            <button className="btn primary" disabled={selectedQty === 0} onClick={criarPedido}>
+            <button
+              className="btn primary"
+              disabled={!novaQtd || Number(novaQtd) <= 0}
+              onClick={criarPedido}
+            >
               Registrar pedido
             </button>
           </div>
