@@ -4935,9 +4935,11 @@ td {
   color: #9ca3af;
   white-space: nowrap;
 }
-.period-field input[type="date"] {
+.period-field input[type="date"],
+.period-field input[type="text"] {
   flex: 1;
   font-size: 13px;
+  min-width: 0;
 }
 .scope-options {
   display: flex;
