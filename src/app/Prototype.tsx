@@ -69,10 +69,61 @@ type NumSolicitacao = {
   tipo: "INTERNACIONAL" | "SISBOV";
   status: "AGUARDANDO" | "CONCEDIDA" | "CANCELADA";
   data: string;
+  vinculada: string;
+  inicio?: string;
+  fim?: string;
 };
 
+let faixaConcedidaSeq = 0;
+function alocarFaixaConcedida(tipo: "INTERNACIONAL" | "SISBOV", qty: number) {
+  faixaConcedidaSeq += 1;
+  const prefixo = tipo === "SISBOV" ? "1054300570" : "0762100773";
+  const base = 800000 + faixaConcedidaSeq * 1000;
+  return {
+    inicio: prefixo + String(base + 1).padStart(5, "0"),
+    fim: prefixo + String(base + qty).padStart(5, "0"),
+  };
+}
+
 function numSolicitacoesSeed(): NumSolicitacao[] {
-  return [{ id: 1, qty: 200, tipo: "SISBOV", status: "CONCEDIDA", data: "10/06/2025" }];
+  return [
+    {
+      id: 3,
+      qty: 240,
+      tipo: "SISBOV",
+      status: "AGUARDANDO",
+      data: "19/06/2025",
+      vinculada: "Pedido #47 — Agropecuária Pampa Sul",
+    },
+    {
+      id: 2,
+      qty: 400,
+      tipo: "INTERNACIONAL",
+      status: "CONCEDIDA",
+      data: "15/06/2025",
+      vinculada: "Produção para estoque próprio",
+      inicio: "076210077300001",
+      fim: "076210077300400",
+    },
+    {
+      id: 1,
+      qty: 700,
+      tipo: "SISBOV",
+      status: "CONCEDIDA",
+      data: "10/06/2025",
+      vinculada: "Pedido #45 — Cooperativa Campos de Cima",
+      inicio: "105430057060001",
+      fim: "105430057060700",
+    },
+    {
+      id: 0,
+      qty: 300,
+      tipo: "INTERNACIONAL",
+      status: "CANCELADA",
+      data: "02/06/2025",
+      vinculada: "Produção para estoque próprio",
+    },
+  ];
 }
 
 type RequestRecord = {
@@ -291,7 +342,7 @@ const nav: Record<Role, { id: Page; label: string; icon: string }[]> = {
   ],
   fabrica: [
     { id: "pedidos", label: "Fila de pedidos", icon: "factory" },
-    { id: "numeracao-solicitada", label: "Numerações à SEAPI", icon: "hash" },
+    { id: "numeracao-solicitada", label: "Solicitar brinco", icon: "hash" },
     { id: "historico", label: "Meus envios", icon: "history" },
   ],
   produtor: [{ id: "estoque", label: "Meu estoque", icon: "box" }],
@@ -1393,7 +1444,14 @@ export function ModulePage({ page }: { page: Page }) {
       if (isNumeracaoDashboard) {
         return <NumberingDashboard role={context.role} />;
       }
-      return <NumberingPage notify={context.notify} role={context.role} />;
+      return (
+        <NumberingPage
+          notify={context.notify}
+          role={context.role}
+          numSolicitacoes={context.numSolicitacoes}
+          setNumSolicitacoes={context.setNumSolicitacoes}
+        />
+      );
     case "automacoes": {
       const sub = window.location.pathname.split("/").pop();
       if (sub === "auditoria")
@@ -7393,7 +7451,31 @@ function EstocadoresDashboard({
   );
 }
 
-function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Role }) {
+function NumberingPage({
+  notify,
+  role,
+  numSolicitacoes,
+  setNumSolicitacoes,
+}: {
+  notify: (m: string) => void;
+  role: Role;
+  numSolicitacoes: NumSolicitacao[];
+  setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
+}) {
+  const aguardandoConcessao = numSolicitacoes.filter((s) => s.status === "AGUARDANDO");
+  function concederFaixaFabrica(id: number) {
+    const solicitacao = numSolicitacoes.find((s) => s.id === id);
+    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
+    const faixa = alocarFaixaConcedida(solicitacao.tipo, solicitacao.qty);
+    setNumSolicitacoes((current) =>
+      current.map((s) =>
+        s.id === id ? { ...s, status: "CONCEDIDA", inicio: faixa.inicio, fim: faixa.fim } : s,
+      ),
+    );
+    notify(
+      `Faixa ${faixa.inicio.slice(-6)}–${faixa.fim.slice(-6)} concedida — ${solicitacao.vinculada} recebe a numeração automaticamente.`,
+    );
+  }
   const [ranges, setRanges] = useState(numberingRanges);
   const [dialog, setDialog] = useState<"pnib" | "interna" | "distribute" | null>(null);
   const [distribuir, setDistribuir] = useState<(typeof numberingRanges)[number] | null>(null);
@@ -7497,6 +7579,60 @@ function NumberingPage({ notify, role }: { notify: (m: string) => void; role: Ro
   });
   return (
     <div className="page-container">
+      {aguardandoConcessao.length > 0 && (
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Solicitações de numeração da fábrica</h2>
+              <p>
+                Ao conceder, a faixa de numeração é atribuída e o status muda automaticamente
+                para a fábrica (via integração)
+              </p>
+            </div>
+            <Badge tone="yellow">{aguardandoConcessao.length} aguardando</Badge>
+          </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Solicitação</th>
+                  <th>Brincos</th>
+                  <th>Tipo</th>
+                  <th>Data</th>
+                  <th className="th-actions">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aguardandoConcessao.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong>{s.vinculada}</strong>
+                    </td>
+                    <td>{s.qty.toLocaleString("pt-BR")}</td>
+                    <td>
+                      <Badge tone={s.tipo === "SISBOV" ? "green" : "purple"}>
+                        {s.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
+                      </Badge>
+                    </td>
+                    <td>{s.data}</td>
+                    <td>
+                      <div className="action-cell">
+                        <button
+                          className="text-btn"
+                          title="Simula a concessão via integração — na implementação, automática ao atendê-la no PNIB ou no pool interno"
+                          onClick={() => concederFaixaFabrica(s.id)}
+                        >
+                          Conceder faixa
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       <section className="header">
         <h3>Faixas de numeração</h3>
         <div className="header-actions">
@@ -10411,27 +10547,6 @@ function NumeracoesSolicitadasPage({
     React.SetStateAction<{ pronto: number; numeracaoConcedida: number }>
   >;
 }) {
-  function registrarConcessao(id: number) {
-    const solicitacao = numSolicitacoes.find((s) => s.id === id);
-    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
-    setNumSolicitacoes((current) =>
-      current.map((s) => (s.id === id ? { ...s, status: "CONCEDIDA" } : s)),
-    );
-    setProducaoFabrica((p) => ({ ...p, numeracaoConcedida: p.numeracaoConcedida + solicitacao.qty }));
-    notify(
-      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produzir.`,
-    );
-  }
-  function registrarProducao(s: NumSolicitacao) {
-    setProducaoFabrica((p) => ({
-      ...p,
-      pronto: p.pronto + s.qty,
-      numeracaoConcedida: p.numeracaoConcedida - s.qty,
-    }));
-    notify(
-      `Produção registrada — ${s.qty.toLocaleString("pt-BR")} brincos prontos para envio.`,
-    );
-  }
   function cancelarSolicitacao(id: number) {
     const solicitacao = numSolicitacoes.find((s) => s.id === id);
     if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
@@ -10443,6 +10558,7 @@ function NumeracoesSolicitadasPage({
   const [novaAberta, setNovaAberta] = useState(false);
   const [novaTipo, setNovaTipo] = useState<"INTERNACIONAL" | "SISBOV">("INTERNACIONAL");
   const [novaQtd, setNovaQtd] = useState("");
+  const [novaVinculada, setNovaVinculada] = useState("");
   function criarSolicitacao() {
     const qtd = Number(novaQtd);
     if (!Number.isFinite(qtd) || qtd <= 0) {
@@ -10456,6 +10572,7 @@ function NumeracoesSolicitadasPage({
         tipo: novaTipo,
         status: "AGUARDANDO",
         data: "19/06/2025",
+        vinculada: novaVinculada.trim() || "Produção para estoque próprio",
       },
       ...current,
     ]);
@@ -10467,7 +10584,7 @@ function NumeracoesSolicitadasPage({
   return (
     <div className="page-container">
       <section className="header">
-        <h3>Numerações solicitadas à SEAPI</h3>
+        <h3>Solicitar brinco</h3>
         <div className="header-actions">
           <button
             className="btn primary"
@@ -10503,78 +10620,78 @@ function NumeracoesSolicitadasPage({
           </Badge>
         </div>
         <div className="table-wrap">
-          <table className="history-table">
+          <table className="data-table">
             <thead>
               <tr>
-                <th>Tipo do brinco</th>
-                <th>Quantidade</th>
-                <th>Situação</th>
+                <th>Faixa de numeração</th>
+                <th>Brincos</th>
+                <th>Tipo</th>
                 <th>Data</th>
-                <th>Ação</th>
+                <th>Vinculada a</th>
+                <th>Situação</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {numSolicitacoes.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
-                    Nenhuma numeração solicitada — as solicitações nascem no atendimento dos
-                    pedidos quando o estoque interno não cobre a quantidade.
+                  <td colSpan={7}>
+                    <span className="aging-note" style={{ display: "block", padding: "12px 16px" }}>
+                      Nenhuma numeração solicitada — as solicitações nascem no atendimento dos
+                      pedidos quando o estoque interno não cobre a quantidade, ou na produção
+                      manual da fábrica.
+                    </span>
                   </td>
                 </tr>
               ) : (
-                numSolicitacoes.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <strong>
-                        {s.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
-                      </strong>
-                    </td>
-                    <td>
-                      <strong>{s.qty.toLocaleString("pt-BR")}</strong>
-                    </td>
-                    <td>
-                      <Badge
-                        tone={
-                          s.status === "AGUARDANDO"
-                            ? "yellow"
-                            : s.status === "CANCELADA"
-                              ? "neutral"
-                              : "green"
-                        }
-                      >
-                        {s.status === "AGUARDANDO"
-                          ? "Aguardando SEAPI"
-                          : s.status === "CONCEDIDA"
-                            ? "Concedida · disponível para produção"
-                            : "Cancelada"}
-                      </Badge>
-                    </td>
-                    <td>{s.data}</td>
-                    <td>
-                      {s.status === "AGUARDANDO" && (
+                numSolicitacoes.map((s) => {
+                  const impressa = s.ciclo === "Impressa — nas caixas";
+                  return (
+                    <tr key={s.id}>
+                      <td className="range-cell">
+                        {s.inicio ? (
+                          <>
+                            <strong>{formatTag(s.inicio)}</strong>
+                            <span>até {formatTag(s.fim ?? "")}</span>
+                          </>
+                        ) : (
+                          <span>— aguardando concessão da SEAPI</span>
+                        )}
+                      </td>
+                      <td>
+                        <strong>{s.qty.toLocaleString("pt-BR")}</strong>
+                      </td>
+                      <td>
+                        <Badge tone={s.tipo === "SISBOV" ? "green" : "purple"}>
+                          {s.tipo === "SISBOV" ? "Nacional · SISBOV (105)" : "Internacional (076)"}
+                        </Badge>
+                      </td>
+                      <td>{s.data}</td>
+                      <td>{s.vinculada}</td>
+                      <td>
+                        {s.status === "AGUARDANDO" ? (
+                          <Badge tone="yellow">Aguardando SEAPI</Badge>
+                        ) : s.status === "CANCELADA" ? (
+                          <Badge tone="neutral">Cancelada</Badge>
+                        ) : (
+                          <Badge tone="green">Concedida — disponível para produção</Badge>
+                        )}
+                      </td>
+                      <td>
                         <div className="action-cell">
-                          <button className="text-btn" onClick={() => registrarConcessao(s.id)}>
-                            Registrar concessão da SEAPI
-                          </button>
-                          <button className="text-btn danger-link" onClick={() => cancelarSolicitacao(s.id)}>
-                            Cancelar
-                          </button>
+                          {s.status === "AGUARDANDO" && (
+                            <button
+                              className="text-btn danger-link"
+                              onClick={() => cancelarSolicitacao(s.id)}
+                            >
+                              Cancelar
+                            </button>
+                          )}
                         </div>
-                      )}
-                      {s.status === "CONCEDIDA" && (
-                        <div className="action-cell">
-                          <button
-                            className="text-btn"
-                            title="Sempre antes de produzir é necessário que haja numeração"
-                            onClick={() => registrarProducao(s)}
-                          >
-                            Registrar produção
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -10608,6 +10725,16 @@ function NumeracoesSolicitadasPage({
                   value={novaQtd}
                   placeholder="Ex.: 200"
                   onChange={(e) => setNovaQtd(e.target.value)}
+                />
+              </div>
+            </label>
+            <label className="scan-input">
+              <span>VINCULADA A (OPCIONAL)</span>
+              <div>
+                <input
+                  placeholder="Pedido da loja, produção para estoque próprio..."
+                  value={novaVinculada}
+                  onChange={(e) => setNovaVinculada(e.target.value)}
                 />
               </div>
             </label>
@@ -10975,53 +11102,6 @@ function FactoryPage({
   const [selected, setSelected] = useState<number | null>(null);
   const [producaoAberta, setProducaoAberta] = useState(false);
   const [qtdProducao, setQtdProducao] = useState("");
-  // Faixas de numeração concedidas pela SEAPI — a fábrica as imprime em código de barras e coloca nas caixas
-  const [faixasFabrica, setFaixasFabrica] = useState([
-    {
-      id: 1,
-      inicio: "076210077220001",
-      fim: "076210077220200",
-      qty: 200,
-      tipo: "SISBOV",
-      concedidaEm: "17/06/2025",
-      vinculada: "Pedido #47 — Agropecuária Pampa Sul",
-      ciclo: "Aguardando impressão",
-    },
-    {
-      id: 2,
-      inicio: "076210077220201",
-      fim: "076210077220600",
-      qty: 400,
-      tipo: "SISBOV",
-      concedidaEm: "15/06/2025",
-      vinculada: "Pedido #46 — Cooperativa Campos de Cima",
-      ciclo: "Impressa — nas caixas",
-    },
-    {
-      id: 3,
-      inicio: "076210077220601",
-      fim: "076210077220999",
-      qty: 400,
-      tipo: "INTERNACIONAL",
-      concedidaEm: "10/06/2025",
-      vinculada: "Estoque central SDA",
-      ciclo: "Impressa — nas caixas",
-    },
-  ]);
-  function registrarProducaoFaixa(id: number) {
-    const faixa = faixasFabrica.find((f) => f.id === id);
-    if (!faixa || faixa.ciclo !== "Aguardando impressão") return;
-    setFaixasFabrica((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ciclo: "Impressa — nas caixas" } : f)),
-    );
-    setProducaoFabrica((p) => ({
-      pronto: p.pronto + faixa.qty,
-      numeracaoConcedida: Math.max(0, p.numeracaoConcedida - faixa.qty),
-    }));
-    notify(
-      `Etiquetas da faixa ${faixa.inicio.slice(-6)}–${faixa.fim.slice(-6)} impressas e colocadas nas caixas — ${faixa.qty} brincos prontos para envio.`,
-    );
-  }
   const [orders, setOrders] = useState([
     {
       id: 47,
@@ -11096,6 +11176,7 @@ function FactoryPage({
         tipo: selectedOrder.tipo,
         status: "AGUARDANDO",
         data: "19/06/2025",
+        vinculada: `Pedido #${selectedOrder.id} — ${selectedOrder.store}`,
       },
       ...current,
     ]);
@@ -11149,83 +11230,6 @@ function FactoryPage({
             <small>pedidos</small>
           </div>
         </article>
-      </section>
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>Faixas de numeração recebidas da SEAPI</h2>
-            <p>
-              Os intervalos concedidos pela SEAPI — a fábrica imprime esses números em código de
-              barras e os coloca nas caixas antes do envio
-            </p>
-          </div>
-          <Badge tone="blue">
-            {faixasFabrica.filter((f) => f.ciclo === "Aguardando impressão").length} aguardando impressão
-          </Badge>
-        </div>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Faixa de numeração</th>
-                <th>Brincos</th>
-                <th>Tipo</th>
-                <th>Concedida em</th>
-                <th>Vinculada a</th>
-                <th>Ciclo de impressão</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {faixasFabrica.map((f) => (
-                <tr key={f.id}>
-                  <td className="range-cell">
-                    <strong>{formatTag(f.inicio)}</strong>
-                    <span>até {formatTag(f.fim)}</span>
-                  </td>
-                  <td>
-                    <strong>{f.qty.toLocaleString("pt-BR")}</strong>
-                  </td>
-                  <td>
-                    <Badge tone={f.tipo === "SISBOV" ? "green" : "purple"}>
-                      {f.tipo === "SISBOV" ? "Nacional · SISBOV" : "Internacional"}
-                    </Badge>
-                  </td>
-                  <td>{f.concedidaEm}</td>
-                  <td>{f.vinculada}</td>
-                  <td>
-                    {f.ciclo === "Aguardando impressão" ? (
-                      <Badge tone="yellow">Aguardando impressão</Badge>
-                    ) : (
-                      <Badge tone="green">Impressa — nas caixas</Badge>
-                    )}
-                  </td>
-                  <td>
-                    <div className="action-cell">
-                      {f.ciclo === "Aguardando impressão" ? (
-                        <button
-                          className="text-btn"
-                          onClick={() => registrarProducaoFaixa(f.id)}
-                          title="Imprime as etiquetas de código de barras desta faixa e coloca os brincos nas caixas"
-                        >
-                          Registrar produção
-                        </button>
-                      ) : (
-                        <span className="aging-note">Pronta para envio</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="panel-foot">
-          <span>
-            Sem a faixa de numeração não há o que imprimir — a produção só é registrada após a
-            SEAPI conceder os intervalos.
-          </span>
-        </div>
       </section>
       <section className="panel">
         <div className="panel-head">
