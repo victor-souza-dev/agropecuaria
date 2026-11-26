@@ -8574,8 +8574,8 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
       </section>
       {atending && (
         <ModalShell
-          title={`Atender pedido #PED-SDA-${atending.id}`}
-          subtitle={`${atending.ator} · ${atending.qtd} brincos — escolha a rota de atendimento.`}
+          title={`Atender pedido de ${atending.ator}`}
+          subtitle={`${atending.qtd} brincos — escolha a rota de atendimento.`}
           onClose={() => setAtending(null)}
         >
           <div className="modal-body">
@@ -8600,34 +8600,38 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
               </p>
             ) : (
               <>
-                <label className="scan-input compact">
+                <label className="scan-input">
                   <span>TIPO DO BRINCO</span>
-                  <select
-                    value={atendBrincoTipo}
-                    disabled={atendOrigem === "PNIB"}
-                    onChange={(e) =>
-                      setAtendBrincoTipo(e.target.value as "SISBOV" | "INTERNACIONAL")
-                    }
-                  >
-                    <option value="SISBOV">Nacional · SISBOV (105)</option>
-                    <option value="INTERNACIONAL">Internacional (076)</option>
-                  </select>
+                  <div>
+                    <select
+                      value={atendBrincoTipo}
+                      disabled={atendOrigem === "PNIB"}
+                      onChange={(e) =>
+                        setAtendBrincoTipo(e.target.value as "SISBOV" | "INTERNACIONAL")
+                      }
+                    >
+                      <option value="SISBOV">Nacional · SISBOV (105)</option>
+                      <option value="INTERNACIONAL">Internacional (076)</option>
+                    </select>
+                  </div>
                 </label>
-                <label className="scan-input compact">
+                <label className="scan-input">
                   <span>ORIGEM DA FAIXA DEDICADA</span>
-                  <select
-                    value={atendOrigem}
-                    onChange={(e) => {
-                      const value = e.target.value as "Interna" | "PNIB";
-                      setAtendOrigem(value);
-                      if (value === "PNIB") setAtendBrincoTipo("INTERNACIONAL");
-                    }}
-                  >
-                    <option value="Interna">
-                      Interna — pool sequencial gera automaticamente
-                    </option>
-                    <option value="PNIB">PNIB — faixa existente ou solicitar nova</option>
-                  </select>
+                  <div>
+                    <select
+                      value={atendOrigem}
+                      onChange={(e) => {
+                        const value = e.target.value as "Interna" | "PNIB";
+                        setAtendOrigem(value);
+                        if (value === "PNIB") setAtendBrincoTipo("INTERNACIONAL");
+                      }}
+                    >
+                      <option value="Interna">
+                        Interna — pool sequencial gera automaticamente
+                      </option>
+                      <option value="PNIB">PNIB — faixa existente ou solicitar nova</option>
+                    </select>
+                  </div>
                 </label>
                 {atendOrigem === "PNIB" && (
                   <>
@@ -8653,15 +8657,17 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                     </p>
                   </>
                 )}
-                <label className="scan-input compact">
+                <label className="scan-input">
                   <span>FÁBRICA</span>
-                  <select
-                    value={atendFabrica}
-                    onChange={(e) => setAtendFabrica(e.target.value)}
-                  >
-                    <option>Identifica Brasil S.A. — Porto Alegre/RS</option>
-                    <option>Brinco Sul Indústria Ltda. — Caxias do Sul/RS</option>
-                  </select>
+                  <div>
+                    <select
+                      value={atendFabrica}
+                      onChange={(e) => setAtendFabrica(e.target.value)}
+                    >
+                      <option>Identifica Brasil S.A. — Porto Alegre/RS</option>
+                      <option>Brinco Sul Indústria Ltda. — Caxias do Sul/RS</option>
+                    </select>
+                  </div>
                 </label>
                 <div>
                   <span className="field-label">DESTINO DA FABRICAÇÃO</span>

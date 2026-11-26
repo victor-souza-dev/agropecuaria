@@ -89,6 +89,10 @@ export const router = createBrowserRouter([
         element: <ModulePage page="automacoes" />,
       },
       {
+        path: "automacoes/auditoria",
+        element: <ModulePage page="automacoes" />,
+      },
+      {
         path: "numeracao/:rangeId",
         element: <RangeDetailPage />,
       },

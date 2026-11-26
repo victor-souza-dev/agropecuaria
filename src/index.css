@@ -972,6 +972,35 @@ tbody tr:hover:not(.detail-row) {
   font-size: 8px;
   margin-top: 5px;
 }
+.scan-input > div.textarea-box {
+  height: auto;
+  padding: 0;
+}
+.scan-input textarea {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 12px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  min-height: 88px;
+  resize: vertical;
+  font-family: inherit;
+  color: #2a3b4d;
+}
+.scan-input select {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0 11px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  color: #2a3b4d;
+  font-family: inherit;
+}
 .keyboard-tip {
   font-size: 8px;
   color: #84909e;
