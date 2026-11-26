@@ -861,7 +861,9 @@ export default function Prototype() {
       !isNumeracaoDashboard &&
       !isEstocadoresSubPage &&
       !isFaixaAuditoriaPage &&
-      !isAutomacoesAuditoriaPage
+      !isAutomacoesAuditoriaPage &&
+      !isHistoricoDetailPage &&
+      !isHistoricoAuditoriaPage
     ) {
       navigate(canonicalPath, { replace: true });
     }
@@ -869,6 +871,8 @@ export default function Prototype() {
     isAutomacoesAuditoriaPage,
     isEstocadoresSubPage,
     isFaixaAuditoriaPage,
+    isHistoricoDetailPage,
+    isHistoricoAuditoriaPage,
     isMovementItemsPage,
     isPedidoSdaDetailPage,
     isRequestDetailPage,

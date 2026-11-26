@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from "react-router";
 import Prototype, {
   ModulePage,
   MovementItemsPage,
+  MovementDetailPage,
+  AuditoriaMovimentacaoPage,
   AprovacaoDetalhePage,
   RequestDetailPage,
   TagDetailPage,
@@ -49,6 +51,14 @@ export const router = createBrowserRouter([
       {
         path: "historico/:movementId/itens",
         element: <MovementItemsPage />,
+      },
+      {
+        path: "historico/:movementId",
+        element: <MovementDetailPage />,
+      },
+      {
+        path: "historico/:movementId/auditoria",
+        element: <AuditoriaMovimentacaoPage />,
       },
       {
         path: "habilitacao",
