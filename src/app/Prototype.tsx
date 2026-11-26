@@ -9131,21 +9131,6 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
             ) : (
               <>
                 <label className="scan-input">
-                  <span>TIPO DO BRINCO</span>
-                  <div>
-                    <select
-                      value={atendBrincoTipo}
-                      disabled={atendOrigem === "PNIB"}
-                      onChange={(e) =>
-                        setAtendBrincoTipo(e.target.value as "SISBOV" | "INTERNACIONAL")
-                      }
-                    >
-                      <option value="SISBOV">Nacional · SISBOV (105)</option>
-                      <option value="INTERNACIONAL">Internacional (076)</option>
-                    </select>
-                  </div>
-                </label>
-                <label className="scan-input">
                   <span>ORIGEM DA FAIXA DEDICADA</span>
                   <div>
                     <select
@@ -9197,6 +9182,21 @@ function PedidosSdaPage({ notify }: { notify: (m: string) => void }) {
                     </p>
                   </>
                 )}
+                <label className="scan-input">
+                  <span>TIPO DO BRINCO</span>
+                  <div>
+                    <select
+                      value={atendBrincoTipo}
+                      disabled={atendOrigem === "PNIB"}
+                      onChange={(e) =>
+                        setAtendBrincoTipo(e.target.value as "SISBOV" | "INTERNACIONAL")
+                      }
+                    >
+                      <option value="SISBOV">Nacional · SISBOV (105)</option>
+                      <option value="INTERNACIONAL">Internacional (076)</option>
+                    </select>
+                  </div>
+                </label>
                 <label className="scan-input">
                   <span>FÁBRICA</span>
                   <div>
