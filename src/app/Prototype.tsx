@@ -9378,6 +9378,9 @@ export function AprovacaoDetalhePage() {
   const context = useOutletContext<PrototypeContext>();
   const pedido = context.pedidosSda.find((p) => String(p.id) === pedidoId);
 
+  // Estado preservado pelo Fast Refresh pode trazer registros do formato antigo (sem composicao)
+  const composicao = Array.isArray(pedido?.composicao) ? pedido.composicao : [];
+
   if (!pedido) {
     return (
       <section className="panel movement-not-found">
@@ -9558,10 +9561,10 @@ export function AprovacaoDetalhePage() {
             </p>
           </div>
           <Badge tone="purple">
-            {pedido.composicao.length}{" "}
+            {composicao.length}{" "}
             {pedido.fila === "movimentacao"
               ? "bloco sequencial"
-              : pedido.composicao.length === 1
+              : composicao.length === 1
                 ? "faixa"
                 : "faixas"}
           </Badge>
@@ -9576,7 +9579,15 @@ export function AprovacaoDetalhePage() {
               </tr>
             </thead>
             <tbody>
-              {pedido.composicao.map((item, i) => (
+              {composicao.length === 0 ? (
+                <tr>
+                  <td colSpan={3}>
+                    Composição não disponível neste registro — recarregue a página para atualizar
+                    os dados da sessão.
+                  </td>
+                </tr>
+              ) : (
+                composicao.map((item, i) => (
                 <tr key={i}>
                   <td>
                     <strong>{item.rotulo}</strong>
@@ -9586,7 +9597,8 @@ export function AprovacaoDetalhePage() {
                     <strong>{item.qty.toLocaleString("pt-BR")}</strong>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
