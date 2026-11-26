@@ -576,6 +576,20 @@ const tipoAtorPorNome: Record<string, string> = {
 const tipoAtor = (nome: string) =>
   tipoAtorPorNome[nome] ?? (nome === "—" ? "—" : "Titular do estoque");
 
+// Titular de custódia de cada papel — filtra o histórico por ator (dados demonstrativos).
+// A SEAPI é a exceção: visão de governança, consulta a cadeia inteira (Opção 3 §4.6).
+const titularPorRole: Record<Role, string> = {
+  seapi: "SEAPI — fiscal estadual",
+  loja: "Agropecuária Pampa Sul",
+  pf: "Antônio C. Silveira",
+  prefeitura: "Prefeitura Municipal de Bagé",
+  cooperativa: "Cooperativa Vale do Verde",
+  ida: "Inspetoria de Defesa Agropecuária",
+  posto: "Escritório de Defesa Agropecuária",
+  fabrica: "Identifica Brasil S.A.",
+  produtor: "João Pedro Fagundes",
+};
+
 const initialRequests: RequestRecord[] = [
   {
     id: "0048",
@@ -1088,7 +1102,7 @@ export default function Prototype() {
                     time: "15:42",
                     type: "Recebimento",
                     from: "Identifica Brasil S.A.",
-                    to: currentRole.detail,
+                    to: titularPorRole[currentRole.id] ?? currentRole.detail,
                     qty: quantity,
                     read: "2 códigos/caixa",
                     state: "Concluído",
@@ -2660,42 +2674,51 @@ function StockPage({
 const MAX_BRINCOS_POR_CAIXA = 1000;
 // RN-021 (teto oficial confirmado pelo cliente): Internacional (076) tem 15 dígitos; Nacional · SISBOV (105) tem 14
 const DIGITOS_POR_PREFIXO: Record<string, number> = { "076": 15, "105": 14 };
-// Pedido esperado do card lateral — a conferência compara cada caixa lida com este pedido (PEND-004: a regra
-// para divergência ainda aguarda decisão do cliente; hoje a tela destaca e registra, sem bloquear)
-const PEDIDO_ESPERADO = {
-  fabrica: "Identifica Brasil S.A.",
-  inicio: "076210077200001",
-  fim: "076210077200240",
-  quantidade: 240,
-};
-
-function divergenciasDaCaixa(box: { start: string; end: string; quantity: number }): string[] {
-  const d: string[] = [];
-  const s = Number(box.start);
-  const e = Number(box.end);
-  const es = Number(PEDIDO_ESPERADO.inicio);
-  const ef = Number(PEDIDO_ESPERADO.fim);
-  if (s < es || e > ef) {
-    d.push("Faixa fora do intervalo esperado pelo pedido");
-  }
-  if (box.quantity !== PEDIDO_ESPERADO.quantidade) {
-    d.push(
-      `Quantidade lida (${box.quantity}) difere da esperada (${PEDIDO_ESPERADO.quantidade})`,
-    );
-  }
-  return d;
-}
 
 function ReceivingPage({ onSuccess }: { onSuccess: (message: string, quantity: number) => void }) {
   const [startCode, setStartCode] = useState("");
   const [endCode, setEndCode] = useState("");
   const [boxes, setBoxes] = useState<
-    { id: number; start: string; end: string; quantity: number }[]
+    { id: number; start: string; end: string; quantity: number; envioId: number | null }[]
   >([]);
   const [error, setError] = useState("");
   const refStart = useRef<HTMLInputElement | null>(null);
   const refEnd = useRef<HTMLInputElement | null>(null);
   const totalQuantity = boxes.reduce((total, box) => total + box.quantity, 0);
+
+  // Envios em trânsito para este titular — pedidos (fábrica/SEAPI) e transferências aguardando
+  // a confirmação por leitura (RN-014: ENVIADO → CONCLUIDO). Pode haver VÁRIOS simultâneos.
+  const [envios, setEnvios] = useState<
+    { id: number; tipo: "pedido" | "transferencia"; origem: string; quantidade: number; inicio: string; fim: string; dataEnvio: string }[]
+  >([
+    { id: 1, tipo: "pedido", origem: "Identifica Brasil S.A.", quantidade: 240, inicio: "076210077200001", fim: "076210077200240", dataEnvio: "16/06/2025" },
+    { id: 2, tipo: "pedido", origem: "Brinco Sul Indústria", quantidade: 150, inicio: "10512345678901", fim: "10512345679050", dataEnvio: "17/06/2025" },
+    { id: 3, tipo: "transferencia", origem: "Prefeitura Municipal de Bagé", quantidade: 120, inicio: "076210077200241", fim: "076210077200360", dataEnvio: "18/06/2025" },
+  ]);
+  const [envioSelecionado, setEnvioSelecionado] = useState<number | null>(null);
+
+  // Conferência: contra o envio SELECIONADO — ou o envio localizado automaticamente pela faixa lida.
+  function divergenciasDaCaixa(box: {
+    start: string;
+    end: string;
+    quantity: number;
+    envioId: number | null;
+  }): string[] {
+    const alvo = envios.find((e) => e.id === box.envioId);
+    if (!alvo) {
+      return [
+        "Sem vínculo com os envios em trânsito — verifique a qual envio esta caixa pertence antes de confirmar.",
+      ];
+    }
+    const motivos: string[] = [];
+    if (Number(box.start) < Number(alvo.inicio) || Number(box.end) > Number(alvo.fim)) {
+      motivos.push("Faixa fora do intervalo esperado pelo envio");
+    }
+    if (box.quantity !== alvo.quantidade) {
+      motivos.push(`Quantidade lida (${box.quantity}) difere da esperada (${alvo.quantidade})`);
+    }
+    return motivos;
+  }
 
   function normalizeCode(value: string) {
     return value.replace(/\D/g, "");
@@ -3558,16 +3581,30 @@ function HistoryPage({
   const [periodoAte, setPeriodoAte] = useState("");
   const [pickerAberto, setPickerAberto] = useState<"de" | "ate" | null>(null);
   const [anoPicker, setAnoPicker] = useState(2025);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
   const periodoRef = useRef<HTMLDivElement | null>(null);
+  const deRef = useRef<HTMLDivElement | null>(null);
+  const ateRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const fechar = (e: MouseEvent) => {
-      if (periodoRef.current && !periodoRef.current.contains(e.target as Node)) {
+      const alvo = e.target as HTMLElement;
+      if (
+        periodoRef.current &&
+        !periodoRef.current.contains(alvo) &&
+        !alvo.closest(".month-picker")
+      ) {
         setPickerAberto(null);
       }
     };
     document.addEventListener("mousedown", fechar);
     return () => document.removeEventListener("mousedown", fechar);
   }, []);
+  function abrirPicker(qual: "de" | "ate") {
+    const ref = qual === "de" ? deRef : ateRef;
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) setPickerPos({ top: rect.bottom + 6, left: rect.left });
+    setPickerAberto((atual) => (atual === qual ? null : qual));
+  }
   const mesesCurto = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const tiposDistintos = [...new Set(moves.map((m) => m.type))];
   const mesAnoDe = (data: string) => {
@@ -3580,7 +3617,9 @@ function HistoryPage({
   };
   const deValido = validaMesAno(periodoDe);
   const ateValido = validaMesAno(periodoAte);
+  const titular = titularPorRole[role];
   const rows = moves.filter((m) => {
+    if (role !== "seapi" && m.from !== titular && m.to !== titular) return false;
     if (tipoMov !== "Todos os tipos" && m.type !== tipoMov) return false;
     if (deValido && mesAnoDe(m.date) < deValido) return false;
     if (ateValido && mesAnoDe(m.date) > ateValido) return false;
@@ -3620,7 +3659,7 @@ function HistoryPage({
               title="Filtrar movimentações deste período (formato MM/yyyy)"
             >
               <span className="period-label">Período</span>
-              <div className="period-input-wrap">
+              <div className="period-input-wrap" ref={deRef}>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -3634,10 +3673,7 @@ function HistoryPage({
                   type="button"
                   className="period-calendar"
                   aria-label="Selecionar mês inicial"
-                  onClick={() => {
-                    setPickerAberto(pickerAberto === "de" ? null : "de");
-                    setAnoPicker(Number(periodoDe.split("/")[1] ?? periodoDe) || 2025);
-                  }}
+                  onClick={() => abrirPicker("de")}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 </button>
