@@ -322,7 +322,7 @@ const stockBase = [
     end: "076210077200240",
     qty: 240,
     status: "Disponível",
-    source: "Recebido em 16/06/2025",
+    source: "Abastecimento em 16/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
@@ -330,7 +330,7 @@ const stockBase = [
     end: "076210077200330",
     qty: 90,
     status: "Disponível",
-    source: "Recebido em 02/06/2025",
+    source: "Abastecimento em 02/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
@@ -338,7 +338,7 @@ const stockBase = [
     end: "076210077200365",
     qty: 35,
     status: "Disponível",
-    source: "Recebido em 20/05/2025",
+    source: "Abastecimento em 20/05/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
@@ -346,7 +346,7 @@ const stockBase = [
     end: "076210077200370",
     qty: 5,
     status: "Disponível",
-    source: "Devolvido em 05/06/2025",
+    source: "Devolução em 05/06/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
@@ -354,7 +354,7 @@ const stockBase = [
     end: "076210077200415",
     qty: 35,
     status: "Disponível",
-    source: "Recebido em 20/05/2025",
+    source: "Abastecimento em 20/05/2025",
     fabricante: "Identifica Brasil S.A.",
   },
   {
@@ -362,7 +362,7 @@ const stockBase = [
     end: "076210077200520",
     qty: 68,
     status: "Disponível",
-    source: "Recebido em 20/05/2025",
+    source: "Abastecimento em 20/05/2025",
     fabricante: "Identifica Brasil S.A.",
   },
 ];
@@ -400,12 +400,12 @@ const faixaPieces: Record<string, { titular: string; s1: string; s2: string; qty
     { titular: "Antônio C. Silveira", s1: "105430057001401", s2: "105430057001500", qty: 100, note: "herdada" },
   ],
   "076210077200001": [
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200001", s2: "076210077200240", qty: 240, note: "recebida 16/06" },
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200241", s2: "076210077200330", qty: 90, note: "recebida 02/06" },
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200331", s2: "076210077200365", qty: 35, note: "recebida 20/05" },
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200366", s2: "076210077200370", qty: 5, note: "devolvida pelo produtor 05/06" },
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200381", s2: "076210077200415", qty: 35, note: "recebida 20/05" },
-    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200453", s2: "076210077200520", qty: 68, note: "recebida 20/05" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200001", s2: "076210077200240", qty: 240, note: "abastecida 16/06" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200241", s2: "076210077200330", qty: 90, note: "abastecida 02/06" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200331", s2: "076210077200365", qty: 35, note: "abastecida 20/05" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200366", s2: "076210077200370", qty: 5, note: "devolução do produtor 05/06" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200381", s2: "076210077200415", qty: 35, note: "abastecida 20/05" },
+    { titular: "Agropecuária Pampa Sul Ltda.", s1: "076210077200453", s2: "076210077200520", qty: 68, note: "abastecida 20/05" },
     { titular: "João Pedro Fagundes", s1: "076210077200371", s2: "076210077200375", qty: 5, note: "vendida 28/05" },
     { titular: "João Pedro Fagundes", s1: "076210077200376", s2: "076210077200380", qty: 5, note: "vendida 28/05 (aplicados)" },
     { titular: "João Pedro Fagundes", s1: "076210077200441", s2: "076210077200452", qty: 12, note: "vendida 14/06" },
@@ -416,9 +416,9 @@ const faixaPieces: Record<string, { titular: string; s1: string; s2: string; qty
     { titular: "Prefeitura Municipal de Bagé", s1: "076210077220401", s2: "076210077220560", qty: 160, note: "distribuída 28/05" },
   ],
   "105430057000001": [
-    { titular: "Depósito central SEAPI", s1: "105430057000501", s2: "105430057001100", qty: 600, note: "recebida 03/06" },
-    { titular: "Depósito central SEAPI", s1: "105430057001101", s2: "105430057001300", qty: 200, note: "recebida 05/06" },
-    { titular: "Depósito central SEAPI", s1: "105430057006001", s2: "105430057006400", qty: 400, note: "recebida 09/06" },
+    { titular: "Depósito central SEAPI", s1: "105430057000501", s2: "105430057001100", qty: 600, note: "abastecida 03/06" },
+    { titular: "Depósito central SEAPI", s1: "105430057001101", s2: "105430057001300", qty: 200, note: "abastecida 05/06" },
+    { titular: "Depósito central SEAPI", s1: "105430057006001", s2: "105430057006400", qty: 400, note: "abastecida 09/06" },
   ],
 };
 
@@ -10269,7 +10269,13 @@ export function AprovacaoDetalhePage() {
 
 function FactoryPage({ notify }: { notify: (m: string) => void }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const [boxes, setBoxes] = useState([{ id: 1, start: "", end: "" }]);
+  // Estoque interno da fábrica: brincos produzidos e prontos para envio (camada de faixa abstraída)
+  const [estoqueInterno, setEstoqueInterno] = useState(300);
+  // Numerações solicitadas à SEAPI quando o estoque interno não cobre o pedido:
+  // a SEAPI gera ou usa uma faixa para a quantidade e a devolve à fábrica para produzir
+  const [numSolicitacoes, setNumSolicitacoes] = useState<
+    { id: number; qty: number; tipo: "INTERNACIONAL" | "SISBOV"; status: "AGUARDANDO" | "CONCEDIDA"; data: string }[]
+  >([{ id: 1, qty: 200, tipo: "SISBOV", status: "CONCEDIDA", data: "10/06/2025" }]);
   const orders = [
     {
       id: 47,
@@ -10280,7 +10286,6 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       qty: 240,
       date: "12/06/2025",
       status: "Pendente",
-      alocacao: { start: "076210077206001", end: "076210077206240" },
       destinoSede: false,
     },
     {
@@ -10292,7 +10297,6 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       qty: 500,
       date: "11/06/2025",
       status: "Em produção",
-      alocacao: { start: "105430055950001", end: "105430055960000" },
       destinoSede: false,
     },
     {
@@ -10304,7 +10308,6 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       qty: 380,
       date: "10/06/2025",
       status: "Pendente",
-      alocacao: { start: "076210077207001", end: "076210077207380" },
       destinoSede: true,
     },
     {
@@ -10316,39 +10319,66 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       qty: 120,
       date: "08/06/2025",
       status: "Enviado",
-      alocacao: null,
       destinoSede: false,
     },
   ];
   const selectedOrder = orders.find((order) => order.id === selected);
-  const alocacao = selectedOrder?.alocacao ?? null;
-  const boxesComplete = boxes.every(
-    (box) => box.start.replace(/\D/g, "").length === 15 && box.end.replace(/\D/g, "").length === 15,
-  );
-  const boxesInsideAllocation = boxes.every((box) => {
-    const start = Number(box.start.replace(/\D/g, ""));
-    const end = Number(box.end.replace(/\D/g, ""));
-    return !!alocacao && start >= Number(alocacao.start) && end <= Number(alocacao.end) && end >= start;
-  });
-  const hasOverlap = boxes.some((box, index) =>
-    boxes.some(
-      (other, otherIndex) =>
-        index !== otherIndex &&
-        Number(box.start) <= Number(other.end) &&
-        Number(box.end) >= Number(other.start),
-    ),
-  );
-  const shipmentQuantity = boxesComplete
-    ? boxes.reduce((total, box) => total + (Number(box.end) - Number(box.start) + 1), 0)
-    : 0;
-  const quantityMismatch = !!selectedOrder && shipmentQuantity !== selectedOrder.qty;
-  const invalid = !boxesComplete || !boxesInsideAllocation || hasOverlap || quantityMismatch;
+  const estoqueCobre = !!selectedOrder && estoqueInterno >= selectedOrder.qty;
+  const faltam = selectedOrder ? Math.max(0, selectedOrder.qty - estoqueInterno) : 0;
   const pendentes = orders.filter((o) => o.status === "Pendente").length;
   const producao = orders.filter((o) => o.status === "Em produção").length;
   const enviados = orders.filter((o) => o.status === "Enviado").length;
+  function declararDoEstoque() {
+    if (!selectedOrder) return;
+    setEstoqueInterno((e) => e - selectedOrder.qty);
+    notify(
+      selectedOrder.destinoSede
+        ? "Envio declarado. As caixas seguem para o estoque central SDA — a SEAPI confirma pela leitura."
+        : `Envio declarado. ${selectedOrder.store} já pode receber as caixas com o leitor.`,
+    );
+    setSelected(null);
+  }
+  function solicitarNumeracao() {
+    if (!selectedOrder) return;
+    setNumSolicitacoes((current) => [
+      {
+        id: Math.max(0, ...current.map((s) => s.id)) + 1,
+        qty: faltam,
+        tipo: selectedOrder.tipo,
+        status: "AGUARDANDO",
+        data: "19/06/2025",
+      },
+      ...current,
+    ]);
+    notify(
+      `Solicitação de numeração enviada à SEAPI — a faixa para produzir ${faltam.toLocaleString("pt-BR")} brincos será concedida pela integração.`,
+    );
+    setSelected(null);
+  }
+  function registrarConcessao(id: number) {
+    const solicitacao = numSolicitacoes.find((s) => s.id === id);
+    if (!solicitacao || solicitacao.status !== "AGUARDANDO") return;
+    setNumSolicitacoes((current) =>
+      current.map((s) => (s.id === id ? { ...s, status: "CONCEDIDA" } : s)),
+    );
+    setEstoqueInterno((e) => e + solicitacao.qty);
+    notify(
+      `Numeração concedida pela SEAPI — ${solicitacao.qty.toLocaleString("pt-BR")} brincos disponíveis para produção.`,
+    );
+  }
   return (
     <>
       <section className="stats-grid numbering-stats">
+        <article className="stat">
+          <div className="stat-icon blue">
+            <Icon name="box" />
+          </div>
+          <div>
+            <span>Estoque interno</span>
+            <strong>{estoqueInterno.toLocaleString("pt-BR")}</strong>
+            <small>brincos prontos para envio</small>
+          </div>
+        </article>
         <article className="stat">
           <div className="stat-icon yellow">
             <Icon name="history" />
@@ -10357,16 +10387,6 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
             <span>Pedidos pendentes</span>
             <strong>{pendentes}</strong>
             <small>aguardando ação</small>
-          </div>
-        </article>
-        <article className="stat">
-          <div className="stat-icon blue">
-            <Icon name="factory" />
-          </div>
-          <div>
-            <span>Em produção</span>
-            <strong>{producao}</strong>
-            <small>pedidos</small>
           </div>
         </article>
         <article className="stat">
@@ -10452,129 +10472,58 @@ function FactoryPage({ notify }: { notify: (m: string) => void }) {
       {selected && selectedOrder && (
         <ModalShell
           title={`Declarar envio — pedido de ${selectedOrder.store}`}
-          subtitle="Cada caixa deve conter uma faixa, identificada por dois códigos de barras."
+          subtitle="Envio por quantidade — a numeração aplicada aos brincos é registrada no estado único."
           onClose={() => setSelected(null)}
         >
-          <div className="modal-body">
+          <div className="modal-body atend-modal">
             <div className="allocation-note">
-              <Icon name="hash" />
+              <Icon name="box" />
               <div>
-                <span>FAIXA DISTRIBUÍDA A ESTE PEDIDO</span>
+                <span>ESTOQUE INTERNO DISPONÍVEL</span>
+                <strong>{estoqueInterno.toLocaleString("pt-BR")} brincos prontos para envio</strong>
+              </div>
+            </div>
+            <div className="allocation-note">
+              <Icon name="request" />
+              <div>
+                <span>PEDIDO A ATENDER</span>
                 <strong>
-                  {alocacao
-                    ? `${formatTag(alocacao.start)} a ${formatTag(alocacao.end)}`
-                    : "—"}
+                  {selectedOrder.qty.toLocaleString("pt-BR")} brincos ·{" "}
+                  {selectedOrder.tipo === "SISBOV"
+                    ? "Nacional · SISBOV (105)"
+                    : "Internacional (076)"}
                 </strong>
               </div>
             </div>
-            <div className="box-form-head">
-              <div>
-                <strong>Caixas e códigos de barras</strong>
-                <span>1 caixa = 1 faixa = código inicial + código final</span>
+            {!estoqueCobre && (
+              <div className="atend-warn">
+                <Icon name="alert" size={14} />
+                <span>
+                  Estoque interno insuficiente —{" "}
+                  <strong>faltam {faltam.toLocaleString("pt-BR")} brincos</strong>. Solicite
+                  numeração à SEAPI: uma faixa para essa quantidade será concedida para produção.
+                </span>
               </div>
-              <button
-                className="text-btn"
-                onClick={() =>
-                  setBoxes((prev) => [...prev, { id: Date.now(), start: "", end: "" }])
-                }
-              >
-                <Icon name="plus" size={15} /> Adicionar caixa
-              </button>
-            </div>
-            {boxes.map((box, i) => (
-              <div className="box-row" key={box.id}>
-                <div className="box-row-title">
-                  <span className="box-number">{String(i + 1).padStart(2, "0")}</span>
-                  <span>
-                    <b>CAIXA {String(i + 1).padStart(2, "0")}</b>
-                    <small>Uma faixa · dois códigos</small>
-                  </span>
-                </div>
-                <label>
-                  <span>1 · CÓDIGO DE BARRAS INICIAL</span>
-                  <input
-                    value={box.start}
-                    placeholder="15 dígitos"
-                    onChange={(e) =>
-                      setBoxes((prev) =>
-                        prev.map((x) => (x.id === box.id ? { ...x, start: e.target.value } : x)),
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  <span>2 · CÓDIGO DE BARRAS FINAL</span>
-                  <input
-                    value={box.end}
-                    placeholder="15 dígitos"
-                    onChange={(e) =>
-                      setBoxes((prev) =>
-                        prev.map((x) => (x.id === box.id ? { ...x, end: e.target.value } : x)),
-                      )
-                    }
-                  />
-                </label>
-                <div className="box-row-quantity">
-                  <strong>
-                    {box.start.length === 15 &&
-                    box.end.length === 15 &&
-                    Number(box.end) >= Number(box.start)
-                      ? Number(box.end) - Number(box.start) + 1
-                      : "—"}
-                  </strong>
-                  <span>brincos</span>
-                </div>
-                {i > 0 && (
-                  <button
-                    className="icon-btn"
-                    onClick={() => setBoxes((prev) => prev.filter((x) => x.id !== box.id))}
-                  >
-                    <Icon name="trash" size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
-            {!boxesComplete && (
-              <p className="form-error">
-                <Icon name="alert" size={15} /> Leia os dois códigos de 15 dígitos de cada caixa.
-              </p>
             )}
-            {boxesComplete && !boxesInsideAllocation && (
-              <p className="form-error">
-                <Icon name="alert" size={15} /> Uma das faixas não pertence à numeração distribuída
-                a esta fábrica.
-              </p>
-            )}
-            {hasOverlap && (
-              <p className="form-error">
-                <Icon name="alert" size={15} /> As faixas das caixas não podem se sobrepor.
-              </p>
-            )}
-            {boxesComplete && boxesInsideAllocation && !hasOverlap && quantityMismatch && (
-              <p className="form-error">
-                <Icon name="alert" size={15} /> As caixas totalizam {shipmentQuantity} brincos, mas
-                o pedido exige {selectedOrder?.qty}.
-              </p>
-            )}
+            <p className="modal-copy">
+              {selectedOrder.destinoSede
+                ? "Os brincos seguem para o estoque central SDA — o pedido segue o ciclo padrão após o recebimento."
+                : `Os brincos seguem direto para ${selectedOrder.store} — o estoque central não entra no caminho.`}
+            </p>
           </div>
           <div className="modal-actions">
             <button className="btn secondary" onClick={() => setSelected(null)}>
               Cancelar
             </button>
-            <button
-              className="btn primary"
-              disabled={invalid}
-              onClick={() => {
-                setSelected(null);
-                notify(
-                  selectedOrder.destinoSede
-                    ? "Envio declarado. As caixas seguem para o estoque central SDA — a SEAPI confirma pela leitura."
-                    : `Envio declarado. ${selectedOrder.store} já pode receber as caixas com o leitor.`,
-                );
-              }}
-            >
-              Confirmar e declarar envio
-            </button>
+            {estoqueCobre ? (
+              <button className="btn primary" onClick={declararDoEstoque}>
+                Enviar do estoque interno
+              </button>
+            ) : (
+              <button className="btn primary" onClick={solicitarNumeracao}>
+                Solicitar numeração à SEAPI ({faltam.toLocaleString("pt-BR")} brincos)
+              </button>
+            )}
           </div>
         </ModalShell>
       )}
