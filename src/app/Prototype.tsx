@@ -57,6 +57,20 @@ type PrototypeContext = {
   registraEventoEstocador: (nome: string, evento: string, detalhe?: string) => void;
   pedidosSda: PedidoSda[];
   setPedidosSda: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
+  guardaVolume: { modo: "BLOQUEAR" | "AVISAR"; multiplicador: number };
+  setGuardaVolume: React.Dispatch<
+    React.SetStateAction<{ modo: "BLOQUEAR" | "AVISAR"; multiplicador: number }>
+  >;
+  anomaliasVolume: { quando: string; ator: string; qty: number; media: number; vezes: number; modo: "BLOQUEAR" | "AVISAR" }[];
+  registraAnomaliaVolume: (entry: {
+    quando: string;
+    ator: string;
+    qty: number;
+    media: number;
+    vezes: number;
+    modo: "BLOQUEAR" | "AVISAR";
+  }) => void;
+  mediaPedidosAtor: Record<string, number>;
   numSolicitacoes: NumSolicitacao[];
   setNumSolicitacoes: React.Dispatch<React.SetStateAction<NumSolicitacao[]>>;
   producaoFabrica: { pronto: number; produzidoSemNum: number; numeracaoConcedida: number };
@@ -1008,6 +1022,29 @@ export default function Prototype() {
   const [requests, setRequests] = useState<RequestRecord[]>(initialRequests);
   const [pedidosSda, setPedidosSda] = useState<PedidoSda[]>(pedidosSdaSeed);
   const [numSolicitacoes, setNumSolicitacoes] = useState<NumSolicitacao[]>(numSolicitacoesSeed);
+  const [guardaVolume, setGuardaVolume] = useState<{ modo: "BLOQUEAR" | "AVISAR"; multiplicador: number }>({
+    modo: "BLOQUEAR",
+    multiplicador: 3,
+  });
+  const [anomaliasVolume, setAnomaliasVolume] = useState<
+    { quando: string; ator: string; qty: number; media: number; vezes: number; modo: "BLOQUEAR" | "AVISAR" }[]
+  >([
+    {
+      quando: "05/06/2025",
+      ator: "Comercial Rural Tradição Ltda.",
+      qty: 1800,
+      media: 240,
+      vezes: 7.5,
+      modo: "BLOQUEAR",
+    },
+  ]);
+  // Média mensal de pedidos por ator — baseline da guarda de volume (RN-031, dados demonstrativos)
+  const mediaPedidosAtor: Record<string, number> = {
+    "Agropecuária Pampa Sul Ltda.": 120,
+    "Cooperativa Agropecuária Vale do Verde": 90,
+    "Comercial Rural Tradição Ltda.": 240,
+    "Prefeitura Municipal de Bagé": 380,
+  };
   const [producaoFabrica, setProducaoFabrica] = useState({
     pronto: 300,
     produzidoSemNum: 0,
@@ -1053,6 +1090,16 @@ export default function Prototype() {
     role,
   ]);
 
+  function registraAnomaliaVolume(entry: {
+    quando: string;
+    ator: string;
+    qty: number;
+    media: number;
+    vezes: number;
+    modo: "BLOQUEAR" | "AVISAR";
+  }) {
+    setAnomaliasVolume((current) => [entry, ...current]);
+  }
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 4200);
@@ -1229,6 +1276,11 @@ export default function Prototype() {
               requests,
               pedidosSda,
               setPedidosSda,
+              guardaVolume,
+              setGuardaVolume,
+              anomaliasVolume,
+              registraAnomaliaVolume,
+              mediaPedidosAtor,
               numSolicitacoes,
               setNumSolicitacoes,
               producaoFabrica,
@@ -1454,6 +1506,10 @@ export function ModulePage({ page }: { page: Page }) {
           notify={context.notify}
           pedidos={context.pedidosSda}
           setPedidos={context.setPedidosSda}
+          guardaVolume={context.guardaVolume}
+          setGuardaVolume={context.setGuardaVolume}
+          anomaliasVolume={context.anomaliasVolume}
+          mediaPedidosAtor={context.mediaPedidosAtor}
         />
       );
     case "pedidos-sda-novo":
@@ -10454,10 +10510,18 @@ function PedidosSdaPage({
   notify,
   pedidos,
   setPedidos,
+  guardaVolume,
+  setGuardaVolume,
+  anomaliasVolume,
 }: {
   notify: (m: string) => void;
   pedidos: PedidoSda[];
   setPedidos: React.Dispatch<React.SetStateAction<PedidoSda[]>>;
+  guardaVolume: { modo: "BLOQUEAR" | "AVISAR"; multiplicador: number };
+  setGuardaVolume: React.Dispatch<
+    React.SetStateAction<{ modo: "BLOQUEAR" | "AVISAR"; multiplicador: number }>
+  >;
+  anomaliasVolume: { quando: string; ator: string; qty: number; media: number; vezes: number; modo: "BLOQUEAR" | "AVISAR" }[];
 }) {
   const [recusing, setRecusing] = useState<PedidoSda | null>(null);
   const [buscaPedido, setBuscaPedido] = useState("");
@@ -10729,6 +10793,96 @@ function PedidosSdaPage({
       <div className="panel-foot">
         <span>Exibindo {rows.length} de {pedidos.length} registros · estoque central como origem única</span>
       </div>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Guarda de volume — pedidos anômalos</h2>
+            <p>
+              Detecta pedidos de agropecuárias muito acima do histórico do próprio ator (média
+              móvel de 90 dias × multiplicador) — a SEAPI escolhe se o excedente é bloqueado ou
+              apenas sinalizado
+            </p>
+          </div>
+          <Badge tone={guardaVolume.modo === "BLOQUEAR" ? "red" : "blue"}>
+            Modo: {guardaVolume.modo === "BLOQUEAR" ? "Bloquear" : "Avisar"} · ×{guardaVolume.multiplicador}
+          </Badge>
+        </div>
+        <div className="filters">
+          <div className="filter-group">
+            <span className="filter-label">Modo da guarda</span>
+            <div className="chip-set">
+              {(["BLOQUEAR", "AVISAR"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`chip ${guardaVolume.modo === m ? "active" : ""}`}
+                  onClick={() => setGuardaVolume((g) => ({ ...g, modo: m }))}
+                >
+                  {m === "BLOQUEAR" ? "Bloquear pedido anômalo" : "Apenas avisar a SEAPI"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="filter-group">
+            <span className="filter-label">Multiplicador do limite</span>
+            <div className="chip-set">
+              {[2, 3, 4].map((m) => (
+                <button
+                  key={m}
+                  className={`chip ${guardaVolume.multiplicador === m ? "active" : ""}`}
+                  onClick={() => setGuardaVolume((g) => ({ ...g, multiplicador: m }))}
+                >
+                  ×{m} a média do ator
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {anomaliasVolume.length === 0 ? (
+          <p className="aging-note" style={{ padding: "0 20px 14px" }}>
+            Nenhuma anomalia de volume detectada no período.
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Ator</th>
+                  <th>Volume pedido</th>
+                  <th>Média do ator</th>
+                  <th>Detecção</th>
+                </tr>
+              </thead>
+              <tbody>
+                {anomaliasVolume.map((a, i) => (
+                  <tr key={i}>
+                    <td>{a.quando}</td>
+                    <td>
+                      <strong>{a.ator}</strong>
+                    </td>
+                    <td>
+                      <strong>{a.qty.toLocaleString("pt-BR")}</strong>
+                    </td>
+                    <td>{a.media.toLocaleString("pt-BR")} brincos/mês</td>
+                    <td>
+                      <Badge tone={a.modo === "BLOQUEAR" ? "red" : "blue"}>
+                        ×{a.vezes.toLocaleString("pt-BR")} a média — {a.modo === "BLOQUEAR" ? "bloqueado" : "sinalizado"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="panel-foot">
+          <span>
+            Baseline: média móvel de 90 dias dos pedidos do próprio ator. O modo Bloquear recusa a
+            declaração na hora; o modo Avisar deixa passar com badge na fila para análise da SEAPI.
+          </span>
+        </div>
+      </section>
       {atending && (
         <ModalShell
           title={`Atender pedido de ${atending.ator}`}
